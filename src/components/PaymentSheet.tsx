@@ -6,7 +6,7 @@ interface Props {
   submitting: boolean;
 }
 
-const UPI_ID = 'REPLACE_WITH_BGC_UPI_ID';
+const UPI_ID = 'suranjanadatta24-1@okaxis';
 const RECIPIENT_NAME = 'Board Game Company';
 
 function buildUpiUrl(scheme: string, path: string, amount: number, payerName: string): string {
