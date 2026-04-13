@@ -1,0 +1,8 @@
+name = "bgc-api"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+
+[vars]
+SUPABASE_URL = ""
+
+# Set secrets via: wrangler secret put SUPABASE_SERVICE_KEY
