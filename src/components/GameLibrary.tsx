@@ -16,13 +16,19 @@ export default function GameLibrary() {
   const [complexityFilter, setComplexityFilter] = useState('');
   const [lengthFilter, setLengthFilter] = useState('');
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     async function fetchGames() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('games')
         .select('id, title, player_count, max_players, avg_rating, weight, complexity, play_time, max_play_time, length')
         .order('title');
 
+      if (error) {
+        console.error('Supabase error:', error);
+        setError(error.message);
+      }
       setGames(data || []);
       setLoading(false);
     }
@@ -60,6 +66,15 @@ export default function GameLibrary() {
   if (loading) {
     return (
       <div className="text-center py-12 text-muted">Loading games...</div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12 text-red-600">
+        <p className="font-semibold">Failed to load games</p>
+        <p className="text-sm mt-1">{error}</p>
+      </div>
     );
   }
 
