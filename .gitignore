@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+.superpowers/
+.env
+.env.local
+worker/node_modules/
+worker/dist/
+.wrangler/
+.DS_Store
