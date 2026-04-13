@@ -1,0 +1,14 @@
+---
+import Layout from '../layouts/Layout.astro';
+import EventList from '../components/EventList.tsx';
+---
+
+<Layout title="Calendar" description="Find your next board gaming session in Bangalore">
+  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="font-heading text-4xl font-bold">Upcoming Events</h1>
+      <p class="mt-2 text-muted text-lg">Find your next session</p>
+    </div>
+    <EventList client:load />
+  </section>
+</Layout>
