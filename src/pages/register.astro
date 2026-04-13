@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import RegistrationForm from '../components/RegistrationForm.tsx';
+---
+
+<Layout title="Register" description="Register for an upcoming Board Game Company event">
+  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-xl mx-auto">
+    <RegistrationForm client:load />
+  </section>
+</Layout>
