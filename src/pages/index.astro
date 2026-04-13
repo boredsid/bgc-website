@@ -1,10 +1,124 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
 ---
 
-<Layout title="Home">
-  <div class="pt-24 px-4 text-center">
-    <h1 class="font-heading text-4xl font-bold">Board Game Company</h1>
-    <p class="mt-2 text-muted">Site under construction</p>
-  </div>
+<Layout title="Home" description="Bangalore's Favorite Board Gaming Community — board game sessions at cafes across the city">
+
+  <!-- Hero -->
+  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+      <div class="flex-1 text-center lg:text-left">
+        <h1 class="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+          Welcome to<br />
+          <span class="text-primary">Board Game Company!</span>
+        </h1>
+        <p class="mt-4 text-muted text-lg max-w-lg mx-auto lg:mx-0">
+          Our mission is to create a community that brings people together over board games. Currently hosting in Bangalore.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3 justify-center lg:justify-start">
+          <a
+            href="/calendar"
+            class="bg-primary text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-primary-dark transition-colors no-underline"
+          >
+            Register for a Session
+          </a>
+          <a
+            href="https://instagram.com/boardgamecompany"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="bg-secondary text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-secondary/80 transition-colors no-underline"
+          >
+            Follow Us
+          </a>
+        </div>
+      </div>
+      <div class="flex-1 max-w-md lg:max-w-lg">
+        <!-- Photo collage placeholder — replace with actual community photos -->
+        <div class="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden">
+          <div class="bg-primary/10 aspect-square rounded-lg"></div>
+          <div class="bg-primary/20 aspect-square rounded-lg"></div>
+          <div class="bg-primary/10 aspect-square rounded-lg"></div>
+          <div class="bg-primary/20 aspect-square rounded-lg"></div>
+          <div class="bg-primary/10 aspect-square rounded-lg"></div>
+          <div class="bg-primary/20 aspect-square rounded-lg"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Upcoming Event Banner -->
+  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-12">
+    <UpcomingEventBanner client:load />
+  </section>
+
+  <!-- What We Do -->
+  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
+    <h2 class="font-heading text-3xl font-bold text-center mb-8">What We Do</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-white rounded-2xl p-6 border border-border text-center">
+        <div class="text-4xl mb-3">🎲</div>
+        <h3 class="font-heading font-bold text-lg mb-2">Game Sessions</h3>
+        <p class="text-muted text-sm">
+          We host board game sessions at cafes and restaurants across Bangalore. Come play, meet new people, and have fun.
+        </p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 border border-border text-center">
+        <div class="text-4xl mb-3">📚</div>
+        <h3 class="font-heading font-bold text-lg mb-2">130+ Games</h3>
+        <p class="text-muted text-sm">
+          From quick party games to deep strategy epics — our library has something for everyone.
+        </p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 border border-border text-center">
+        <div class="text-4xl mb-3">🤝</div>
+        <h3 class="font-heading font-bold text-lg mb-2">Growing Community</h3>
+        <p class="text-muted text-sm">
+          Join a welcoming group of board game enthusiasts who love sharing great games.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Guild Path Teaser -->
+  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
+    <div class="bg-white rounded-2xl border border-border p-8 md:p-12 flex flex-col md:flex-row items-center gap-6">
+      <div class="flex-1">
+        <h2 class="font-heading text-3xl font-bold mb-2">Guild Path</h2>
+        <p class="text-muted">
+          Track your progress and level up through the BGC ranks. Get discounts, free events, and exclusive perks.
+        </p>
+      </div>
+      <a
+        href="/guild-path"
+        class="bg-accent text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-accent/80 transition-colors no-underline whitespace-nowrap"
+      >
+        Explore Guild Path
+      </a>
+    </div>
+  </section>
+
+  <!-- Associated Events -->
+  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
+    <h2 class="font-heading text-2xl font-bold text-center mb-6">We Also Run</h2>
+    <div class="flex flex-wrap justify-center gap-6">
+      <a
+        href="https://replaycon.in"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="bg-white rounded-2xl border border-border px-8 py-6 font-heading font-bold text-xl hover:border-primary transition-colors no-underline text-secondary"
+      >
+        REPLAY Convention
+      </a>
+      <a
+        href="https://ttrpgcon.in"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="bg-white rounded-2xl border border-border px-8 py-6 font-heading font-bold text-xl hover:border-primary transition-colors no-underline text-secondary"
+      >
+        TTRPGcon
+      </a>
+    </div>
+  </section>
+
 </Layout>
