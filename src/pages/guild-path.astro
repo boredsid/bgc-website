@@ -1,0 +1,108 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const tiers = [
+  {
+    name: 'Initiate',
+    price: '₹600',
+    period: '3 months',
+    color: 'bg-accent',
+    textColor: 'text-white',
+    badge: null,
+    benefits: [
+      'Flat 20% off every event',
+      'Flat 10% off for one tag along',
+      'Early access to all events',
+      'Exclusive Guild Path only events',
+      'Valid for 3 months',
+    ],
+    note: 'Free if you\'ve attended 10+ events in the last year',
+  },
+  {
+    name: 'Adventurer',
+    price: '₹2,000',
+    period: '3 months',
+    color: 'bg-primary',
+    textColor: 'text-white',
+    badge: 'Recommended',
+    benefits: [
+      'Everything under Initiate',
+      'Flat 100% off every event',
+      'Flat 100% off for one tag along for 1 event',
+      'Valid for 3 months',
+    ],
+    note: null,
+  },
+  {
+    name: 'Guildmaster',
+    price: '₹8,000',
+    period: '12 months',
+    color: 'bg-secondary',
+    textColor: 'text-white',
+    badge: 'Best Value',
+    benefits: [
+      'Everything under Adventurer',
+      'Flat 100% off every event',
+      'Flat 100% off for one tag along across 5 events',
+      'Free 2 day passes for REPLAY conventions',
+      'Valid for 12 months',
+    ],
+    note: null,
+  },
+];
+---
+
+<Layout title="Guild Path" description="Our loyalty and membership plans — level up your BGC experience">
+  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div class="text-center mb-10">
+      <h1 class="font-heading text-4xl font-bold">Guild Path</h1>
+      <p class="mt-2 text-muted text-lg">Our loyalty and membership plans</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+      {tiers.map((tier) => (
+        <div class={`${tier.color} ${tier.textColor} rounded-2xl p-6 flex flex-col relative`}>
+          {tier.badge && (
+            <span class="absolute top-4 right-4 bg-highlight text-secondary text-xs font-bold px-3 py-1 rounded-full">
+              {tier.badge}
+            </span>
+          )}
+          <h3 class="font-heading text-2xl font-bold mb-4">{tier.name}</h3>
+          <p class="font-heading font-bold text-sm uppercase tracking-wide mb-3 opacity-80">Benefits</p>
+          <ul class="flex-1 space-y-2 mb-6">
+            {tier.benefits.map((benefit) => (
+              <li class="flex items-start gap-2 text-sm">
+                <span class="mt-0.5 opacity-60">•</span>
+                <span>{benefit}</span>
+              </li>
+            ))}
+          </ul>
+          {tier.note && (
+            <div class="bg-white/20 rounded-lg px-3 py-2 text-xs mb-4">
+              {tier.note}
+            </div>
+          )}
+          <div class="border-t border-white/20 pt-4">
+            <span class="font-heading text-3xl font-bold">{tier.price}</span>
+            <span class="text-sm opacity-70 ml-1">/ {tier.period}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <p class="text-center text-muted text-sm mt-8 max-w-2xl mx-auto">
+      All tiers are applicable for a maximum ticket price of ₹1,000 per event and are inclusive of cover charges.
+    </p>
+
+    <div class="text-center mt-10">
+      <a
+        href="https://wa.me/919982200768?text=Hi!%20I'm%20interested%20in%20the%20Guild%20Path%20membership."
+        target="_blank"
+        rel="noopener noreferrer"
+        class="bg-primary text-white px-8 py-3 rounded-full font-heading font-semibold text-lg hover:bg-primary-dark transition-colors no-underline inline-block"
+      >
+        Interested? Get in touch
+      </a>
+    </div>
+  </section>
+</Layout>
