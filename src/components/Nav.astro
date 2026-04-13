@@ -1,0 +1,45 @@
+---
+import MobileMenu from './MobileMenu.tsx';
+
+const navLinks = [
+  { label: 'Home', href: '/' },
+  { label: 'Library', href: '/library' },
+  { label: 'Guild Path', href: '/guild-path' },
+  { label: 'Calendar', href: '/calendar' },
+  { label: 'Register', href: '/register' },
+];
+---
+
+<nav class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <a href="/" class="flex items-center gap-2 no-underline">
+        <img src="/bgc-logo.png" alt="BGC" class="h-9 w-9 rounded-full" />
+        <span class="font-heading font-bold text-lg text-secondary hidden sm:inline">
+          Board Game Company
+        </span>
+      </a>
+
+      <div class="hidden md:flex items-center gap-6">
+        {navLinks.map(link => (
+          <a
+            href={link.href}
+            class="text-secondary/70 hover:text-primary font-medium text-sm transition-colors no-underline"
+          >
+            {link.label}
+          </a>
+        ))}
+        <a
+          href="https://instagram.com/boardgamecompany"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="bg-secondary text-white px-4 py-2 rounded-full font-heading font-semibold text-sm hover:bg-secondary/80 transition-colors no-underline"
+        >
+          Join Us
+        </a>
+      </div>
+
+      <MobileMenu client:load navLinks={navLinks} />
+    </div>
+  </div>
+</nav>

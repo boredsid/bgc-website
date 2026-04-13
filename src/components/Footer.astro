@@ -1,0 +1,66 @@
+---
+const quickLinks = [
+  { label: 'Home', href: '/' },
+  { label: 'Library', href: '/library' },
+  { label: 'Guild Path', href: '/guild-path' },
+  { label: 'Calendar', href: '/calendar' },
+  { label: 'Register', href: '/register' },
+];
+---
+
+<footer class="bg-secondary text-white/80 mt-16">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div class="md:col-span-1">
+        <div class="flex items-center gap-2 mb-3">
+          <img src="/bgc-logo.png" alt="BGC" class="h-10 w-10 rounded-full" />
+          <span class="font-heading font-bold text-white text-lg">BGC</span>
+        </div>
+        <p class="text-sm text-white/60">Bringing people together over board games.</p>
+        <p class="text-sm text-white/40 mt-2">Based in Bangalore, India</p>
+      </div>
+
+      <div>
+        <h4 class="font-heading font-semibold text-white mb-3 text-sm uppercase tracking-wide">Pages</h4>
+        <div class="flex flex-col gap-2">
+          {quickLinks.map(link => (
+            <a href={link.href} class="text-sm text-white/60 hover:text-primary transition-colors no-underline">
+              {link.label}
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-heading font-semibold text-white mb-3 text-sm uppercase tracking-wide">Contact</h4>
+        <div class="flex flex-col gap-2 text-sm">
+          <a href="https://instagram.com/boardgamecompany" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-primary transition-colors no-underline">
+            Instagram @boardgamecompany
+          </a>
+          <a href="https://wa.me/919982200768" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-primary transition-colors no-underline">
+            WhatsApp +91 99822 00768
+          </a>
+          <a href="mailto:hello@boardgamecompany.in" class="text-white/60 hover:text-primary transition-colors no-underline">
+            hello@boardgamecompany.in
+          </a>
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-heading font-semibold text-white mb-3 text-sm uppercase tracking-wide">Our Events</h4>
+        <div class="flex flex-col gap-2 text-sm">
+          <a href="https://replaycon.in" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-primary transition-colors no-underline">
+            REPLAY Convention
+          </a>
+          <a href="https://ttrpgcon.in" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-primary transition-colors no-underline">
+            TTRPGcon
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-t border-white/10 mt-8 pt-6 text-center text-xs text-white/40">
+      &copy; {new Date().getFullYear()} Board Game Company. All rights reserved.
+    </div>
+  </div>
+</footer>
