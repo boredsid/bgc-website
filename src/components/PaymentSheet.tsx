@@ -64,21 +64,21 @@ export default function PaymentSheet({ amount, payerName, onConfirm, onClose, su
                 href={gpayUrl}
                 className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border hover:border-primary transition-colors no-underline"
               >
-                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-lg">G</div>
+                <img src="/payment-app-icons/gpay.png" alt="Google Pay" className="w-10 h-10 rounded-full" />
                 <span className="text-xs text-secondary">GPay</span>
               </a>
               <a
                 href={phonepeUrl}
                 className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border hover:border-primary transition-colors no-underline"
               >
-                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-lg">P</div>
+                <img src="/payment-app-icons/phonepe.png" alt="PhonePe" className="w-10 h-10 rounded-full" />
                 <span className="text-xs text-secondary">PhonePe</span>
               </a>
               <a
                 href={paytmUrl}
                 className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border hover:border-primary transition-colors no-underline"
               >
-                <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-lg">₹</div>
+                <img src="/payment-app-icons/paytm.jpg" alt="Paytm" className="w-10 h-10 rounded-full" />
                 <span className="text-xs text-secondary">Paytm</span>
               </a>
             </div>
