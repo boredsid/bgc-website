@@ -3,6 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2025-04-01"
 
 [vars]
-SUPABASE_URL = "https://bgc-website.supabase.co"
+SUPABASE_URL = "https://yhgtwqdsnrslcgdvmunz.supabase.co"
 
 # Set secrets via: wrangler secret put SUPABASE_SERVICE_KEY
