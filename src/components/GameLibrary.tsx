@@ -93,7 +93,7 @@ export default function GameLibrary() {
           <select
             value={playerFilter}
             onChange={(e) => setPlayerFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+            className="pl-3 pr-8 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
           >
             <option value="">Players</option>
             <option value="2">2+</option>
@@ -104,7 +104,7 @@ export default function GameLibrary() {
           <select
             value={complexityFilter}
             onChange={(e) => setComplexityFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+            className="pl-3 pr-8 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
           >
             <option value="">Complexity</option>
             <option value="Light">Light</option>
@@ -114,7 +114,7 @@ export default function GameLibrary() {
           <select
             value={lengthFilter}
             onChange={(e) => setLengthFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+            className="pl-3 pr-8 py-2 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
           >
             <option value="">Play Time</option>
             <option value="Quick">Quick (&lt;30 min)</option>

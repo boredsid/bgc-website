@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
+import GameCount from '../components/GameCount.tsx';
 ---
 
 <Layout title="Home" description="Bangalore's Favorite Board Gaming Community — board game sessions at cafes across the city">
@@ -14,22 +15,22 @@ import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
           <span class="text-primary">Board Game Company!</span>
         </h1>
         <p class="mt-4 text-muted text-lg max-w-lg mx-auto lg:mx-0">
-          Our mission is to create a community that brings people together over board games. Currently hosting in Bangalore.
+          Our mission is to create a community that brings people together over board games. Currently hosting events across Bangalore!
         </p>
         <div class="mt-6 flex flex-wrap gap-3 justify-center lg:justify-start">
           <a
-            href="/calendar"
+            href="/register"
             class="bg-primary text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-primary-dark transition-colors no-underline"
           >
             Register for a Session
           </a>
           <a
-            href="https://instagram.com/boardgamecompany"
+            href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
             target="_blank"
             rel="noopener noreferrer"
             class="bg-secondary text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-secondary/80 transition-colors no-underline"
           >
-            Follow Us
+            Join The Community
           </a>
         </div>
       </div>
@@ -53,18 +54,18 @@ import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
 
   <!-- What We Do -->
   <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
-    <h2 class="font-heading text-3xl font-bold text-center mb-8">What We Do</h2>
+    <h2 class="font-heading text-3xl font-bold text-center mb-8">What Does BGC Do?</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-white rounded-2xl p-6 border border-border text-center">
         <div class="text-4xl mb-3">🎲</div>
-        <h3 class="font-heading font-bold text-lg mb-2">Game Sessions</h3>
+        <h3 class="font-heading font-bold text-lg mb-2">Offline Gaming</h3>
         <p class="text-muted text-sm">
-          We host board game sessions at cafes and restaurants across Bangalore. Come play, meet new people, and have fun.
+          Hosting board games, TTRPGs like D&D, party games like Clocktower and more at your local cafe across areas in Bangalore. Come play, meet new people, and have fun!
         </p>
       </div>
       <div class="bg-white rounded-2xl p-6 border border-border text-center">
         <div class="text-4xl mb-3">📚</div>
-        <h3 class="font-heading font-bold text-lg mb-2">130+ Games</h3>
+        <h3 class="font-heading font-bold text-lg mb-2"><GameCount client:load /> Games</h3>
         <p class="text-muted text-sm">
           From quick party games to deep strategy epics — our library has something for everyone.
         </p>
@@ -73,7 +74,7 @@ import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
         <div class="text-4xl mb-3">🤝</div>
         <h3 class="font-heading font-bold text-lg mb-2">Growing Community</h3>
         <p class="text-muted text-sm">
-          Join a welcoming group of board game enthusiasts who love sharing great games.
+          With people joining from all over the city, you're sure to find someone who matches your wavelength!
         </p>
       </div>
     </div>
@@ -97,27 +98,5 @@ import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
     </div>
   </section>
 
-  <!-- Associated Events -->
-  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
-    <h2 class="font-heading text-2xl font-bold text-center mb-6">We Also Run</h2>
-    <div class="flex flex-wrap justify-center gap-6">
-      <a
-        href="https://replaycon.in"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="bg-white rounded-2xl border border-border px-8 py-6 font-heading font-bold text-xl hover:border-primary transition-colors no-underline text-secondary"
-      >
-        REPLAY Convention
-      </a>
-      <a
-        href="https://ttrpgcon.in"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="bg-white rounded-2xl border border-border px-8 py-6 font-heading font-bold text-xl hover:border-primary transition-colors no-underline text-secondary"
-      >
-        TTRPGcon
-      </a>
-    </div>
-  </section>
 
 </Layout>
