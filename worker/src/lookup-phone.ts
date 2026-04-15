@@ -12,22 +12,29 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
 
   const supabase = getSupabase(env);
 
-  const [userResult, memberResult] = await Promise.all([
-    supabase
-      .from('users')
-      .select('name, email')
-      .eq('phone', phone)
-      .maybeSingle(),
-    supabase
-      .from('guild_members')
-      .select('tier, expires_at')
-      .eq('phone', phone)
-      .gte('expires_at', new Date().toISOString().split('T')[0])
-      .maybeSingle(),
-  ]);
+  const userResult = await supabase
+    .from('users')
+    .select('id, name, email')
+    .eq('phone', phone)
+    .maybeSingle();
 
   const user = userResult.data;
-  const member = memberResult.data;
+
+  let member: { tier: string; expires_at: string } | null = null;
+
+  if (user) {
+    const memberResult = await supabase
+      .from('guild_path_members')
+      .select('tier, expires_at')
+      .eq('user_id', user.id)
+      .eq('status', 'paid')
+      .gte('expires_at', new Date().toISOString().split('T')[0])
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    member = memberResult.data;
+  }
 
   let discount: string | null = null;
   if (member) {

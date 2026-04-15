@@ -99,23 +99,35 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
   }
 
   // Check Guild Path membership and calculate total
-  const { data: member } = await supabase
-    .from('guild_members')
-    .select('tier, expires_at')
+  // First find user by phone, then check guild_path_members
+  const { data: regUser } = await supabase
+    .from('users')
+    .select('id')
     .eq('phone', phone)
-    .gte('expires_at', new Date().toISOString().split('T')[0])
     .maybeSingle();
 
   let totalAmount = event.price * seats;
   let discountApplied: string | null = null;
 
-  if (member) {
-    if (member.tier === 'adventurer' || member.tier === 'guildmaster') {
-      totalAmount = 0;
-      discountApplied = member.tier;
-    } else if (member.tier === 'initiate') {
-      totalAmount = Math.round(totalAmount * 0.8);
-      discountApplied = 'initiate';
+  if (regUser) {
+    const { data: member } = await supabase
+      .from('guild_path_members')
+      .select('tier, expires_at')
+      .eq('user_id', regUser.id)
+      .eq('status', 'paid')
+      .gte('expires_at', new Date().toISOString().split('T')[0])
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (member) {
+      if (member.tier === 'adventurer' || member.tier === 'guildmaster') {
+        totalAmount = 0;
+        discountApplied = member.tier;
+      } else if (member.tier === 'initiate') {
+        totalAmount = Math.round(totalAmount * 0.8);
+        discountApplied = 'initiate';
+      }
     }
   }
 
