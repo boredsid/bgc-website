@@ -26,11 +26,23 @@ const { title, description = "Bangalore's Favorite Board Gaming Community" } = A
       rel="stylesheet"
     />
   </head>
-  <body class="bg-bg font-body text-secondary min-h-screen flex flex-col">
+  <body class="min-h-screen flex flex-col" style="background: #FFF8E7;">
     <Nav />
-    <main class="flex-1">
+    <main class="flex-1 pt-[72px]">
       <slot />
     </main>
     <Footer />
+
+    <script>
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+      document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+    </script>
   </body>
 </html>
