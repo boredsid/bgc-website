@@ -15,7 +15,6 @@ export default function UpcomingEventBanner() {
         .order('date', { ascending: true })
         .limit(1)
         .single();
-
       setEvent(data);
       setLoading(false);
     }
@@ -25,34 +24,27 @@ export default function UpcomingEventBanner() {
   if (loading || !event) return null;
 
   const eventDate = new Date(event.date);
-  const dateStr = eventDate.toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
-  const timeStr = eventDate.toLocaleTimeString('en-IN', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
+  const dateStr = eventDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  const timeStr = eventDate.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   return (
-    <div className="bg-highlight/30 border border-highlight rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-      <div className="flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1">
-          Next Event
-        </p>
-        <h3 className="font-heading font-bold text-xl">{event.name}</h3>
-        <p className="text-muted text-sm mt-1">
-          {dateStr} at {timeStr} &middot; {event.venue_name}, {event.venue_area} &middot; ₹{event.price}
-        </p>
+    <div
+      className="flex flex-col sm:flex-row items-stretch rounded-2xl overflow-hidden"
+      style={{ border: '4px solid #1A1A1A', boxShadow: '6px 6px 0 #1A1A1A', background: '#FFFFFF' }}
+    >
+      <div className="sm:w-[12px] h-[6px] sm:h-auto" style={{ background: '#F47B20' }} />
+      <div className="flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 sm:p-6">
+        <div className="flex-1">
+          <span className="pill pill-black mb-2 inline-block">{dateStr.toUpperCase()}</span>
+          <h3 className="font-heading font-bold text-xl mt-1">{event.name}</h3>
+          <p className="text-[#1A1A1A]/70 text-sm mt-1">
+            {timeStr} · {event.venue_name}, {event.venue_area} · ₹{event.price}
+          </p>
+        </div>
+        <a href={`/register?event=${event.id}`} className="btn btn-primary btn-sm no-underline whitespace-nowrap">
+          Register →
+        </a>
       </div>
-      <a
-        href={`/register?event=${event.id}`}
-        className="bg-primary text-white px-5 py-2.5 rounded-full font-heading font-semibold text-sm hover:bg-primary-dark transition-colors no-underline whitespace-nowrap"
-      >
-        Register
-      </a>
     </div>
   );
 }

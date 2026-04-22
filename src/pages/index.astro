@@ -7,96 +7,118 @@ import GameCount from '../components/GameCount.tsx';
 <Layout title="Home" description="Bangalore's Favorite Board Gaming Community — board game sessions at cafes across the city">
 
   <!-- Hero -->
-  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-    <div class="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-      <div class="flex-1 text-center lg:text-left">
-        <h1 class="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
+      <div class="animate-fade-in-up text-center lg:text-left">
+        <span class="pill pill-yellow mb-6 inline-block">🎲 Welcome</span>
+        <h1 class="font-heading font-bold" style="font-size: clamp(2.8rem, 6vw, 5rem); letter-spacing: -2px; line-height: 1.05;">
           Welcome to<br />
-          <span class="text-primary">Board Game Company!</span>
+          <span style="color: #F47B20;">Board Game Company!</span>
         </h1>
-        <p class="mt-4 text-muted text-lg max-w-lg mx-auto lg:mx-0">
+        <p class="mt-5 text-lg text-[#1A1A1A]/70 max-w-lg mx-auto lg:mx-0">
           Our mission is to create a community that brings people together over board games. Currently hosting events across Bangalore!
         </p>
-        <div class="mt-6 flex flex-wrap gap-3 justify-center lg:justify-start">
-          <a
-            href="/register"
-            class="bg-primary text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-primary-dark transition-colors no-underline"
-          >
-            Register for a Session
-          </a>
-          <a
-            href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="bg-secondary text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-secondary/80 transition-colors no-underline"
-          >
+        <div class="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
+          <a href="/register" class="btn btn-primary no-underline">Register for a Session</a>
+          <a href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp" target="_blank" rel="noopener noreferrer" class="btn btn-secondary no-underline">
             Join The Community
           </a>
         </div>
       </div>
-      <div class="flex-1 max-w-md lg:max-w-lg">
-        <div class="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden">
-          <img src="/landing-photos/1.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/2.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/3.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/4.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/5.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/6.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-        </div>
+      <div class="animate-fade-in-up-delayed">
+        <img
+          src="/landing-photos/1.png"
+          alt="BGC game session"
+          class="w-full object-cover rounded-[20px]"
+          style="aspect-ratio: 4/3; border: 4px solid #1A1A1A; box-shadow: 8px 8px 0 #1A1A1A;"
+        />
       </div>
     </div>
   </section>
 
-  <!-- Upcoming Event Banner -->
-  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-12">
+  <!-- Upcoming Event -->
+  <section class="max-w-[1200px] mx-auto px-6 pb-14 reveal">
     <UpcomingEventBanner client:load />
   </section>
 
-  <!-- What We Do -->
-  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
-    <h2 class="font-heading text-3xl font-bold text-center mb-8">What Does BGC Do?</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white rounded-2xl p-6 border border-border text-center">
-        <div class="text-4xl mb-3">🎲</div>
-        <h3 class="font-heading font-bold text-lg mb-2">Offline Gaming</h3>
-        <p class="text-muted text-sm">
-          Hosting board games, TTRPGs like D&D, party games like Clocktower and more at your local cafe across areas in Bangalore. Come play, meet new people, and have fun!
-        </p>
-      </div>
-      <div class="bg-white rounded-2xl p-6 border border-border text-center">
-        <div class="text-4xl mb-3">📚</div>
-        <h3 class="font-heading font-bold text-lg mb-2"><GameCount client:load /> Games</h3>
-        <p class="text-muted text-sm">
-          From quick party games to deep strategy epics — our library has something for everyone.
-        </p>
-      </div>
-      <div class="bg-white rounded-2xl p-6 border border-border text-center">
-        <div class="text-4xl mb-3">🤝</div>
-        <h3 class="font-heading font-bold text-lg mb-2">Growing Community</h3>
-        <p class="text-muted text-sm">
-          With people joining from all over the city, you're sure to find someone who matches your wavelength!
-        </p>
+  <!-- What Does BGC Do? -->
+  <section class="py-16 reveal" style="background: #FAFAF5;">
+    <div class="max-w-[1200px] mx-auto px-6 text-center">
+      <span class="section-tag">What We Do</span>
+      <h2 class="font-heading font-bold mb-10" style="font-size: clamp(2.2rem, 5vw, 3.5rem); letter-spacing: -1px;">
+        What Does BGC Do?
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+        <div class="card-brutal p-9" style="background: #FFD166;">
+          <div class="text-5xl mb-4">🎲</div>
+          <h3 class="font-heading font-bold text-2xl mb-2">Offline Gaming</h3>
+          <p class="text-[#1A1A1A]/85 leading-relaxed">
+            Hosting board games, TTRPGs like D&amp;D, party games like Clocktower and more at your local cafe across Bangalore. Come play, meet new people, and have fun!
+          </p>
+        </div>
+        <div class="card-brutal p-9" style="background: #4ECDC4;">
+          <div class="text-5xl mb-4">📚</div>
+          <h3 class="font-heading font-bold text-2xl mb-2"><GameCount client:load /> Games</h3>
+          <p class="text-[#1A1A1A]/85 leading-relaxed">
+            From quick party games to deep strategy epics — our library has something for everyone.
+          </p>
+        </div>
+        <div class="card-brutal p-9" style="background: #A8E6CF;">
+          <div class="text-5xl mb-4">🤝</div>
+          <h3 class="font-heading font-bold text-2xl mb-2">Growing Community</h3>
+          <p class="text-[#1A1A1A]/85 leading-relaxed">
+            With people joining from all over the city, you're sure to find someone who matches your wavelength!
+          </p>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- Guild Path Teaser -->
-  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
-    <div class="bg-white rounded-2xl border border-border p-8 md:p-12 flex flex-col md:flex-row items-center gap-6">
-      <div class="flex-1">
-        <h2 class="font-heading text-3xl font-bold mb-2">Guild Path</h2>
-        <p class="text-muted">
-          Track your progress and level up through the BGC ranks. Get discounts, free events, and exclusive perks.
-        </p>
+  <section class="py-16 reveal" style="background: #FFF8E7;">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <div class="card-brutal p-10 md:p-12 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden" style="background: #C3A6FF; box-shadow: 8px 8px 0 #1A1A1A;">
+        <span class="absolute top-5 left-8 text-5xl opacity-[0.15] -rotate-12 pointer-events-none">♠</span>
+        <span class="absolute top-8 right-10 text-5xl opacity-[0.15] rotate-[20deg] pointer-events-none">♟</span>
+        <span class="absolute bottom-6 left-14 text-5xl opacity-[0.15] rotate-[10deg] pointer-events-none">🎲</span>
+        <span class="absolute bottom-5 right-8 text-5xl opacity-[0.15] -rotate-[25deg] pointer-events-none">🎯</span>
+        <div class="flex-1 relative z-10">
+          <h2 class="font-heading font-bold text-4xl mb-3">Guild Path</h2>
+          <p class="text-[#1A1A1A]/85 text-lg max-w-xl">
+            Track your progress and level up through the BGC ranks. Get discounts, free events, and exclusive perks.
+          </p>
+        </div>
+        <a href="/guild-path" class="btn btn-black no-underline whitespace-nowrap relative z-10">
+          Explore Guild Path →
+        </a>
       </div>
-      <a
-        href="/guild-path"
-        class="bg-accent text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-accent/80 transition-colors no-underline whitespace-nowrap"
-      >
-        Explore Guild Path
-      </a>
     </div>
   </section>
 
+  <!-- Community CTA -->
+  <section class="py-16 reveal" style="background: #FAFAF5;">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <div class="card-brutal p-12 md:p-20 text-center relative overflow-hidden" style="background: #F47B20; box-shadow: 8px 8px 0 #1A1A1A;">
+        <span class="absolute top-6 left-8 text-6xl opacity-[0.15] -rotate-12 pointer-events-none">🎲</span>
+        <span class="absolute top-8 right-10 text-6xl opacity-[0.15] rotate-[20deg] pointer-events-none">🎯</span>
+        <span class="absolute bottom-8 left-14 text-6xl opacity-[0.15] rotate-[10deg] pointer-events-none">♠</span>
+        <span class="absolute bottom-6 right-8 text-6xl opacity-[0.15] -rotate-[25deg] pointer-events-none">♟</span>
+        <h2 class="font-heading font-bold text-white" style="font-size: clamp(2.5rem, 5vw, 4rem); letter-spacing: -1px;">
+          Join Our Community
+        </h2>
+        <p class="text-white/90 text-lg max-w-xl mx-auto mt-5 mb-10 relative z-10">
+          The best way to play more games is to know more people who play. Slide into our DMs or drop into the WhatsApp group — come say hi!
+        </p>
+        <div class="flex flex-wrap justify-center gap-4 relative z-10">
+          <a href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp" target="_blank" rel="noopener noreferrer" class="btn btn-black no-underline">
+            WhatsApp Group
+          </a>
+          <a href="https://instagram.com/boardgamecompany" target="_blank" rel="noopener noreferrer" class="btn btn-black no-underline">
+            Instagram
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
 
 </Layout>
