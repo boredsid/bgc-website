@@ -1,15 +1,24 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import GameLibrary from '../components/GameLibrary.tsx';
-import GameCount from '../components/GameCount.tsx';
 ---
 
-<Layout title="Library" description="Browse our board game collection">
-  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-    <div class="text-center mb-8">
-      <h1 class="font-heading text-4xl font-bold">Our Library</h1>
-      <p class="mt-2 text-muted text-lg">Browse our collection of <GameCount client:load /> board games</p>
+<Layout title="Library" description="Browse BGC's collection of board games — search and filter by complexity, players, and play time">
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[1200px] mx-auto px-6 text-center">
+      <span class="section-tag">Games Library</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        Our Library
+      </h1>
+      <p class="text-lg text-[#1A1A1A]/70 mt-3">
+        Every game we own, ready to play at the next session.
+      </p>
     </div>
-    <GameLibrary client:load />
+  </section>
+
+  <section class="pb-20">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <GameLibrary client:load />
+    </div>
   </section>
 </Layout>
