@@ -8,59 +8,76 @@ const quickLinks = [
 ];
 ---
 
-<footer class="bg-secondary text-white/80 mt-16">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+<footer class="bg-black-ui text-white mt-16">
+  <div class="max-w-[1200px] mx-auto px-6 pt-16 pb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
       <div class="md:col-span-1">
-        <div class="flex items-center gap-2 mb-3">
-          <img src="/bgc-logo.png" alt="BGC" class="h-10 w-10 rounded-full" />
-          <span class="font-heading font-bold text-white text-lg">BGC</span>
+        <div class="flex items-center gap-3 mb-4">
+          <img src="/bgc-logo.png" alt="BGC" class="h-12 w-12 rounded-full" />
+          <span class="font-heading font-bold text-xl">BGC</span>
         </div>
-        <p class="text-sm text-white/60">Bringing people together over board games.</p>
-        <p class="text-sm text-white/40 mt-2">Based in Bangalore, India</p>
+        <p class="text-white/70 text-sm leading-relaxed">
+          Bringing people together, one board game at a time.
+        </p>
+        <p class="text-white/50 text-xs mt-2">Bangalore, India</p>
+        <div class="mt-4 p-3 rounded-lg text-sm text-white/70" style="background: rgba(255,255,255,0.08); border-left: 3px solid #F47B20;">
+          Partnered with TTRPGcon & REPLAY
+        </div>
       </div>
 
       <div>
-        <h4 class="font-heading font-semibold text-white mb-3 text-sm uppercase tracking-wide">Pages</h4>
-        <div class="flex flex-col gap-2">
+        <h4 class="font-heading font-bold text-[#F47B20] text-sm uppercase tracking-wider mb-4">Pages</h4>
+        <ul class="flex flex-col gap-2 list-none m-0 p-0">
           {quickLinks.map(link => (
-            <a href={link.href} class="text-sm text-white/60 hover:text-primary transition-colors no-underline">
-              {link.label}
-            </a>
+            <li>
+              <a href={link.href} class="text-white/70 hover:text-[#F47B20] text-sm no-underline transition-colors">
+                {link.label}
+              </a>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
 
       <div>
-        <h4 class="font-heading font-semibold text-white mb-3 text-sm uppercase tracking-wide">Contact</h4>
-        <div class="flex flex-col gap-2 text-sm">
-          <a href="https://instagram.com/boardgamecompany" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-primary transition-colors no-underline">
-            Instagram @boardgamecompany
-          </a>
-          <a href="https://wa.me/919982200768" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-primary transition-colors no-underline">
-            Reach out on Whatsapp
-          </a>
-          <a href="mailto:hello@boardgamecompany.in" class="text-white/60 hover:text-primary transition-colors no-underline">
-            hello@boardgamecompany.in
-          </a>
-        </div>
+        <h4 class="font-heading font-bold text-[#F47B20] text-sm uppercase tracking-wider mb-4">Contact</h4>
+        <ul class="flex flex-col gap-2 list-none m-0 p-0">
+          <li>
+            <a href="https://instagram.com/boardgamecompany" target="_blank" rel="noopener noreferrer" class="text-white/70 hover:text-[#F47B20] text-sm no-underline transition-colors">
+              Instagram
+            </a>
+          </li>
+          <li>
+            <a href="https://wa.me/919982200768" target="_blank" rel="noopener noreferrer" class="text-white/70 hover:text-[#F47B20] text-sm no-underline transition-colors">
+              WhatsApp
+            </a>
+          </li>
+          <li>
+            <a href="mailto:hello@boardgamecompany.in" class="text-white/70 hover:text-[#F47B20] text-sm no-underline transition-colors">
+              hello@boardgamecompany.in
+            </a>
+          </li>
+        </ul>
       </div>
 
       <div>
-        <h4 class="font-heading font-semibold text-white mb-3 text-sm uppercase tracking-wide">Our Partners</h4>
-        <div class="flex flex-col gap-2 text-sm">
-          <a href="https://replaycon.in" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-primary transition-colors no-underline">
-            REPLAY con
-          </a>
-          <a href="https://ttrpgcon.in" target="_blank" rel="noopener noreferrer" class="text-white/60 hover:text-primary transition-colors no-underline">
-            TTRPGcon
-          </a>
-        </div>
+        <h4 class="font-heading font-bold text-[#F47B20] text-sm uppercase tracking-wider mb-4">Partners</h4>
+        <ul class="flex flex-col gap-2 list-none m-0 p-0">
+          <li>
+            <a href="https://replaycon.in" target="_blank" rel="noopener noreferrer" class="text-white/70 hover:text-[#F47B20] text-sm no-underline transition-colors">
+              REPLAY con
+            </a>
+          </li>
+          <li>
+            <a href="https://ttrpgcon.in" target="_blank" rel="noopener noreferrer" class="text-white/70 hover:text-[#F47B20] text-sm no-underline transition-colors">
+              TTRPGcon
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
 
-    <div class="border-t border-white/10 mt-8 pt-6 text-center text-xs text-white/40">
-      &copy; 2024 Board Game Company. All rights reserved.
+    <div class="text-center text-xs text-white/40 pt-6 mt-10" style="border-top: 1px solid rgba(255,255,255,0.1);">
+      &copy; 2026 Board Game Company. All rights reserved.
     </div>
   </div>
 </footer>
