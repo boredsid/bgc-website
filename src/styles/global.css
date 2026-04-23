@@ -15,13 +15,6 @@
   --color-white: #FFFFFF;
   --color-error: #DC2626;
 
-  /* Legacy aliases (kept for transitional references; remove in cleanup task) */
-  --color-bg: #FFF8E7;
-  --color-secondary: #1A1A1A;
-  --color-accent: #4ECDC4;
-  --color-muted: #6B6B6B;
-  --color-border: #1A1A1A;
-
   --font-heading: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
 }
