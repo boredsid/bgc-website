@@ -24,62 +24,92 @@ export default function PaymentSheet({ amount, payerName, onConfirm, onClose, su
   const paytmUrl = `paytmmp://pay?pa=${UPI_ID}&pn=${encodeURIComponent(RECIPIENT_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent(payerName)}`;
 
   return (
-    <>
-      {/* Backdrop */}
+    <div
+      className="fixed inset-0 z-[3000] flex items-center justify-center p-6 animate-fade-in"
+      style={{ background: 'rgba(0,0,0,0.5)' }}
+      onClick={onClose}
+    >
       <div
-        className="fixed inset-0 bg-black/50 z-50"
-        onClick={onClose}
-      />
+        className="animate-modal relative rounded-2xl overflow-y-auto w-full max-w-md"
+        style={{
+          background: '#FFF8E7',
+          border: '4px solid #1A1A1A',
+          boxShadow: '12px 12px 0 #1A1A1A',
+          maxHeight: '90vh',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer font-bold z-10"
+          style={{ background: '#FFFFFF', border: '2px solid #1A1A1A' }}
+        >
+          ✕
+        </button>
 
-      {/* Sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl max-w-xl mx-auto animate-slide-up">
-        <div className="p-6">
-          {/* Handle */}
-          <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
-
+        <div className="p-8">
           {/* Header */}
           <div className="text-center mb-6">
-            <h2 className="font-heading font-bold text-xl">Complete Payment</h2>
-            <p className="font-heading font-bold text-3xl text-primary mt-1">₹{amount}</p>
-            <p className="text-sm text-muted">{RECIPIENT_NAME}</p>
+            <span className="pill pill-black mb-3 inline-block">Complete Payment</span>
+            <p className="font-heading font-bold text-4xl mt-2" style={{ color: '#F47B20', letterSpacing: '-1px' }}>
+              ₹{amount}
+            </p>
+            <p className="text-sm text-[#1A1A1A]/70 mt-1">{RECIPIENT_NAME}</p>
           </div>
-
-          <hr className="border-border mb-6" />
 
           {/* QR Code */}
           <div className="text-center mb-6">
-            <p className="text-sm text-muted mb-3">Scan with any UPI app</p>
-            <div className="inline-block bg-white p-3 rounded-xl border border-border">
-              <img src={qrUrl} alt="UPI QR Code" className="w-48 h-48" />
+            <p className="label-brutal mb-3">Scan with any UPI app</p>
+            <div
+              className="inline-block"
+              style={{
+                padding: '12px',
+                background: '#FFFFFF',
+                border: '4px solid #1A1A1A',
+                boxShadow: '6px 6px 0 #1A1A1A',
+                borderRadius: '16px',
+              }}
+            >
+              <img src={qrUrl} alt="UPI QR Code" className="w-48 h-48 block" />
             </div>
           </div>
 
-          <hr className="border-border mb-6" />
+          {/* UPI ID */}
+          <div className="mb-6 text-center">
+            <p className="label-brutal mb-2">UPI ID</p>
+            <div className="pill pill-yellow" style={{ display: 'inline-block', fontSize: '0.9rem' }}>
+              {UPI_ID}
+            </div>
+          </div>
 
           {/* UPI App Buttons */}
           <div className="mb-6">
-            <p className="text-sm text-muted text-center mb-3">Or pay directly with</p>
-            <div className="flex justify-center gap-4">
+            <p className="label-brutal text-center mb-3">Or pay directly with</p>
+            <div className="flex justify-center gap-3">
               <a
                 href={gpayUrl}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border hover:border-primary transition-colors no-underline"
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
+                style={{ background: '#FFFFFF', border: '3px solid #1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' }}
               >
                 <img src="/payment-app-icons/gpay.png" alt="Google Pay" className="w-10 h-10 rounded-full" />
-                <span className="text-xs text-secondary">GPay</span>
+                <span className="font-heading font-semibold text-xs">GPay</span>
               </a>
               <a
                 href={phonepeUrl}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border hover:border-primary transition-colors no-underline"
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
+                style={{ background: '#FFFFFF', border: '3px solid #1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' }}
               >
                 <img src="/payment-app-icons/phonepe.png" alt="PhonePe" className="w-10 h-10 rounded-full" />
-                <span className="text-xs text-secondary">PhonePe</span>
+                <span className="font-heading font-semibold text-xs">PhonePe</span>
               </a>
               <a
                 href={paytmUrl}
-                className="flex flex-col items-center gap-1 p-3 rounded-xl border border-border hover:border-primary transition-colors no-underline"
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
+                style={{ background: '#FFFFFF', border: '3px solid #1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' }}
               >
                 <img src="/payment-app-icons/paytm.jpg" alt="Paytm" className="w-10 h-10 rounded-full" />
-                <span className="text-xs text-secondary">Paytm</span>
+                <span className="font-heading font-semibold text-xs">Paytm</span>
               </a>
             </div>
           </div>
@@ -88,12 +118,12 @@ export default function PaymentSheet({ amount, payerName, onConfirm, onClose, su
           <button
             onClick={onConfirm}
             disabled={submitting}
-            className="w-full bg-primary text-white py-3 rounded-full font-heading font-semibold text-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+            className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? 'Submitting...' : "I've completed the payment"}
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }

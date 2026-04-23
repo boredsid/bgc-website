@@ -22,7 +22,7 @@ const TIERS: Tier[] = [
     price: 600,
     priceLabel: '₹600',
     period: '3 months',
-    color: 'bg-accent',
+    color: '#4ECDC4',
     badge: null,
     benefits: [
       'Flat 20% off every event',
@@ -39,7 +39,7 @@ const TIERS: Tier[] = [
     price: 2000,
     priceLabel: '₹2,000',
     period: '3 months',
-    color: 'bg-primary',
+    color: '#FFD166',
     badge: 'Recommended',
     benefits: [
       'Everything under Initiate',
@@ -55,7 +55,7 @@ const TIERS: Tier[] = [
     price: 8000,
     priceLabel: '₹8,000',
     period: '12 months',
-    color: 'bg-secondary',
+    color: '#C3A6FF',
     badge: 'Best Value',
     benefits: [
       'Everything under Adventurer',
@@ -133,10 +133,10 @@ export default function GuildPurchase() {
   // Success state
   if (step === 'success') {
     return (
-      <div className="bg-white rounded-2xl border border-border p-8 text-center max-w-lg mx-auto">
+      <div className="card-brutal p-8 text-center max-w-lg mx-auto" style={{ background: '#A8E6CF' }}>
         <div className="text-5xl mb-4">🎉</div>
         <h2 className="font-heading text-2xl font-bold mb-2">Thanks!</h2>
-        <p className="text-muted">
+        <p className="text-[#1A1A1A]/70">
           We'll confirm your membership shortly. You'll receive the benefits once your payment is verified.
         </p>
       </div>
@@ -163,37 +163,41 @@ export default function GuildPurchase() {
         {TIERS.map((tier) => (
           <div
             key={tier.key}
-            className={`${tier.color} text-white rounded-2xl p-6 flex flex-col relative`}
+            className="card-brutal p-8 flex flex-col relative"
+            style={{ background: tier.color }}
           >
             {tier.badge && (
-              <span className="absolute top-4 right-4 bg-highlight text-secondary text-xs font-bold px-3 py-1 rounded-full">
+              <span className="pill pill-black absolute top-4 right-4">
                 {tier.badge}
               </span>
             )}
-            <h3 className="font-heading text-2xl font-bold mb-4">{tier.name}</h3>
-            <p className="font-heading font-bold text-sm uppercase tracking-wide mb-3 opacity-80">
+            <span className="pill pill-black mb-4 self-start">{tier.name}</span>
+            <div className="flex items-baseline gap-1 mb-4">
+              <span className="font-heading font-bold text-4xl">{tier.priceLabel}</span>
+              <span className="text-sm text-[#1A1A1A]/70">/ {tier.period}</span>
+            </div>
+            <p className="font-heading font-bold text-xs uppercase tracking-wide mb-3 text-[#1A1A1A]/60">
               Benefits
             </p>
-            <ul className="flex-1 space-y-2 mb-6">
+            <ul className="flex-1 space-y-2 mb-6 list-none p-0">
               {tier.benefits.map((benefit, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="mt-0.5 opacity-60">•</span>
+                <li key={i} className="flex gap-2 text-sm">
+                  <span>✓</span>
                   <span>{benefit}</span>
                 </li>
               ))}
             </ul>
             {tier.note && (
-              <div className="bg-white/20 rounded-lg px-3 py-2 text-xs mb-4">
+              <div
+                className="card-brutal px-3 py-2 text-xs mb-4"
+                style={{ background: 'rgba(255,255,255,0.6)', boxShadow: '3px 3px 0 #1A1A1A' }}
+              >
                 {tier.note}
               </div>
             )}
-            <div className="border-t border-white/20 pt-4 mb-4">
-              <span className="font-heading text-3xl font-bold">{tier.priceLabel}</span>
-              <span className="text-sm opacity-70 ml-1">/ {tier.period}</span>
-            </div>
             <button
               onClick={() => selectTier(tier)}
-              className="w-full py-3 rounded-full border-2 border-white text-white font-heading font-semibold hover:bg-white/10 transition-colors"
+              className="btn btn-black w-full"
             >
               Select Plan
             </button>
@@ -204,64 +208,64 @@ export default function GuildPurchase() {
       {/* Inline Form */}
       {step === 'form' && selectedTier && (
         <div className="max-w-md mx-auto mt-8">
-          <div className="bg-[#FFF8F0] border border-primary rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-muted">
+          <div className="card-brutal p-8" style={{ background: '#FFFFFF' }}>
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-[#1A1A1A]/60">
                 Selected plan:{' '}
-                <strong className="text-secondary font-heading">{selectedTier.name}</strong>
+                <strong className="text-[#1A1A1A] font-heading">{selectedTier.name}</strong>
               </p>
               <button
                 onClick={handleChange}
-                className="text-sm text-primary hover:underline"
+                className="btn btn-secondary btn-sm"
               >
                 Change
               </button>
             </div>
 
-            <form onSubmit={handleFormSubmit} className="flex flex-col gap-3">
+            <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
               <div>
-                <label className="block text-sm text-muted mb-1">Name *</label>
+                <label className="label-brutal">Name *</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your full name"
                   required
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+                  className="input-brutal w-full"
                 />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">Phone *</label>
+                <label className="label-brutal">Phone *</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="10-digit mobile number"
                   required
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+                  className="input-brutal w-full"
                 />
               </div>
               <div>
-                <label className="block text-sm text-muted mb-1">Email *</label>
+                <label className="label-brutal">Email *</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
-                  className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+                  className="input-brutal w-full"
                 />
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-                  {error}
+                <div className="card-brutal p-4 mb-4" style={{ background: '#FF6B6B' }}>
+                  <p className="font-heading font-semibold">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
-                className="w-full bg-primary text-white py-3 rounded-full font-heading font-semibold text-lg hover:bg-primary-dark transition-colors mt-1"
+                className="btn btn-primary w-full"
               >
                 Pay {selectedTier.priceLabel}
               </button>
