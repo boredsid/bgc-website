@@ -4,7 +4,26 @@ import RegistrationForm from '../components/RegistrationForm.tsx';
 ---
 
 <Layout title="Register" description="Register for an upcoming Board Game Company event">
-  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-xl mx-auto">
-    <RegistrationForm client:load />
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[1200px] mx-auto px-6 text-center">
+      <span class="section-tag">Register</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        Register for a Session
+      </h1>
+      <p class="text-lg text-[#1A1A1A]/70 mt-3 max-w-xl mx-auto">
+        Fill in your details — we'll confirm your spot.
+      </p>
+    </div>
+  </section>
+
+  <section class="pb-20">
+    <div class="max-w-[720px] mx-auto px-6">
+      <div class="overflow-hidden rounded-2xl" style="background: #FFFFFF; border: 4px solid #1A1A1A; box-shadow: 8px 8px 0 #1A1A1A;">
+        <div style="height: 12px; background: #F47B20; border-bottom: 3px solid #1A1A1A;"></div>
+        <div class="p-6 md:p-10">
+          <RegistrationForm client:load />
+        </div>
+      </div>
+    </div>
   </section>
 </Layout>
