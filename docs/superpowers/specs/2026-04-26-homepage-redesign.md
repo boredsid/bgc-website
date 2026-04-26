@@ -128,12 +128,12 @@ No brutalist offset shadows on the stripes themselves (already heavy enough). Ea
 - Eyebrow tag: `▸ FOR THE REGULARS` (yellow, uppercase, small).
 - Heading: `Get on the Guild Path.` (white, large, Space Grotesk 800).
 - Sub: `Join the ranks. Cheaper sessions, free events, exclusive perks. Three tiers.` (white at 70%).
-- **Three tier pills** in a row (stack on mobile narrower than ~480px):
-  - `Apprentice` — color matching the existing Apprentice tier on `/guild-path`
-  - `Veteran` — color matching the existing Veteran tier
-  - `Legend` — color matching the existing Legend tier
-  - Each pill shows tier name + `From ₹X / yr` (price pulled from the same source `/guild-path` uses, so changes stay in sync; if no shared source exists, hardcode and add a TODO).
-  - Tapping a pill jumps to `/guild-path#tier-{slug}` so the destination scrolls to that tier card.
+- **Three tier pills** in a row (stack on mobile narrower than ~480px). Tier names, prices, and colors come from `src/components/GuildPurchase.tsx` — same source of truth used on `/guild-path`. The data is currently inlined in that file as `TIERS`; this redesign extracts the tier list into `src/lib/guild-tiers.ts` so both the homepage teaser and the existing `GuildPurchase` island read the same array.
+  - `Initiate` — ₹600
+  - `Adventurer` — ₹2,000
+  - `Guildmaster` — ₹8,000
+  - Each pill shows tier name + the `priceLabel`.
+  - The teaser is a static Astro section (not a React island) — it imports the tier list at build time. Tapping a pill links to `/guild-path` (no scroll-to-tier needed; the page is short enough).
 - Big primary orange button: `See all tiers →` → `/guild-path`.
 
 Personalization (e.g., greeting returning Guild members by name) is **out of scope** for this redesign. Flagged as a possible future enhancement.
@@ -177,6 +177,8 @@ If `astro:assets` is not already configured to output WebP, configuration is add
 | `src/components/EditorialStripe.astro` | New | Reusable stripe with photo+copy split |
 | `src/assets/landing/` | New directory | Optimized photo sources |
 | `astro.config.mjs` | Adjust if needed | Confirm `astro:assets` WebP output |
+| `src/lib/guild-tiers.ts` | New | Shared tier data extracted from `GuildPurchase.tsx` |
+| `src/components/GuildPurchase.tsx` | Minor edit | Import tiers from the new shared file |
 
 No new components are needed for the Guild Path teaser or Community CTA — those are inline in `index.astro` since they aren't reused elsewhere.
 
