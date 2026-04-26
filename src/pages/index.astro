@@ -7,6 +7,7 @@ import EditorialStripe from '../components/EditorialStripe.astro';
 import landing4 from '../assets/landing/4.png';
 import landing5 from '../assets/landing/5.png';
 import landing6 from '../assets/landing/6.png';
+import { TIERS } from '../lib/guild-tiers';
 ---
 
 <Layout title="Home" description="Bangalore's gaming community — board game sessions at cafes across the city">
@@ -88,23 +89,37 @@ import landing6 from '../assets/landing/6.png';
     ctaExternal
   />
 
-  <!-- Guild Path Teaser -->
-  <section class="py-16 reveal" style="background: #FFF8E7;">
+  <!-- Guild Path teaser: black band -->
+  <section class="py-14 md:py-20" style="background: #1A1A1A;">
     <div class="max-w-[1200px] mx-auto px-6">
-      <div class="card-brutal p-10 md:p-12 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden" style="background: #C3A6FF; box-shadow: 8px 8px 0 #1A1A1A;">
-        <span class="absolute top-5 left-8 text-5xl opacity-[0.15] -rotate-12 pointer-events-none">♠</span>
-        <span class="absolute top-8 right-10 text-5xl opacity-[0.15] rotate-[20deg] pointer-events-none">♟</span>
-        <span class="absolute bottom-6 left-14 text-5xl opacity-[0.15] rotate-[10deg] pointer-events-none">🎲</span>
-        <span class="absolute bottom-5 right-8 text-5xl opacity-[0.15] -rotate-[25deg] pointer-events-none">🎯</span>
-        <div class="flex-1 relative z-10">
-          <h2 class="font-heading font-bold text-4xl mb-3">Guild Path</h2>
-          <p class="text-[#1A1A1A]/85 text-lg max-w-xl">
-            Track your progress and level up through the BGC ranks. Get discounts, free events, and exclusive perks.
-          </p>
-        </div>
-        <a href="/guild-path" class="btn btn-black no-underline whitespace-nowrap relative z-10">
-          Explore Guild Path →
-        </a>
+      <div class="font-heading font-semibold text-xs md:text-sm tracking-widest" style="color: #FFD166;">
+        ▸ FOR THE REGULARS
+      </div>
+      <h2
+        class="font-heading font-bold text-white mt-2"
+        style="font-size: clamp(2.2rem, 6vw, 4rem); line-height: 1.05; letter-spacing: -1.5px;"
+      >
+        Get on the Guild Path.
+      </h2>
+      <p class="mt-4 text-base md:text-lg text-white/70 max-w-xl">
+        Join the ranks. Cheaper sessions, free events, exclusive perks. Three tiers.
+      </p>
+
+      <div class="mt-8 flex flex-wrap gap-3">
+        {TIERS.map((tier) => (
+          <a
+            href="/guild-path"
+            class="font-heading font-semibold no-underline"
+            style={`background: ${tier.color}; color: #1A1A1A; border: 3px solid #1A1A1A; box-shadow: 4px 4px 0 #FFFFFF; padding: 12px 20px; border-radius: 50px; display: inline-flex; align-items: baseline; gap: 8px;`}
+          >
+            <span style="font-size: 1rem;">{tier.name}</span>
+            <span style="font-size: 0.85rem; opacity: 0.7;">{tier.priceLabel}</span>
+          </a>
+        ))}
+      </div>
+
+      <div class="mt-8">
+        <a href="/guild-path" class="btn btn-primary no-underline">See all tiers →</a>
       </div>
     </div>
   </section>
