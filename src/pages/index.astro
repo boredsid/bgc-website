@@ -2,6 +2,8 @@
 import Layout from '../layouts/Layout.astro';
 import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
 import GameCount from '../components/GameCount.tsx';
+import { Image } from 'astro:assets';
+import landing1 from '../assets/landing/1.png';
 ---
 
 <Layout title="Home" description="Bangalore's Favorite Board Gaming Community — board game sessions at cafes across the city">
@@ -26,9 +28,11 @@ import GameCount from '../components/GameCount.tsx';
         </div>
       </div>
       <div class="animate-fade-in-up-delayed">
-        <img
-          src="/landing-photos/1.png"
+        <Image
+          src={landing1}
           alt="BGC game session"
+          widths={[400, 800, 1200]}
+          sizes="(max-width: 768px) 100vw, 600px"
           class="w-full object-cover rounded-[20px]"
           style="aspect-ratio: 4/3; border: 4px solid #1A1A1A; box-shadow: 8px 8px 0 #1A1A1A;"
         />
