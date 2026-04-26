@@ -2,6 +2,7 @@ node_modules/
 dist/
 .astro/
 .superpowers/
+.playwright-mcp/
 .env
 .env.local
 worker/node_modules/

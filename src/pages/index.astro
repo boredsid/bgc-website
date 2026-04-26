@@ -2,101 +2,170 @@
 import Layout from '../layouts/Layout.astro';
 import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
 import GameCount from '../components/GameCount.tsx';
+import HeroPhotoBand from '../components/HeroPhotoBand.astro';
+import EditorialStripe from '../components/EditorialStripe.astro';
+import { Image } from 'astro:assets';
+import landing2 from '../assets/landing/2.png';
+import landing4 from '../assets/landing/4.png';
+import landing5 from '../assets/landing/5.png';
+import landing6 from '../assets/landing/6.png';
 ---
 
-<Layout title="Home" description="Bangalore's Favorite Board Gaming Community — board game sessions at cafes across the city">
+<Layout title="Home" description="Bangalore's gaming community — board game sessions at cafes across the city">
 
-  <!-- Hero -->
-  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-    <div class="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-      <div class="flex-1 text-center lg:text-left">
-        <h1 class="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-          Welcome to<br />
-          <span class="text-primary">Board Game Company!</span>
-        </h1>
-        <p class="mt-4 text-muted text-lg max-w-lg mx-auto lg:mx-0">
-          Our mission is to create a community that brings people together over board games. Currently hosting events across Bangalore!
-        </p>
-        <div class="mt-6 flex flex-wrap gap-3 justify-center lg:justify-start">
-          <a
-            href="/register"
-            class="bg-primary text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-primary-dark transition-colors no-underline"
-          >
-            Register for a Session
-          </a>
-          <a
-            href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="bg-secondary text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-secondary/80 transition-colors no-underline"
-          >
-            Join The Community
-          </a>
-        </div>
-      </div>
-      <div class="flex-1 max-w-md lg:max-w-lg">
-        <div class="grid grid-cols-3 gap-2 rounded-2xl overflow-hidden">
-          <img src="/landing-photos/1.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/2.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/3.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/4.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/5.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-          <img src="/landing-photos/6.png" alt="BGC game session" class="aspect-square object-cover rounded-lg" />
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Upcoming Event Banner -->
-  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-12">
-    <UpcomingEventBanner client:load />
-  </section>
-
-  <!-- What We Do -->
-  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
-    <h2 class="font-heading text-3xl font-bold text-center mb-8">What Does BGC Do?</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white rounded-2xl p-6 border border-border text-center">
-        <div class="text-4xl mb-3">🎲</div>
-        <h3 class="font-heading font-bold text-lg mb-2">Offline Gaming</h3>
-        <p class="text-muted text-sm">
-          Hosting board games, TTRPGs like D&D, party games like Clocktower and more at your local cafe across areas in Bangalore. Come play, meet new people, and have fun!
-        </p>
-      </div>
-      <div class="bg-white rounded-2xl p-6 border border-border text-center">
-        <div class="text-4xl mb-3">📚</div>
-        <h3 class="font-heading font-bold text-lg mb-2"><GameCount client:load /> Games</h3>
-        <p class="text-muted text-sm">
-          From quick party games to deep strategy epics — our library has something for everyone.
-        </p>
-      </div>
-      <div class="bg-white rounded-2xl p-6 border border-border text-center">
-        <div class="text-4xl mb-3">🤝</div>
-        <h3 class="font-heading font-bold text-lg mb-2">Growing Community</h3>
-        <p class="text-muted text-sm">
-          With people joining from all over the city, you're sure to find someone who matches your wavelength!
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Guild Path Teaser -->
-  <section class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-12">
-    <div class="bg-white rounded-2xl border border-border p-8 md:p-12 flex flex-col md:flex-row items-center gap-6">
-      <div class="flex-1">
-        <h2 class="font-heading text-3xl font-bold mb-2">Guild Path</h2>
-        <p class="text-muted">
-          Track your progress and level up through the BGC ranks. Get discounts, free events, and exclusive perks.
-        </p>
-      </div>
-      <a
-        href="/guild-path"
-        class="bg-accent text-white px-6 py-3 rounded-full font-heading font-semibold hover:bg-accent/80 transition-colors no-underline whitespace-nowrap"
+  <!-- Hero: dark slab -->
+  <section class="hero-dark" style="background: #1A1A1A;">
+    <div class="max-w-[1200px] mx-auto px-6 py-16 md:py-24">
+      <h1
+        class="font-heading font-bold text-white"
+        style="font-size: clamp(2.4rem, 7vw, 5rem); line-height: 1.0; letter-spacing: -2px;"
       >
-        Explore Guild Path
-      </a>
+        Bangalore's Tabletop Gaming Community
+      </h1>
+      <p class="mt-5 text-base md:text-lg text-white/70 max-w-xl">
+        3.5k players. 130+ games. Sessions every weekend, all over Bangalore.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a href="/register" class="btn btn-primary no-underline">Register for a session →</a>
+        <a
+          href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn no-underline"
+          style="background: transparent; color: #FFFFFF; border: 4px solid #FFFFFF;"
+        >
+          Join the WhatsApp
+        </a>
+      </div>
     </div>
   </section>
 
+  <!-- Hero photo band: 3 photos edge-to-edge -->
+  <HeroPhotoBand />
+
+  <!-- Upcoming event marquee (now full-width, no wrapping section) -->
+  <UpcomingEventBanner client:load />
+
+  <!-- Editorial stripes: what we do -->
+  <EditorialStripe
+    number="01"
+    label="SESSIONS"
+    heading="We host every weekend at cafes across Bangalore."
+    body="Indiranagar, Koramangala, HSR, Whitefield. Show up, sit down, learn a new game, meet new people. Beginners always welcome."
+    ctaText="See the calendar →"
+    ctaHref="/calendar"
+    bgColor="#FFD166"
+    photo={landing4}
+    photoAlt="Players around a table at a Bangalore cafe"
+    photoSide="left"
+  />
+
+  <EditorialStripe
+    number="02"
+    label="LIBRARY"
+    body="Catan, Scythe, Wingspan, Clocktower, D&D — plus party games, two-player wonders, and weird imports you've never heard of. Browse the full list."
+    ctaText="Browse the library →"
+    ctaHref="/library"
+    bgColor="#4A9B8E"
+    photo={landing5}
+    photoAlt="Shelves of board games in the BGC library"
+    photoSide="right"
+  >
+    <Fragment slot="heading">
+      <GameCount client:load />+ board games. From 10-minute fillers to 4-hour epics.
+    </Fragment>
+  </EditorialStripe>
+
+  <EditorialStripe
+    number="03"
+    label="COMMUNITY"
+    heading="Not a class. Not a service. A community."
+    body="We're 3.5k+ players in Bangalore who keep showing up because the people are the point. Drop into the WhatsApp group — say hi."
+    ctaText="Join the WhatsApp →"
+    ctaHref="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
+    bgColor="#C3A6FF"
+    photo={landing6}
+    photoAlt="BGC community group photo"
+    photoSide="left"
+    ctaExternal
+  />
+
+  <!-- Guild Path teaser: black band -->
+  <section class="py-14 md:py-20" style="background: #1A1A1A;">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <div class="font-heading font-semibold text-xs md:text-sm tracking-widest" style="color: #FFD166;">
+        ▸ FOR THE REGULARS
+      </div>
+      <h2
+        class="font-heading font-bold text-white mt-2"
+        style="font-size: clamp(2.2rem, 6vw, 4rem); line-height: 1.05; letter-spacing: -1.5px;"
+      >
+        Get on the Guild Path.
+      </h2>
+      <p class="mt-4 text-base md:text-lg text-white/70 max-w-xl">
+        Track your progress and level up through the BGC ranks. Discounted and free events, exclusive perks and free convention passes.
+      </p>
+
+      <div class="mt-8">
+        <a href="/guild-path" class="btn btn-primary no-underline">See all tiers →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Community CTA: orange band with photo backdrop -->
+  <section class="community-cta" style="background: #F47B20; position: relative; overflow: hidden; border-top: 4px solid #1A1A1A;">
+    <Image
+      src={landing2}
+      alt=""
+      aria-hidden="true"
+      widths={[800, 1600]}
+      sizes="100vw"
+      loading="lazy"
+      class="community-cta-bg"
+    />
+    <div class="max-w-[1200px] mx-auto px-6 py-16 md:py-24 relative" style="z-index: 1;">
+      <h2
+        class="font-heading font-bold text-white"
+        style="font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.0; letter-spacing: -2px;"
+      >
+        Come play with us.
+      </h2>
+      <p class="mt-4 text-base md:text-lg text-white/85 max-w-xl">
+        WhatsApp is where the action happens. Instagram is where the photos do.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a
+          href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-black no-underline"
+        >
+          WhatsApp Group
+        </a>
+        <a
+          href="https://instagram.com/boardgamecompany"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-black no-underline"
+        >
+          @boardgamecompany on Instagram
+        </a>
+      </div>
+      <p class="mt-6 text-[#1A1A1A]/70 text-sm font-semibold">
+        Or just turn up to a session. We don't bite.
+      </p>
+    </div>
+    <style>
+      .community-cta-bg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 0.18;
+        filter: contrast(1.05);
+      }
+    </style>
+  </section>
 
 </Layout>

@@ -3,12 +3,22 @@ import Layout from '../layouts/Layout.astro';
 import EventList from '../components/EventList.tsx';
 ---
 
-<Layout title="Calendar" description="Find your next board gaming session in Bangalore">
-  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
-    <div class="text-center mb-8">
-      <h1 class="font-heading text-4xl font-bold">Upcoming Events</h1>
-      <p class="mt-2 text-muted text-lg">Find your next session</p>
+<Layout title="Calendar" description="Upcoming BGC sessions — board game nights, TTRPGs, and tournaments in Bangalore">
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[1200px] mx-auto px-6 text-center">
+      <span class="section-tag">What's Happening</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        Upcoming Sessions
+      </h1>
+      <p class="text-lg text-[#1A1A1A]/70 mt-3">
+        Pick a date, bring a friend, and roll some dice.
+      </p>
     </div>
-    <EventList client:load />
+  </section>
+
+  <section class="pb-20">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <EventList client:load />
+    </div>
   </section>
 </Layout>

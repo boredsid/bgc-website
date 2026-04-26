@@ -17,8 +17,8 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
 
   return (
     <div className="mb-5">
-      <label className="block font-semibold text-xs uppercase tracking-wide text-secondary/70 mb-2">
-        {label} {required && <span className="text-error">*</span>}
+      <label className="label-brutal">
+        {label} {required && <span style={{ color: '#FF6B6B' }}>*</span>}
       </label>
 
       {type === 'text' && (
@@ -26,7 +26,7 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
           type="text"
           value={value as string}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+          className="input-brutal"
           required={required}
         />
       )}
@@ -35,7 +35,7 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
         <select
           value={value as string}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+          className="input-brutal font-heading font-semibold"
           required={required}
         >
           <option value="">Select...</option>
@@ -43,7 +43,8 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
             const full = isOptionFull(opt.value, opt.capacity);
             return (
               <option key={opt.value} value={opt.value} disabled={full}>
-                {opt.value}{full ? ' (Full)' : ''}
+                {opt.value}
+                {full ? ' (Full)' : ''}
               </option>
             );
           })}
@@ -54,48 +55,50 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
         <div className="flex flex-col gap-2">
           {options.map((opt) => {
             const full = isOptionFull(opt.value, opt.capacity);
+            const selected = value === opt.value;
             return (
-              <label
+              <button
                 key={opt.value}
-                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                  value === opt.value
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border'
-                } ${full ? 'opacity-50 cursor-not-allowed' : ''}`}
+                type="button"
+                disabled={full}
+                onClick={() => !full && onChange(opt.value)}
+                className={`text-left font-heading font-semibold rounded-lg px-4 py-3 cursor-pointer transition-colors ${full ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{
+                  border: '2px solid #1A1A1A',
+                  background: selected ? '#1A1A1A' : '#FFFFFF',
+                  color: selected ? '#FFFFFF' : '#1A1A1A',
+                }}
               >
-                <input
-                  type="radio"
-                  name={id}
-                  value={opt.value}
-                  checked={value === opt.value}
-                  onChange={() => onChange(opt.value)}
-                  disabled={full}
-                  className="accent-primary"
-                />
-                <span className="text-sm">
-                  {opt.value}
-                  {opt.capacity !== undefined && (
-                    <span className="text-muted ml-1">
-                      {full ? '(Full)' : `(${opt.capacity - (optionCounts?.[opt.value] || 0)} spots)`}
-                    </span>
-                  )}
-                </span>
-              </label>
+                <span>{opt.value}</span>
+                {opt.capacity !== undefined && (
+                  <span className="ml-2 text-xs font-normal opacity-70">
+                    {full
+                      ? '(Full)'
+                      : `(${opt.capacity - (optionCounts?.[opt.value] || 0)} spots)`}
+                  </span>
+                )}
+              </button>
             );
           })}
         </div>
       )}
 
       {type === 'checkbox' && (
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={value as boolean}
-            onChange={(e) => onChange(e.target.checked)}
-            className="accent-primary w-4 h-4"
-          />
-          <span className="text-sm">{label}</span>
-        </label>
+        <button
+          type="button"
+          onClick={() => onChange(!(value as boolean))}
+          className="flex items-center gap-3 font-heading font-semibold rounded-lg px-4 py-3 cursor-pointer w-full text-left"
+          style={{
+            border: '2px solid #1A1A1A',
+            background: (value as boolean) ? '#1A1A1A' : '#FFFFFF',
+            color: (value as boolean) ? '#FFFFFF' : '#1A1A1A',
+          }}
+        >
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded" style={{ border: '2px solid currentColor' }}>
+            {(value as boolean) ? '✓' : ''}
+          </span>
+          <span>{label}</span>
+        </button>
       )}
     </div>
   );

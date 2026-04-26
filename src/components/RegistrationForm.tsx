@@ -24,7 +24,7 @@ export default function RegistrationForm() {
   const [phoneLookedUp, setPhoneLookedUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [registrationId, setRegistrationId] = useState<string | null>(null);
+  const [, setRegistrationId] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -80,17 +80,16 @@ export default function RegistrationForm() {
   }, [name, email]);
 
   if (loading) {
-    return <div className="text-center py-12 text-muted">Loading...</div>;
+    return <div className="text-center py-12 text-[#1A1A1A]/60 font-heading">Loading...</div>;
   }
 
   if (!eventId || !event) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-8">
+        <div className="text-5xl mb-4">🎲</div>
         <h1 className="font-heading text-2xl font-bold mb-2">Event Not Found</h1>
-        <p className="text-muted">
-          This event doesn't exist or is no longer available.
-        </p>
-        <a href="/calendar" className="text-primary hover:underline mt-4 inline-block">
+        <p className="text-[#1A1A1A]/70">This event doesn't exist or is no longer available.</p>
+        <a href="/calendar" className="inline-block mt-6 btn btn-primary no-underline">
           View upcoming events
         </a>
       </div>
@@ -167,10 +166,10 @@ export default function RegistrationForm() {
 
   if (step === 'success') {
     return (
-      <div className="bg-white rounded-2xl border border-border p-8 text-center">
-        <div className="text-5xl mb-4">🎉</div>
-        <h1 className="font-heading text-2xl font-bold mb-2">You're registered!</h1>
-        <p className="text-muted mb-4">
+      <div className="card-brutal p-8 text-center" style={{ background: '#A8E6CF' }}>
+        <div className="text-6xl mb-4">✅</div>
+        <h1 className="font-heading text-3xl font-bold mb-3">You're in! 🎲</h1>
+        <p className="text-[#1A1A1A]/85 mb-2">
           See you at <strong>{event.name}</strong> on{' '}
           {eventDate.toLocaleDateString('en-IN', {
             weekday: 'long',
@@ -179,13 +178,10 @@ export default function RegistrationForm() {
           })}
           .
         </p>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-[#1A1A1A]/70">
           {event.venue_name}, {event.venue_area}
         </p>
-        <a
-          href="/calendar"
-          className="inline-block mt-6 text-primary hover:underline font-medium"
-        >
+        <a href="/calendar" className="inline-block mt-6 btn btn-black no-underline">
           Back to events
         </a>
       </div>
@@ -205,10 +201,10 @@ export default function RegistrationForm() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-border p-6 sm:p-8">
-      <div className="mb-6 pb-6 border-b border-border">
+    <div>
+      <div className="mb-6 pb-6" style={{ borderBottom: '3px solid #1A1A1A' }}>
         <h1 className="font-heading text-2xl font-bold">{event.name}</h1>
-        <p className="text-muted text-sm mt-1">
+        <p className="text-[#1A1A1A]/70 text-sm mt-1">
           {eventDate.toLocaleDateString('en-IN', {
             weekday: 'long',
             day: 'numeric',
@@ -220,12 +216,12 @@ export default function RegistrationForm() {
             minute: '2-digit',
             hour12: true,
           })}{' '}
-          &middot; {event.venue_name}, {event.venue_area}
+          · {event.venue_name}, {event.venue_area}
         </p>
-        <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-3 mt-3">
           <span className="font-heading font-bold text-lg">₹{event.price} / person</span>
           {spots && (
-            <span className="text-xs text-muted">
+            <span className="text-xs text-[#1A1A1A]/60">
               {spots.remaining} spot{spots.remaining !== 1 ? 's' : ''} remaining
             </span>
           )}
@@ -234,15 +230,13 @@ export default function RegistrationForm() {
 
       {soldOut ? (
         <div className="text-center py-8">
-          <p className="font-heading font-bold text-xl text-muted">Sold Out</p>
-          <p className="text-sm text-muted mt-2">This event is fully booked.</p>
+          <p className="font-heading font-bold text-xl text-[#1A1A1A]/60">Sold Out</p>
+          <p className="text-sm text-[#1A1A1A]/60 mt-2">This event is fully booked.</p>
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
           <div className="mb-5">
-            <label className="block font-semibold text-xs uppercase tracking-wide text-secondary/70 mb-2">
-              Phone Number
-            </label>
+            <label className="label-brutal">Phone Number</label>
             <input
               type="tel"
               value={phone}
@@ -250,53 +244,53 @@ export default function RegistrationForm() {
               onBlur={() => lookupPhone(phone)}
               placeholder="10-digit mobile number"
               required
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+              className="input-brutal"
             />
           </div>
 
           {phoneLookedUp && membership?.isMember && (
-            <div className="bg-highlight/30 border border-highlight rounded-xl px-4 py-3 mb-5 text-sm font-medium">
-              ✨ {discountLabel}
+            <div className="mb-5">
+              <span
+                className="pill inline-block"
+                style={{ background: '#C3A6FF', padding: '8px 16px' }}
+              >
+                👑 {discountLabel}
+              </span>
             </div>
           )}
 
           <div className="mb-5">
-            <label className="block font-semibold text-xs uppercase tracking-wide text-secondary/70 mb-2">
-              Name
-            </label>
+            <label className="label-brutal">Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your full name"
               required
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+              className="input-brutal"
             />
           </div>
 
           <div className="mb-5">
-            <label className="block font-semibold text-xs uppercase tracking-wide text-secondary/70 mb-2">
-              Email
-            </label>
+            <label className="label-brutal">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               required
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-white text-sm focus:outline-none focus:border-primary"
+              className="input-brutal"
             />
           </div>
 
           <div className="mb-5">
-            <label className="block font-semibold text-xs uppercase tracking-wide text-secondary/70 mb-2">
-              Number of Seats
-            </label>
+            <label className="label-brutal">Number of Seats</label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setSeats(Math.max(1, seats - 1))}
-                className="w-10 h-10 rounded-xl border border-border bg-white font-bold text-lg hover:border-primary transition-colors"
+                className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
+                style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
               >
                 −
               </button>
@@ -304,7 +298,8 @@ export default function RegistrationForm() {
               <button
                 type="button"
                 onClick={() => setSeats(Math.min(maxSeats, seats + 1))}
-                className="w-10 h-10 rounded-xl border border-border bg-white font-bold text-lg hover:border-primary transition-colors"
+                className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
+                style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
               >
                 +
               </button>
@@ -321,29 +316,31 @@ export default function RegistrationForm() {
             />
           ))}
 
-          <div className="flex items-center justify-between py-4 border-t border-border mt-6 mb-4">
-            <span className="font-semibold text-muted">Total</span>
+          <div
+            className="card-brutal p-5 mt-6 mb-5 flex items-center justify-between"
+            style={{ background: '#FFD166' }}
+          >
+            <span className="font-heading font-bold text-sm uppercase tracking-wider">Total</span>
             <div className="text-right">
               {membership?.isMember && membership.discount && event.price * seats !== total && (
-                <span className="text-muted line-through text-sm mr-2">
+                <span className="text-[#1A1A1A]/60 line-through text-sm mr-2">
                   ₹{event.price * seats}
                 </span>
               )}
-              <span className="font-heading font-bold text-2xl">₹{total}</span>
+              <span className="font-heading font-bold text-3xl">₹{total}</span>
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 text-sm text-red-700">
-              {error}
+            <div
+              className="card-brutal p-4 mb-4"
+              style={{ background: '#FF6B6B' }}
+            >
+              <p className="font-heading font-semibold">{error}</p>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-primary text-white py-3 rounded-full font-heading font-semibold text-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
-          >
+          <button type="submit" disabled={submitting} className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
             {submitting
               ? 'Submitting...'
               : total === 0
@@ -351,7 +348,7 @@ export default function RegistrationForm() {
                 : 'Proceed to Pay'}
           </button>
           {total > 0 && (
-            <p className="text-center text-xs text-muted mt-2">
+            <p className="text-center text-xs text-[#1A1A1A]/60 mt-3">
               You'll be able to pay via UPI in the next step
             </p>
           )}

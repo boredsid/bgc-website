@@ -3,17 +3,42 @@ import Layout from '../layouts/Layout.astro';
 import GuildPurchase from '../components/GuildPurchase.tsx';
 ---
 
-<Layout title="Guild Path" description="Our loyalty and membership plans — level up your BGC experience">
-  <section class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-    <div class="text-center mb-10">
-      <h1 class="font-heading text-4xl font-bold">Guild Path</h1>
-      <p class="mt-2 text-muted text-lg">Our loyalty and membership plans</p>
+<Layout title="Guild Path" description="Become a BGC Guild member — discounts, free events, and community perks">
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[1200px] mx-auto px-6 text-center">
+      <span class="section-tag">Membership</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        Guild Path
+      </h1>
+      <p class="text-lg text-[#1A1A1A]/70 mt-3 max-w-2xl mx-auto">
+        Level up, unlock perks, play more. Join the BGC Guild and get discounts, priority access, and exclusive events.
+      </p>
     </div>
+  </section>
 
-    <GuildPurchase client:load />
+  <section class="py-12">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <GuildPurchase client:load />
+      <p class="text-center text-[#1A1A1A]/50 text-sm mt-8 max-w-2xl mx-auto">
+        All tiers are applicable for a maximum ticket price of ₹1,000 per event and are inclusive of cover charges.
+      </p>
+    </div>
+  </section>
 
-    <p class="text-center text-muted text-sm mt-8 max-w-2xl mx-auto">
-      All tiers are applicable for a maximum ticket price of ₹1,000 per event and are inclusive of cover charges.
-    </p>
+  <!-- Community CTA -->
+  <section class="py-16" style="background: #FAFAF5;">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <div class="card-brutal p-12 md:p-16 text-center relative overflow-hidden" style="background: #F47B20; box-shadow: 8px 8px 0 #1A1A1A;">
+        <h2 class="font-heading font-bold text-white" style="font-size: clamp(2rem, 4vw, 3rem); letter-spacing: -1px;">
+          Not ready yet?
+        </h2>
+        <p class="text-white/90 text-lg max-w-xl mx-auto mt-4 mb-8">
+          Join our WhatsApp group and try a session first — no commitment, just great games.
+        </p>
+        <a href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp" target="_blank" rel="noopener noreferrer" class="btn btn-black no-underline">
+          Join WhatsApp →
+        </a>
+      </div>
+    </div>
   </section>
 </Layout>

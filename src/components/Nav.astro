@@ -10,36 +10,68 @@ const navLinks = [
 ];
 ---
 
-<nav class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between h-16">
-      <a href="/" class="flex items-center gap-2 no-underline">
-        <img src="/bgc-logo.png" alt="BGC" class="h-9 w-9 rounded-full" />
-        <span class="font-heading font-bold text-lg text-secondary hidden sm:inline">
+<nav id="site-nav" class="fixed top-0 left-0 right-0 z-50 bg-cream" style="border-bottom: var(--border); transition: box-shadow 0.3s;">
+  <div class="max-w-[1200px] mx-auto px-6">
+    <div class="flex items-center justify-between h-[72px]">
+      <a href="/" class="flex items-center gap-3 no-underline z-[60]">
+        <img src="/bgc-logo.png" alt="BGC" class="h-10 w-10 rounded-full object-cover" />
+        <span class="font-heading font-bold text-xl whitespace-nowrap hidden sm:inline">
           Board Game Company
         </span>
       </a>
 
-      <div class="hidden md:flex items-center gap-6">
+      <ul class="hidden md:flex items-center gap-8 list-none m-0 p-0">
         {navLinks.map(link => (
-          <a
-            href={link.href}
-            class="text-secondary/70 hover:text-primary font-medium text-sm transition-colors no-underline"
-          >
-            {link.label}
-          </a>
+          <li>
+            <a
+              href={link.href}
+              class="nav-link font-heading font-semibold text-base no-underline relative py-1"
+            >
+              {link.label}
+            </a>
+          </li>
         ))}
-        <a
-          href="https://instagram.com/boardgamecompany"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="bg-secondary text-white px-4 py-2 rounded-full font-heading font-semibold text-sm hover:bg-secondary/80 transition-colors no-underline"
-        >
-          Join Us
-        </a>
-      </div>
+        <li>
+          <a href="/register" class="btn btn-nav no-underline">Register</a>
+        </li>
+      </ul>
 
       <MobileMenu client:load navLinks={navLinks} />
     </div>
   </div>
 </nav>
+
+<style>
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 3px;
+    background: #F47B20;
+    transition: width 0.3s;
+  }
+  .nav-link:hover::after,
+  .nav-link.active::after { width: 100%; }
+</style>
+
+<script>
+  const nav = document.getElementById('site-nav');
+  function onScroll() {
+    if (!nav) return;
+    if (window.scrollY > 10) {
+      nav.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
+    } else {
+      nav.style.boxShadow = 'none';
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // Active link highlight
+  const path = window.location.pathname;
+  document.querySelectorAll<HTMLAnchorElement>('.nav-link').forEach(a => {
+    if (a.getAttribute('href') === path) a.classList.add('active');
+  });
+</script>
