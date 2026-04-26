@@ -4,6 +4,8 @@ import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
 import GameCount from '../components/GameCount.tsx';
 import HeroPhotoBand from '../components/HeroPhotoBand.astro';
 import EditorialStripe from '../components/EditorialStripe.astro';
+import { Image } from 'astro:assets';
+import landing2 from '../assets/landing/2.png';
 import landing4 from '../assets/landing/4.png';
 import landing5 from '../assets/landing/5.png';
 import landing6 from '../assets/landing/6.png';
@@ -110,30 +112,62 @@ import landing6 from '../assets/landing/6.png';
     </div>
   </section>
 
-  <!-- Community CTA -->
-  <section class="py-16 reveal" style="background: #FAFAF5;">
-    <div class="max-w-[1200px] mx-auto px-6">
-      <div class="card-brutal p-12 md:p-20 text-center relative overflow-hidden" style="background: #F47B20; box-shadow: 8px 8px 0 #1A1A1A;">
-        <span class="absolute top-6 left-8 text-6xl opacity-[0.15] -rotate-12 pointer-events-none">🎲</span>
-        <span class="absolute top-8 right-10 text-6xl opacity-[0.15] rotate-[20deg] pointer-events-none">🎯</span>
-        <span class="absolute bottom-8 left-14 text-6xl opacity-[0.15] rotate-[10deg] pointer-events-none">♠</span>
-        <span class="absolute bottom-6 right-8 text-6xl opacity-[0.15] -rotate-[25deg] pointer-events-none">♟</span>
-        <h2 class="font-heading font-bold text-white" style="font-size: clamp(2.5rem, 5vw, 4rem); letter-spacing: -1px;">
-          Join Our Community
-        </h2>
-        <p class="text-white/90 text-lg max-w-xl mx-auto mt-5 mb-10 relative z-10">
-          The best way to play more games is to know more people who play. Slide into our DMs or drop into the WhatsApp group — come say hi!
-        </p>
-        <div class="flex flex-wrap justify-center gap-4 relative z-10">
-          <a href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp" target="_blank" rel="noopener noreferrer" class="btn btn-black no-underline">
-            WhatsApp Group
-          </a>
-          <a href="https://instagram.com/boardgamecompany" target="_blank" rel="noopener noreferrer" class="btn btn-black no-underline">
-            Instagram
-          </a>
-        </div>
+  <!-- Community CTA: orange band with photo backdrop -->
+  <section class="community-cta" style="background: #F47B20; position: relative; overflow: hidden;">
+    <Image
+      src={landing2}
+      alt=""
+      aria-hidden="true"
+      widths={[800, 1600]}
+      sizes="100vw"
+      loading="lazy"
+      class="community-cta-bg"
+    />
+    <div class="max-w-[1200px] mx-auto px-6 py-16 md:py-24 relative" style="z-index: 1;">
+      <h2
+        class="font-heading font-bold text-white"
+        style="font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.0; letter-spacing: -2px;"
+      >
+        Come play with us.
+      </h2>
+      <p class="mt-4 text-base md:text-lg text-white/85 max-w-xl">
+        WhatsApp is where the action happens. Instagram is where the photos do.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a
+          href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-black no-underline"
+        >
+          WhatsApp Group
+        </a>
+        <a
+          href="https://instagram.com/boardgamecompany"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-black no-underline"
+        >
+          @boardgamecompany on Instagram
+        </a>
       </div>
+      <p class="mt-6 text-[#1A1A1A]/70 text-sm font-semibold">
+        Or just turn up to a session. We don't bite.
+      </p>
     </div>
   </section>
+
+  <style>
+    .community-cta-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.18;
+      z-index: 0;
+      filter: contrast(1.05);
+    }
+  </style>
 
 </Layout>
