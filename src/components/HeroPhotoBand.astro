@@ -1,0 +1,71 @@
+---
+import { Image } from 'astro:assets';
+import p1 from '../assets/landing/1.png';
+import p2 from '../assets/landing/2.png';
+import p3 from '../assets/landing/3.png';
+
+const photos = [
+  { src: p1, alt: 'BGC session at a Bangalore cafe' },
+  { src: p2, alt: 'Players gathered around a board game' },
+  { src: p3, alt: 'Group laughing during a session' },
+];
+---
+
+<div
+  class="hero-photo-band"
+  style="border-bottom: 4px solid #1A1A1A; background: #1A1A1A;"
+>
+  <div class="hero-photo-band-inner">
+    {photos.map((photo) => (
+      <div class="hero-photo-band-item">
+        <Image
+          src={photo.src}
+          alt={photo.alt}
+          widths={[400, 800, 1200]}
+          sizes="(max-width: 768px) 85vw, 33vw"
+          loading="eager"
+          class="hero-photo-band-img"
+        />
+      </div>
+    ))}
+  </div>
+</div>
+
+<style>
+  .hero-photo-band-inner {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hero-photo-band-inner::-webkit-scrollbar {
+    display: none;
+  }
+  .hero-photo-band-item {
+    flex: 0 0 85%;
+    scroll-snap-align: center;
+    aspect-ratio: 3 / 4;
+    border-right: 2px solid #1A1A1A;
+  }
+  .hero-photo-band-item:last-child {
+    border-right: none;
+  }
+  .hero-photo-band-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  @media (min-width: 768px) {
+    .hero-photo-band-inner {
+      overflow: hidden;
+    }
+    .hero-photo-band-item {
+      flex: 1 1 0;
+      aspect-ratio: 4 / 5;
+    }
+  }
+</style>

@@ -2,49 +2,46 @@
 import Layout from '../layouts/Layout.astro';
 import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
 import GameCount from '../components/GameCount.tsx';
-import { Image } from 'astro:assets';
-import landing1 from '../assets/landing/1.png';
+import HeroPhotoBand from '../components/HeroPhotoBand.astro';
 ---
 
-<Layout title="Home" description="Bangalore's Favorite Board Gaming Community — board game sessions at cafes across the city">
+<Layout title="Home" description="Bangalore's gaming community — board game sessions at cafes across the city">
 
-  <!-- Hero -->
-  <section class="py-14" style="background: #FFF8E7;">
-    <div class="max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-12">
-      <div class="animate-fade-in-up text-center lg:text-left">
-        <span class="pill pill-yellow mb-6 inline-block">🎲 Welcome</span>
-        <h1 class="font-heading font-bold" style="font-size: clamp(2.8rem, 6vw, 5rem); letter-spacing: -2px; line-height: 1.05;">
-          Welcome to<br />
-          <span style="color: #F47B20;">Board Game Company!</span>
-        </h1>
-        <p class="mt-5 text-lg text-[#1A1A1A]/70 max-w-lg mx-auto lg:mx-0">
-          Our mission is to create a community that brings people together over board games. Currently hosting events across Bangalore!
-        </p>
-        <div class="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
-          <a href="/register" class="btn btn-primary no-underline">Register for a Session</a>
-          <a href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp" target="_blank" rel="noopener noreferrer" class="btn btn-secondary no-underline">
-            Join The Community
-          </a>
-        </div>
+  <!-- Hero: dark slab -->
+  <section class="hero-dark" style="background: #1A1A1A;">
+    <div class="max-w-[1200px] mx-auto px-6 py-16 md:py-24">
+      <div class="text-xs md:text-sm font-heading font-semibold tracking-widest" style="color: #FFD166;">
+        BANGALORE'S
       </div>
-      <div class="animate-fade-in-up-delayed">
-        <Image
-          src={landing1}
-          alt="BGC game session"
-          widths={[400, 800, 1200]}
-          sizes="(max-width: 768px) 100vw, 600px"
-          loading="eager"
-          class="w-full object-cover rounded-[20px]"
-          style="aspect-ratio: 4/3; border: 4px solid #1A1A1A; box-shadow: 8px 8px 0 #1A1A1A;"
-        />
+      <h1
+        class="font-heading font-bold text-white mt-2"
+        style="font-size: clamp(2.8rem, 9vw, 6rem); line-height: 1.0; letter-spacing: -2.5px;"
+      >
+        Gaming Community.
+      </h1>
+      <p class="mt-5 text-base md:text-lg text-white/70 max-w-xl">
+        3,500+ players. <GameCount client:load />+ games. Sessions every weekend, all over Bangalore.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a href="/register" class="btn btn-primary no-underline">Register for a session →</a>
+        <a
+          href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn no-underline"
+          style="background: transparent; color: #FFFFFF; border: 4px solid #FFFFFF;"
+        >
+          Join the WhatsApp
+        </a>
       </div>
     </div>
   </section>
 
-  <!-- Upcoming Event -->
-  <section class="max-w-[1200px] mx-auto px-6 pb-14 reveal">
-    <UpcomingEventBanner client:load />
-  </section>
+  <!-- Hero photo band: 3 photos edge-to-edge -->
+  <HeroPhotoBand />
+
+  <!-- Upcoming event marquee (now full-width, no wrapping section) -->
+  <UpcomingEventBanner client:load />
 
   <!-- What Does BGC Do? -->
   <section class="py-16 reveal" style="background: #FAFAF5;">
