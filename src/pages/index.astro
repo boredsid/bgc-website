@@ -7,7 +7,6 @@ import EditorialStripe from '../components/EditorialStripe.astro';
 import landing4 from '../assets/landing/4.png';
 import landing5 from '../assets/landing/5.png';
 import landing6 from '../assets/landing/6.png';
-import { TIERS } from '../lib/guild-tiers';
 ---
 
 <Layout title="Home" description="Bangalore's gaming community — board game sessions at cafes across the city">
@@ -102,21 +101,8 @@ import { TIERS } from '../lib/guild-tiers';
         Get on the Guild Path.
       </h2>
       <p class="mt-4 text-base md:text-lg text-white/70 max-w-xl">
-        Join the ranks. Cheaper sessions, free events, exclusive perks. Three tiers.
+        Track your progress and level up through the BGC ranks. Discounted and free events, exclusive perks and free convention passes.
       </p>
-
-      <div class="mt-8 flex flex-wrap gap-3">
-        {TIERS.map((tier) => (
-          <a
-            href="/guild-path"
-            class="pill font-heading font-semibold no-underline"
-            style={`background: ${tier.color}; color: #1A1A1A; border: 3px solid #1A1A1A; box-shadow: 4px 4px 0 #FFFFFF; padding: 12px 20px; border-radius: 50px; display: inline-flex; align-items: baseline; gap: 8px;`}
-          >
-            <span style="font-size: 1rem;">{tier.name}</span>
-            <span style="font-size: 0.85rem; opacity: 0.7;">{tier.priceLabel}</span>
-          </a>
-        ))}
-      </div>
 
       <div class="mt-8">
         <a href="/guild-path" class="btn btn-primary no-underline">See all tiers →</a>
