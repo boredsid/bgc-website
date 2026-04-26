@@ -6,16 +6,16 @@ const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
 const WHATSAPP_URL = 'https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp';
 
 function formatRelativeDate(eventDate: Date): string {
-  const now = new Date();
-  const diffMs = eventDate.getTime() - now.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const sameCalendarDay =
-    eventDate.getFullYear() === now.getFullYear() &&
-    eventDate.getMonth() === now.getMonth() &&
-    eventDate.getDate() === now.getDate();
+  // Calendar-day diff (not millisecond diff) so a late-night event
+  // can't be mislabeled by a few hours of clock drift.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDay = new Date(eventDate);
+  eventDay.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((eventDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (sameCalendarDay) return 'TONIGHT';
-  if (diffDays === 1 || (diffDays === 0 && eventDate > now)) return 'TOMORROW';
+  if (diffDays === 0) return 'TONIGHT';
+  if (diffDays === 1) return 'TOMORROW';
 
   const weekday = eventDate.toLocaleDateString('en-IN', { weekday: 'long' }).toUpperCase();
 
@@ -55,7 +55,9 @@ export default function UpcomingEventBanner() {
           const res = await fetch(`${WORKER_URL}/api/event-spots/${nextEvent.id}`);
           if (res.ok) {
             const data = (await res.json()) as EventSpots;
-            if (!cancelled) setSpots(data);
+            if (typeof data?.capacity === 'number' && typeof data?.remaining === 'number') {
+              if (!cancelled) setSpots(data);
+            }
           }
         } catch {
           // network/worker failure: leave spots null; bar simply won't render
@@ -138,6 +140,11 @@ export default function UpcomingEventBanner() {
         {spotsText !== null && (
           <div className="mt-5 max-w-md">
             <div
+              role="progressbar"
+              aria-valuenow={Math.round(fillPct)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={spotsText}
               className="w-full h-3 rounded-full overflow-hidden"
               style={{ border: '2px solid #1A1A1A', background: '#FFFFFF' }}
             >
