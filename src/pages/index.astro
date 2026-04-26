@@ -3,6 +3,10 @@ import Layout from '../layouts/Layout.astro';
 import UpcomingEventBanner from '../components/UpcomingEventBanner.tsx';
 import GameCount from '../components/GameCount.tsx';
 import HeroPhotoBand from '../components/HeroPhotoBand.astro';
+import EditorialStripe from '../components/EditorialStripe.astro';
+import landing4 from '../assets/landing/4.png';
+import landing5 from '../assets/landing/5.png';
+import landing6 from '../assets/landing/6.png';
 ---
 
 <Layout title="Home" description="Bangalore's gaming community — board game sessions at cafes across the city">
@@ -40,38 +44,49 @@ import HeroPhotoBand from '../components/HeroPhotoBand.astro';
   <!-- Upcoming event marquee (now full-width, no wrapping section) -->
   <UpcomingEventBanner client:load />
 
-  <!-- What Does BGC Do? -->
-  <section class="py-16 reveal" style="background: #FAFAF5;">
-    <div class="max-w-[1200px] mx-auto px-6 text-center">
-      <span class="section-tag">What We Do</span>
-      <h2 class="font-heading font-bold mb-10" style="font-size: clamp(2.2rem, 5vw, 3.5rem); letter-spacing: -1px;">
-        What Does BGC Do?
-      </h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-        <div class="card-brutal p-9" style="background: #FFD166;">
-          <div class="text-5xl mb-4">🎲</div>
-          <h3 class="font-heading font-bold text-2xl mb-2">Offline Gaming</h3>
-          <p class="text-[#1A1A1A]/85 leading-relaxed">
-            Hosting board games, TTRPGs like D&amp;D, party games like Clocktower and more at your local cafe across Bangalore. Come play, meet new people, and have fun!
-          </p>
-        </div>
-        <div class="card-brutal p-9" style="background: #4ECDC4;">
-          <div class="text-5xl mb-4">📚</div>
-          <h3 class="font-heading font-bold text-2xl mb-2"><GameCount client:load /> Games</h3>
-          <p class="text-[#1A1A1A]/85 leading-relaxed">
-            From quick party games to deep strategy epics — our library has something for everyone.
-          </p>
-        </div>
-        <div class="card-brutal p-9" style="background: #A8E6CF;">
-          <div class="text-5xl mb-4">🤝</div>
-          <h3 class="font-heading font-bold text-2xl mb-2">Growing Community</h3>
-          <p class="text-[#1A1A1A]/85 leading-relaxed">
-            With people joining from all over the city, you're sure to find someone who matches your wavelength!
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
+  <!-- Editorial stripes: what we do -->
+  <EditorialStripe
+    number="01"
+    label="SESSIONS"
+    heading="We host every weekend at cafes across Bangalore."
+    body="Indiranagar, Koramangala, HSR, Whitefield. Show up, sit down, learn a new game, meet new people. Beginners always welcome."
+    ctaText="See the calendar →"
+    ctaHref="/calendar"
+    bgColor="#FFD166"
+    photo={landing4}
+    photoAlt="Players around a table at a Bangalore cafe"
+    photoSide="left"
+  />
+
+  <EditorialStripe
+    number="02"
+    label="LIBRARY"
+    body="Catan, Scythe, Wingspan, Clocktower, D&D — plus party games, two-player wonders, and weird imports you've never heard of. Browse the full list."
+    ctaText="Browse the library →"
+    ctaHref="/library"
+    bgColor="#4A9B8E"
+    photo={landing5}
+    photoAlt="Shelves of board games in the BGC library"
+    photoSide="right"
+  >
+    <Fragment slot="heading">
+      <GameCount client:load />+ board games. From 10-minute fillers to 4-hour epics.
+    </Fragment>
+  </EditorialStripe>
+
+  <EditorialStripe
+    number="03"
+    label="COMMUNITY"
+    heading="Not a class. Not a service. A community."
+    body="We're 3.5k+ players in Bangalore who keep showing up because the people are the point. Drop into the WhatsApp group — say hi."
+    ctaText="Join the WhatsApp →"
+    ctaHref="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
+    bgColor="#C3A6FF"
+    photo={landing6}
+    photoAlt="BGC community group photo"
+    photoSide="left"
+    ctaExternal
+  />
 
   <!-- Guild Path Teaser -->
   <section class="py-16 reveal" style="background: #FFF8E7;">
