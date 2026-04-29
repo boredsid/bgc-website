@@ -83,15 +83,28 @@ export default function RegistrationForm() {
       const data: PhoneLookupResponse = await res.json();
 
       if (data.user.found) {
-        if (data.user.name && !name) setName(data.user.name);
-        if (data.user.email && !email) setEmail(data.user.email);
+        if (data.user.name) setName((cur) => cur || data.user.name!);
+        if (data.user.email) setEmail((cur) => cur || data.user.email!);
       }
       setMembership(data.membership);
       setPhoneLookedUp(true);
     } catch {
       setPhoneLookedUp(false);
     }
-  }, [name, email]);
+  }, []);
+
+  useEffect(() => {
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    if (!/^(?:\+?91)?\d{10}$/.test(cleaned)) {
+      if (phoneLookedUp) {
+        setPhoneLookedUp(false);
+        setMembership(null);
+      }
+      return;
+    }
+    const t = setTimeout(() => lookupPhone(phone), 300);
+    return () => clearTimeout(t);
+  }, [phone, lookupPhone]);
 
   if (loading) {
     return <div className="text-center py-12 text-[#1A1A1A]/60 font-heading">Loading...</div>;
@@ -255,7 +268,6 @@ export default function RegistrationForm() {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              onBlur={() => lookupPhone(phone)}
               placeholder="10-digit mobile number"
               required
               className="input-brutal"

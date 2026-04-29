@@ -98,36 +98,53 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
     }
   }
 
-  // Check Guild Path membership and calculate total
-  // First find user by phone, then check guild_path_members
-  const { data: regUser } = await supabase
+  // Upsert user first so we can stamp user_id onto the registration.
+  const { data: existingUser } = await supabase
     .from('users')
     .select('id')
     .eq('phone', phone)
     .maybeSingle();
 
+  let userId: string;
+  if (existingUser) {
+    userId = existingUser.id;
+    await supabase
+      .from('users')
+      .update({ name, email, last_registered_at: new Date().toISOString() })
+      .eq('id', userId);
+  } else {
+    const { data: newUser, error: userError } = await supabase
+      .from('users')
+      .insert({ phone, name, email })
+      .select('id')
+      .single();
+    if (userError || !newUser) {
+      return jsonResponse({ error: 'Registration failed' }, 500);
+    }
+    userId = newUser.id;
+  }
+
+  // Check Guild Path membership and calculate total
   let totalAmount = event.price * seats;
   let discountApplied: string | null = null;
 
-  if (regUser) {
-    const { data: member } = await supabase
-      .from('guild_path_members')
-      .select('tier, expires_at')
-      .eq('user_id', regUser.id)
-      .eq('status', 'paid')
-      .gte('expires_at', new Date().toISOString().split('T')[0])
-      .order('expires_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  const { data: member } = await supabase
+    .from('guild_path_members')
+    .select('tier, expires_at')
+    .eq('user_id', userId)
+    .eq('status', 'paid')
+    .gte('expires_at', new Date().toISOString().split('T')[0])
+    .order('expires_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-    if (member) {
-      if (member.tier === 'adventurer' || member.tier === 'guildmaster') {
-        totalAmount = 0;
-        discountApplied = member.tier;
-      } else if (member.tier === 'initiate') {
-        totalAmount = Math.round(totalAmount * 0.8);
-        discountApplied = 'initiate';
-      }
+  if (member) {
+    if (member.tier === 'adventurer' || member.tier === 'guildmaster') {
+      totalAmount = 0;
+      discountApplied = member.tier;
+    } else if (member.tier === 'initiate') {
+      totalAmount = Math.round(totalAmount * 0.8);
+      discountApplied = 'initiate';
     }
   }
 
@@ -136,6 +153,7 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
     .from('registrations')
     .insert({
       event_id: body.event_id,
+      user_id: userId,
       name,
       phone,
       email,
@@ -150,24 +168,6 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
 
   if (regError) {
     return jsonResponse({ error: 'Registration failed' }, 500);
-  }
-
-  // Upsert user record
-  const { data: existingUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('phone', phone)
-    .maybeSingle();
-
-  if (existingUser) {
-    await supabase
-      .from('users')
-      .update({ name, email, last_registered_at: new Date().toISOString() })
-      .eq('phone', phone);
-  } else {
-    await supabase
-      .from('users')
-      .insert({ phone, name, email });
   }
 
   return jsonResponse({ success: true, registration_id: registration.id });
