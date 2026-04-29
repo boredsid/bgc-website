@@ -39,11 +39,18 @@ export default function GameLibrary() {
     return games.filter((game) => {
       if (search && !game.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (playerFilter) {
-        const count = parseInt(playerFilter, 10);
-        if (game.max_players < count) return false;
+        const minPlayers = parseInt(game.player_count, 10) || 1;
+        const maxPlayers = game.max_players || minPlayers;
+        if (playerFilter === 'up-to-2' && maxPlayers > 2) return false;
+        if (playerFilter === '3-5' && (maxPlayers < 3 || minPlayers > 5)) return false;
+        if (playerFilter === '6+' && maxPlayers < 6) return false;
       }
       if (complexityFilter && game.complexity !== complexityFilter) return false;
-      if (lengthFilter && game.length !== lengthFilter) return false;
+      if (lengthFilter) {
+        if (lengthFilter === 'Long') {
+          if (game.length !== 'Long' && game.length !== 'Very Long') return false;
+        } else if (game.length !== lengthFilter) return false;
+      }
       return true;
     });
   }, [games, search, playerFilter, complexityFilter, lengthFilter]);
@@ -99,8 +106,14 @@ export default function GameLibrary() {
         style={{ background: '#FAFAF5', border: '2px solid #1A1A1A' }}
       >
         <FilterGroup label="Complexity" value={complexityFilter} onChange={setComplexityFilter} options={['Light', 'Medium', 'Heavy']} />
-        <FilterGroup label="Players" value={playerFilter} onChange={setPlayerFilter} options={['2', '4', '6', '8']} valueLabel={(v) => `${v}+`} />
-        <FilterGroup label="Play Time" value={lengthFilter} onChange={setLengthFilter} options={['Quick', 'Medium', 'Long']} />
+        <FilterGroup
+          label="Players"
+          value={playerFilter}
+          onChange={setPlayerFilter}
+          options={['up-to-2', '3-5', '6+']}
+          valueLabel={(v) => (v === 'up-to-2' ? 'Up to 2' : v)}
+        />
+        <FilterGroup label="Play Time" value={lengthFilter} onChange={setLengthFilter} options={['Quick', 'Mid-Length', 'Long']} />
         {hasFilters && (
           <button onClick={clearFilters} className="font-heading font-semibold text-sm text-[#FF6B6B] bg-transparent border-0 cursor-pointer ml-auto py-2">
             Clear all
