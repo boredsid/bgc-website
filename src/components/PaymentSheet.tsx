@@ -86,30 +86,30 @@ export default function PaymentSheet({ amount, payerName, onConfirm, onClose, su
           {/* UPI App Buttons */}
           <div className="mb-6">
             <p className="label-brutal text-center mb-3">Or pay directly with</p>
-            <div className="flex justify-center gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <a
                 href={gpayUrl}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
+                aria-label="Pay with Google Pay"
+                className="flex items-center justify-center h-16 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
                 style={{ background: '#FFFFFF', border: '3px solid #1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' }}
               >
-                <img src="/payment-app-icons/gpay.png" alt="Google Pay" className="w-10 h-10 rounded-full" />
-                <span className="font-heading font-semibold text-xs">GPay</span>
+                <img src="/payment-app-icons/gpay.png" alt="Google Pay" className="max-h-10 max-w-[80%] object-contain" />
               </a>
               <a
                 href={phonepeUrl}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
+                aria-label="Pay with PhonePe"
+                className="flex items-center justify-center h-16 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
                 style={{ background: '#FFFFFF', border: '3px solid #1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' }}
               >
-                <img src="/payment-app-icons/phonepe.png" alt="PhonePe" className="w-10 h-10 rounded-full" />
-                <span className="font-heading font-semibold text-xs">PhonePe</span>
+                <img src="/payment-app-icons/phonepe.png" alt="PhonePe" className="max-h-10 max-w-[80%] object-contain" />
               </a>
               <a
                 href={paytmUrl}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
+                aria-label="Pay with Paytm"
+                className="flex items-center justify-center h-16 rounded-xl no-underline transition-transform hover:-translate-x-[2px] hover:-translate-y-[2px]"
                 style={{ background: '#FFFFFF', border: '3px solid #1A1A1A', boxShadow: '4px 4px 0 #1A1A1A' }}
               >
-                <img src="/payment-app-icons/paytm.jpg" alt="Paytm" className="w-10 h-10 rounded-full" />
-                <span className="font-heading font-semibold text-xs">Paytm</span>
+                <img src="/payment-app-icons/paytm.jpg" alt="Paytm" className="max-h-10 max-w-[80%] object-contain" />
               </a>
             </div>
           </div>
