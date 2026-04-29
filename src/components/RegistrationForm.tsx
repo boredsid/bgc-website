@@ -28,28 +28,42 @@ export default function RegistrationForm() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const id = params.get('event');
-    setEventId(id);
-  }, []);
+    const paramId = params.get('event');
 
-  useEffect(() => {
-    if (!eventId) {
-      setLoading(false);
-      return;
-    }
+    async function resolveEvent() {
+      let id = paramId;
 
-    async function fetchEvent() {
+      if (!id) {
+        const { data } = await supabase
+          .from('events')
+          .select('id')
+          .eq('is_published', true)
+          .gte('date', new Date().toISOString())
+          .order('date', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        id = data?.id ?? null;
+      }
+
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+
+      setEventId(id);
+
       const [eventRes, spotsRes] = await Promise.all([
-        supabase.from('events').select('*').eq('id', eventId).single(),
-        fetch(`${WORKER_URL}/api/event-spots/${eventId}`).then((r) => r.json()),
+        supabase.from('events').select('*').eq('id', id).single(),
+        fetch(`${WORKER_URL}/api/event-spots/${id}`).then((r) => r.json()),
       ]);
 
       setEvent(eventRes.data);
       setSpots(spotsRes);
       setLoading(false);
     }
-    fetchEvent();
-  }, [eventId]);
+
+    resolveEvent();
+  }, []);
 
   const lookupPhone = useCallback(async (phoneValue: string) => {
     const cleaned = phoneValue.replace(/[\s\-\(\)]/g, '');
