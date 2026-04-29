@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PaymentSheet from './PaymentSheet';
 import { TIERS, type Tier } from '../lib/guild-tiers';
 
@@ -21,7 +21,7 @@ export default function GuildPurchase() {
     setError(null);
   }
 
-  function handleChange() {
+  function closeModal() {
     setSelectedTier(null);
     setStep('idle');
     setError(null);
@@ -64,32 +64,6 @@ export default function GuildPurchase() {
       setStep('form');
     }
     setSubmitting(false);
-  }
-
-  // Success state
-  if (step === 'success') {
-    return (
-      <div className="card-brutal p-8 text-center max-w-lg mx-auto" style={{ background: '#A8E6CF' }}>
-        <div className="text-5xl mb-4">🎉</div>
-        <h2 className="font-heading text-2xl font-bold mb-2">Thanks!</h2>
-        <p className="text-[#1A1A1A]/70">
-          We'll confirm your membership shortly. You'll receive the benefits once your payment is verified.
-        </p>
-      </div>
-    );
-  }
-
-  // Payment sheet
-  if (step === 'payment' && selectedTier) {
-    return (
-      <PaymentSheet
-        amount={selectedTier.price}
-        payerName={name}
-        onConfirm={handlePaymentConfirm}
-        onClose={() => setStep('form')}
-        submitting={submitting}
-      />
-    );
   }
 
   return (
@@ -141,74 +115,185 @@ export default function GuildPurchase() {
         ))}
       </div>
 
-      {/* Inline Form */}
+      {/* Form modal */}
       {step === 'form' && selectedTier && (
-        <div className="max-w-md mx-auto mt-8">
-          <div className="card-brutal p-8" style={{ background: '#FFFFFF' }}>
-            <div className="flex items-center justify-between mb-6">
-              <p className="text-sm text-[#1A1A1A]/60">
-                Selected plan:{' '}
-                <strong className="text-[#1A1A1A] font-heading">{selectedTier.name}</strong>
-              </p>
-              <button
-                onClick={handleChange}
-                className="btn btn-secondary btn-sm"
-              >
-                Change
-              </button>
+        <FormModal
+          tier={selectedTier}
+          name={name}
+          phone={phone}
+          email={email}
+          error={error}
+          onName={setName}
+          onPhone={setPhone}
+          onEmail={setEmail}
+          onSubmit={handleFormSubmit}
+          onClose={closeModal}
+        />
+      )}
+
+      {/* Payment modal */}
+      {step === 'payment' && selectedTier && (
+        <PaymentSheet
+          amount={selectedTier.price}
+          payerName={name}
+          onConfirm={handlePaymentConfirm}
+          onClose={() => setStep('form')}
+          submitting={submitting}
+        />
+      )}
+
+      {/* Success modal */}
+      {step === 'success' && <SuccessModal onClose={closeModal} />}
+    </>
+  );
+}
+
+function FormModal({
+  tier, name, phone, email, error, onName, onPhone, onEmail, onSubmit, onClose,
+}: {
+  tier: Tier;
+  name: string;
+  phone: string;
+  email: string;
+  error: string | null;
+  onName: (v: string) => void;
+  onPhone: (v: string) => void;
+  onEmail: (v: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[3000] flex items-center justify-center p-6 animate-fade-in"
+      style={{ background: 'rgba(0,0,0,0.5)' }}
+      onClick={onClose}
+    >
+      <div
+        className="animate-modal relative rounded-2xl overflow-y-auto w-full max-w-md"
+        style={{
+          background: '#FFFFFF',
+          border: '4px solid #1A1A1A',
+          boxShadow: '12px 12px 0 #1A1A1A',
+          maxHeight: '90vh',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer font-bold z-10"
+          style={{ background: '#FFF8E7', border: '2px solid #1A1A1A' }}
+        >
+          ✕
+        </button>
+
+        <div className="p-8">
+          <div className="mb-6">
+            <span className="pill pill-black inline-block mb-2">{tier.name}</span>
+            <h2 className="font-heading font-bold text-2xl" style={{ letterSpacing: '-0.5px' }}>
+              Join the Guild
+            </h2>
+            <p className="text-sm text-[#1A1A1A]/60 mt-1">
+              {tier.priceLabel} / {tier.period}
+            </p>
+          </div>
+
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <div>
+              <label className="label-brutal">Name *</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => onName(e.target.value)}
+                placeholder="Your full name"
+                required
+                className="input-brutal w-full"
+              />
+            </div>
+            <div>
+              <label className="label-brutal">Phone *</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => onPhone(e.target.value)}
+                placeholder="10-digit mobile number"
+                required
+                className="input-brutal w-full"
+              />
+            </div>
+            <div>
+              <label className="label-brutal">Email *</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => onEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                className="input-brutal w-full"
+              />
             </div>
 
-            <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
-              <div>
-                <label className="label-brutal">Name *</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
-                  required
-                  className="input-brutal w-full"
-                />
+            {error && (
+              <div className="card-brutal p-4" style={{ background: '#FF6B6B' }}>
+                <p className="font-heading font-semibold">{error}</p>
               </div>
-              <div>
-                <label className="label-brutal">Phone *</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="10-digit mobile number"
-                  required
-                  className="input-brutal w-full"
-                />
-              </div>
-              <div>
-                <label className="label-brutal">Email *</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                  className="input-brutal w-full"
-                />
-              </div>
+            )}
 
-              {error && (
-                <div className="card-brutal p-4 mb-4" style={{ background: '#FF6B6B' }}>
-                  <p className="font-heading font-semibold">{error}</p>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                className="btn btn-primary w-full"
-              >
-                Pay {selectedTier.priceLabel}
-              </button>
-            </form>
-          </div>
+            <button type="submit" className="btn btn-primary w-full">
+              Pay {tier.priceLabel}
+            </button>
+          </form>
         </div>
-      )}
-    </>
+      </div>
+    </div>
+  );
+}
+
+function SuccessModal({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[3000] flex items-center justify-center p-6 animate-fade-in"
+      style={{ background: 'rgba(0,0,0,0.5)' }}
+      onClick={onClose}
+    >
+      <div
+        className="animate-modal card-brutal p-8 text-center w-full max-w-md"
+        style={{ background: '#A8E6CF' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-5xl mb-4">🎉</div>
+        <h2 className="font-heading text-2xl font-bold mb-2">Thanks!</h2>
+        <p className="text-[#1A1A1A]/70 mb-6">
+          We'll confirm your membership shortly. You'll receive the benefits once your payment is verified.
+        </p>
+        <button onClick={onClose} className="btn btn-black w-full">
+          Done
+        </button>
+      </div>
+    </div>
   );
 }
