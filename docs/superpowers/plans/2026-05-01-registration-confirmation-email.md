@@ -12,16 +12,23 @@
 
 ---
 
-## Inputs needed before starting
+## Inputs (resolved)
 
-The implementer must collect these from the BGC owner before Task 2:
+- **Apps Script owner Gmail:** `boardgamecompany2024@gmail.com` (this account creates and runs the Apps Script).
+- **Visible "From" address:** `hello@boardgamecompany.in` (a domain alias of the Gmail account above).
+- **WhatsApp number digits:** `919982200768` (used in `wa.me/<digits>`).
+- **WhatsApp number display:** `+91 99822 00768`.
+- **UPI ID:** `suranjanadatta24-1@okaxis` (confirmed unchanged).
 
-- **`BGC_GMAIL`** — the Gmail address that will own the Apps Script project (the visible "From"). Example placeholder used in this plan: `bgc.bangalore@gmail.com`. Replace everywhere.
-- **`WHATSAPP_NUMBER_DIGITS`** — digits only, e.g. `919876543210` (used in `wa.me/<digits>` link).
-- **`WHATSAPP_NUMBER_DISPLAY`** — display format, e.g. `+91 98765 43210`.
-- **UPI ID confirmation** — current hardcode in `src/components/PaymentSheet.tsx:9` is `suranjanadatta24-1@okaxis`. Confirm this is still correct before Task 1.
+### Critical precondition for the alias
 
-If any of these are unknown, stop and ask the user.
+For emails to come **from** `hello@boardgamecompany.in` instead of `boardgamecompany2024@gmail.com`, the alias must be set up as a verified "Send mail as" address in the Gmail account. Verify before Task 4:
+
+1. Sign in to `mail.google.com` as `boardgamecompany2024@gmail.com`.
+2. Settings (gear) → "See all settings" → "Accounts and Import" tab.
+3. Under "Send mail as", `hello@boardgamecompany.in` must be listed and verified.
+
+If it is not listed, set it up via "Add another email address" before continuing — Apps Script's `MailApp.sendEmail({ from })` will fail with a permissions error otherwise.
 
 ---
 
@@ -105,7 +112,7 @@ This task is performed in the Apps Script web UI by the human — it cannot be s
 
 - [ ] **Step 1: Create the Apps Script project**
 
-1. Sign in to `script.google.com` using the **`BGC_GMAIL`** account.
+1. Sign in to `script.google.com` using the `boardgamecompany2024@gmail.com` account.
 2. Click "New project". Rename it to `BGC Registration Email`.
 3. Delete the default content of `Code.gs`.
 
@@ -116,8 +123,9 @@ Paste this into `Code.gs`:
 ```js
 const SCRIPT_PROPS = PropertiesService.getScriptProperties();
 
-const WHATSAPP_NUMBER_DIGITS = '919876543210'; // TODO: replace with real digits-only number
-const WHATSAPP_NUMBER_DISPLAY = '+91 98765 43210'; // TODO: replace with real display number
+const WHATSAPP_NUMBER_DIGITS = '919982200768';
+const WHATSAPP_NUMBER_DISPLAY = '+91 99822 00768';
+const FROM_ADDRESS = 'hello@boardgamecompany.in';
 
 function doPost(e) {
   try {
@@ -142,7 +150,7 @@ function jsonResponse(obj) {
 }
 ```
 
-Replace the `WHATSAPP_NUMBER_DIGITS` and `WHATSAPP_NUMBER_DISPLAY` placeholders with the real values collected in "Inputs needed".
+These values come from "Inputs (resolved)" at the top of the plan.
 
 - [ ] **Step 3: Set the SHARED_SECRET script property**
 
@@ -351,6 +359,7 @@ function doPost(e) {
       subject: subject,
       htmlBody: html,
       name: 'BGC',
+      from: FROM_ADDRESS,
     });
 
     return jsonResponse({ success: true });
@@ -389,6 +398,7 @@ function testSendEmailToSelf() {
     subject: "You're registered for " + payload.event.name + ' — BGC',
     htmlBody: html,
     name: 'BGC',
+    from: FROM_ADDRESS,
   });
   Logger.log('Sent test email to ' + me);
 }
@@ -398,11 +408,13 @@ function testSendEmailToSelf() {
 
 1. Select `testSendEmailToSelf` in the function dropdown → Run.
 2. Apps Script will prompt for permissions: "Send email as you" — review and authorize.
-3. After authorization, run again. Check the BGC Gmail inbox for the email. Verify:
-   - From: `BGC` (display name)
+3. After authorization, run again. Apps Script will prompt for an additional permission to send mail as the alias — authorize. Check the inbox for the email. Verify:
+   - From: `BGC <hello@boardgamecompany.in>`
    - Subject: `You're registered for Test Event — BGC`
    - Layout matches the spec (orange header band, event card, payment block, footer)
    - Render in Gmail web AND Gmail mobile app if accessible
+
+If you see "Invalid From: address" instead of the email, the alias setup in the precondition was missed — go back and add `hello@boardgamecompany.in` as a "Send mail as" address in Gmail settings.
 
 If the layout is broken, iterate on `buildEmailHtml` (Task 3 step 1) and re-run.
 
@@ -802,7 +814,7 @@ Leave this running for Tasks 10–12. Watch for `[email]` log lines.
 Within ~5 seconds, an email should arrive at the address you used. Check:
 
 - Subject: `You're registered for <Event Name> — BGC`
-- From: `BGC` (display) / `BGC_GMAIL`
+- From: `BGC <hello@boardgamecompany.in>`
 - Hero: `You're registered, <Your Name>!`
 - Event card shows correct event name, date, venue, seat count
 - `price_includes` line shows if event has it
