@@ -1,6 +1,7 @@
 import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonResponse } from './validation';
+import { sendRegistrationEmail } from './email';
 
 export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -173,6 +174,42 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
   if (regError) {
     return jsonResponse({ error: 'Registration failed' }, 500);
   }
+
+  const customQuestionsForEmail = customQuestions
+    .filter((q) => {
+      const a = customAnswers[q.id];
+      return a !== undefined && a !== null && a !== '' && a !== false;
+    })
+    .map((q) => ({
+      id: q.id,
+      label: q.label,
+      answer: customAnswers[q.id] as string | boolean,
+    }));
+
+  ctx.waitUntil(
+    sendRegistrationEmail(
+      {
+        to: email,
+        name,
+        event: {
+          name: event.name,
+          date: event.date,
+          venue_name: event.venue_name,
+          venue_area: event.venue_area ?? null,
+          price_includes: event.price_includes ?? null,
+        },
+        seats,
+        total_amount: totalAmount,
+        discount_applied: discountApplied,
+        custom_questions: customQuestionsForEmail,
+        upi: {
+          id: env.UPI_ID,
+          payee_name: 'Board Game Company',
+        },
+      },
+      env
+    ).catch((err) => console.error('[email] send error', err))
+  );
 
   return jsonResponse({ success: true, registration_id: registration.id });
 }
