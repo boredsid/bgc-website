@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import PaymentSheet from './PaymentSheet';
+import { getSource } from '../lib/source';
 import { TIERS, type Tier } from '../lib/guild-tiers';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
@@ -47,6 +48,7 @@ export default function GuildPurchase() {
           phone,
           email,
           tier: selectedTier.key,
+          source: getSource(),
         }),
       });
 
