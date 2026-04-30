@@ -6,7 +6,11 @@ interface Props {
 
 export default function MobileMenu({ navLinks }: Props) {
   const [open, setOpen] = useState(false);
-  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  const [path, setPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPath(window.location.pathname);
+  }, []);
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
