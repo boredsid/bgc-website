@@ -1,6 +1,6 @@
 import type { Env } from './index';
 import { getSupabase } from './supabase';
-import { sanitizePhone, sanitizeEmail, sanitizeName, jsonResponse } from './validation';
+import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonResponse } from './validation';
 
 export async function handleRegister(request: Request, env: Env): Promise<Response> {
   const body = await request.json<{
@@ -11,6 +11,7 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
     seats: number;
     custom_answers: Record<string, string | boolean>;
     payment_status: 'pending' | 'confirmed';
+    source?: string;
   }>();
 
   // Validate inputs
@@ -30,6 +31,8 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
   if (!['pending', 'confirmed'].includes(body.payment_status)) {
     return jsonResponse({ error: 'Invalid payment status' }, 400);
   }
+
+  const source = sanitizeSource(body.source);
 
   const supabase = getSupabase(env);
 
@@ -115,7 +118,7 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
   } else {
     const { data: newUser, error: userError } = await supabase
       .from('users')
-      .insert({ phone, name, email })
+      .insert({ phone, name, email, source })
       .select('id')
       .single();
     if (userError || !newUser) {
@@ -162,6 +165,7 @@ export async function handleRegister(request: Request, env: Env): Promise<Respon
       discount_applied: discountApplied,
       custom_answers: customAnswers,
       payment_status: body.payment_status,
+      source,
     })
     .select('id')
     .single();
