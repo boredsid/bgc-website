@@ -255,6 +255,11 @@ export default function RegistrationForm() {
             </span>
           )}
         </div>
+        {event.price_includes && (
+          <div className="card-brutal px-3 py-2 text-sm mt-3" style={{ background: '#FFD166', boxShadow: '3px 3px 0 #1A1A1A' }}>
+            <span className="font-heading font-semibold">✨ {event.price_includes}</span>
+          </div>
+        )}
       </div>
 
       {soldOut ? (
