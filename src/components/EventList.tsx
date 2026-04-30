@@ -127,8 +127,9 @@ function EventCard({ event }: { event: EventWithSpots }) {
           )}
         </div>
         {event.price_includes && (
-          <div className="card-brutal px-3 py-2 text-sm mt-2" style={{ background: '#FFD166', boxShadow: '3px 3px 0 #1A1A1A' }}>
-            <span className="font-heading font-semibold">✨ {event.price_includes}</span>
+          <div className="card-brutal px-3 py-2 text-sm mt-2 flex items-baseline gap-1.5" style={{ background: '#FFD166', boxShadow: '3px 3px 0 #1A1A1A' }}>
+            <span>✨</span>
+            <span className="font-heading font-semibold">{event.price_includes}</span>
           </div>
         )}
         <div className="mt-3">
