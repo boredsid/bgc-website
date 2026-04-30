@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { getSource } from '../lib/source';
 import type { Event, PhoneLookupResponse, EventSpots } from '../lib/types';
 import CustomQuestion from './CustomQuestion';
 import PaymentSheet from './PaymentSheet';
@@ -171,6 +172,7 @@ export default function RegistrationForm() {
           seats,
           custom_answers: customAnswers,
           payment_status: paymentStatus,
+          source: getSource(),
         }),
       });
 
