@@ -33,6 +33,19 @@ const { title, description = "Bangalore's Favorite Board Gaming Community" } = A
     </main>
     <Footer />
 
+    <script is:inline>
+      (function () {
+        try {
+          var KEY = 'bgc_source';
+          if (sessionStorage.getItem(KEY)) return;
+          var raw = new URLSearchParams(window.location.search).get('source');
+          if (!raw) return;
+          var cleaned = raw.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 50);
+          if (cleaned) sessionStorage.setItem(KEY, cleaned);
+        } catch (e) {}
+      })();
+    </script>
+
     <script>
       const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
