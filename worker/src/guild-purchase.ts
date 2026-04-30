@@ -1,6 +1,6 @@
 import type { Env } from './index';
 import { getSupabase } from './supabase';
-import { sanitizePhone, sanitizeEmail, sanitizeName, jsonResponse } from './validation';
+import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonResponse } from './validation';
 
 const VALID_TIERS = ['initiate', 'adventurer', 'guildmaster'] as const;
 type Tier = typeof VALID_TIERS[number];
@@ -23,6 +23,7 @@ export async function handleGuildPurchase(request: Request, env: Env): Promise<R
     phone: string;
     email: string;
     tier: string;
+    source?: string;
   }>();
 
   // Validate inputs
@@ -38,6 +39,8 @@ export async function handleGuildPurchase(request: Request, env: Env): Promise<R
   if (!VALID_TIERS.includes(body.tier as Tier)) {
     return jsonResponse({ error: 'Invalid tier' }, 400);
   }
+
+  const source = sanitizeSource(body.source);
 
   const tier = body.tier as Tier;
   const amount = TIER_PRICES[tier];
@@ -62,7 +65,7 @@ export async function handleGuildPurchase(request: Request, env: Env): Promise<R
   } else {
     const { data: newUser, error: userError } = await supabase
       .from('users')
-      .insert({ phone, name, email })
+      .insert({ phone, name, email, source })
       .select('id')
       .single();
 
@@ -88,6 +91,7 @@ export async function handleGuildPurchase(request: Request, env: Env): Promise<R
       status: 'pending',
       starts_at: startsAt,
       expires_at: expiresAt,
+      source,
     })
     .select('id')
     .single();
