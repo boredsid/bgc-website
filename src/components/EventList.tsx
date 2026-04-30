@@ -126,6 +126,11 @@ function EventCard({ event }: { event: EventWithSpots }) {
             </span>
           )}
         </div>
+        {event.price_includes && (
+          <div className="card-brutal px-3 py-2 text-sm mt-2" style={{ background: '#FFD166', boxShadow: '3px 3px 0 #1A1A1A' }}>
+            <span className="font-heading font-semibold">✨ {event.price_includes}</span>
+          </div>
+        )}
         <div className="mt-3">
           {soldOut ? (
             <span className="pill" style={{ background: '#E5E5E5', color: '#1A1A1A', border: '2px solid #1A1A1A' }}>Sold Out</span>
