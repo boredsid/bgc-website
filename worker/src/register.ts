@@ -2,7 +2,7 @@ import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonResponse } from './validation';
 
-export async function handleRegister(request: Request, env: Env): Promise<Response> {
+export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
     event_id: string;
     name: string;
