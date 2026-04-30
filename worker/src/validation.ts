@@ -15,6 +15,12 @@ export function sanitizeName(name: string): string | null {
   return trimmed.length >= 1 && trimmed.length <= 200 ? trimmed : null;
 }
 
+export function sanitizeSource(source: unknown): string | null {
+  if (typeof source !== 'string') return null;
+  const cleaned = source.toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 50);
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
