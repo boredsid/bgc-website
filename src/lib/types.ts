@@ -21,6 +21,7 @@ export interface Event {
   price: number;
   capacity: number;
   custom_questions: CustomQuestion[] | null;
+  price_includes: string | null;
   is_published: boolean;
   created_at: string;
 }
