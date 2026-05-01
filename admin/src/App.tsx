@@ -9,6 +9,8 @@ import RegistrationsList from './pages/RegistrationsList';
 import RegistrationDrawer from './pages/RegistrationDrawer';
 import ManualRegistrationDrawer from './pages/ManualRegistrationDrawer';
 import GuildList from './pages/GuildList';
+import GuildDrawer from './pages/GuildDrawer';
+import UserDrawer from './pages/UserDrawer';
 import { Toaster } from '@/components/ui/sonner';
 
 export default function App() {
@@ -27,7 +29,8 @@ export default function App() {
           <Route path="/registrations/new" element={<><RegistrationsList /><ManualRegistrationDrawer /></>} />
           <Route path="/registrations/:id" element={<><RegistrationsList /><RegistrationDrawer /></>} />
           <Route path="/guild" element={<GuildList />} />
-          <Route path="/guild/:id" element={<GuildList />} />
+          <Route path="/guild/:id" element={<><GuildList /><GuildDrawer /></>} />
+          <Route path="/guild/:id/user" element={<><GuildList /><GuildDrawer /><UserDrawer /></>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
