@@ -4,6 +4,7 @@ import { handleEventSpots } from './event-spots';
 import { handleGuildPurchase } from './guild-purchase';
 import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
 import { verifyAccessJwt } from './access-auth';
+import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -88,6 +89,19 @@ export default {
           } else if (url.pathname === '/api/admin/cancel-guild-membership' && request.method === 'POST') {
             adminResponse = await handleCancelGuildMembership(request, env);
           }
+
+          if (!adminResponse) {
+            const eventsMatch = url.pathname.match(/^\/api\/admin\/events(?:\/([^/]+))?$/);
+            if (eventsMatch) {
+              const eventId = eventsMatch[1];
+              if (!eventId && request.method === 'GET') adminResponse = await handleListEvents(env);
+              else if (!eventId && request.method === 'POST') adminResponse = await handleCreateEvent(request, env);
+              else if (eventId && request.method === 'GET') adminResponse = await handleGetEvent(eventId, env);
+              else if (eventId && request.method === 'PATCH') adminResponse = await handleUpdateEvent(eventId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
           response = adminResponse ?? new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
         }
       } else {
