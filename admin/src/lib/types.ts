@@ -82,3 +82,16 @@ export interface User {
   last_registered_at: string;
   source: string | null;
 }
+
+export type QuestionSummary =
+  | { type: 'select' | 'radio'; counts: Record<string, number> }
+  | { type: 'checkbox'; yes: number; no: number }
+  | { type: 'text'; count: number; answers: string[] };
+
+export interface SummaryCard {
+  event: Event;
+  totals: { pending: number; confirmed: number; cancelled: number };
+  guild_member_count: number;
+  capacity_used: number;
+  custom_question_summary: Record<string, QuestionSummary>;
+}
