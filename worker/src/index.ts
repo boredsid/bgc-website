@@ -9,6 +9,8 @@ import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } fr
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
 import { handleAdminLookupPhone } from './admin/lookup-phone';
 import { handleManualRegister } from './admin/register-manual';
+import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
+import { handleGetUser, handleUpdateUser } from './admin/users';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -134,6 +136,27 @@ export default {
               else if (regId && regId !== 'manual' && request.method === 'GET') adminResponse = await handleGetRegistration(regId, env);
               else if (regId && regId !== 'manual' && request.method === 'PATCH') adminResponse = await handleUpdateRegistration(regId, request, env);
               else if (regId !== 'manual') adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse) {
+            const gmMatch = url.pathname.match(/^\/api\/admin\/guild-members(?:\/([^/]+))?$/);
+            if (gmMatch) {
+              const gmId = gmMatch[1];
+              if (!gmId && request.method === 'GET') adminResponse = await handleListGuildMembers(url, env);
+              else if (gmId && request.method === 'GET') adminResponse = await handleGetGuildMember(gmId, env);
+              else if (gmId && request.method === 'PATCH') adminResponse = await handleUpdateGuildMember(gmId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse) {
+            const userMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
+            if (userMatch) {
+              const userId = userMatch[1];
+              if (request.method === 'GET') adminResponse = await handleGetUser(userId, env);
+              else if (request.method === 'PATCH') adminResponse = await handleUpdateUser(userId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }
 
