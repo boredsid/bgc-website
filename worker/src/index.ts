@@ -5,6 +5,7 @@ import { handleGuildPurchase } from './guild-purchase';
 import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
 import { verifyAccessJwt } from './access-auth';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
+import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -98,6 +99,18 @@ export default {
               else if (!eventId && request.method === 'POST') adminResponse = await handleCreateEvent(request, env);
               else if (eventId && request.method === 'GET') adminResponse = await handleGetEvent(eventId, env);
               else if (eventId && request.method === 'PATCH') adminResponse = await handleUpdateEvent(eventId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse) {
+            const gamesMatch = url.pathname.match(/^\/api\/admin\/games(?:\/([^/]+))?$/);
+            if (gamesMatch) {
+              const gameId = gamesMatch[1];
+              if (!gameId && request.method === 'GET') adminResponse = await handleListGames(env);
+              else if (!gameId && request.method === 'POST') adminResponse = await handleCreateGame(request, env);
+              else if (gameId && request.method === 'GET') adminResponse = await handleGetGame(gameId, env);
+              else if (gameId && request.method === 'PATCH') adminResponse = await handleUpdateGame(gameId, request, env);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }
