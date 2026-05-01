@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import EventsList from './pages/EventsList';
 import EventDrawer from './pages/EventDrawer';
 import GamesList from './pages/GamesList';
+import GameDrawer from './pages/GameDrawer';
 import RegistrationsList from './pages/RegistrationsList';
 import GuildList from './pages/GuildList';
 import { Toaster } from '@/components/ui/sonner';
@@ -18,8 +19,8 @@ export default function App() {
           <Route path="/events/new" element={<><EventsList /><EventDrawer mode="create" /></>} />
           <Route path="/events/:id" element={<><EventsList /><EventDrawer mode="edit" /></>} />
           <Route path="/games" element={<GamesList />} />
-          <Route path="/games/new" element={<GamesList />} />
-          <Route path="/games/:id" element={<GamesList />} />
+          <Route path="/games/new" element={<><GamesList /><GameDrawer mode="create" /></>} />
+          <Route path="/games/:id" element={<><GamesList /><GameDrawer mode="edit" /></>} />
           <Route path="/registrations" element={<RegistrationsList />} />
           <Route path="/registrations/new" element={<RegistrationsList />} />
           <Route path="/registrations/:id" element={<RegistrationsList />} />
