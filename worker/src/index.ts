@@ -32,6 +32,15 @@ function corsHeaders(origin: string | null): Record<string, string> {
 }
 
 async function gateAdmin(request: Request, env: Env): Promise<{ ok: true; admin: AdminContext } | { ok: false; response: Response }> {
+  // Local dev escape hatch: when ENVIRONMENT=development, accept the
+  // first email from ADMIN_EMAILS as the acting admin without verifying a JWT.
+  // This branch is unreachable in production because wrangler.toml hard-codes
+  // ENVIRONMENT="production".
+  if (env.ENVIRONMENT === 'development') {
+    const fallback = env.ADMIN_EMAILS.split(',')[0]?.trim();
+    if (fallback) return { ok: true, admin: { email: fallback } };
+  }
+
   const token = request.headers.get('Cf-Access-Jwt-Assertion') || '';
   const result = await verifyAccessJwt(token, env);
   if (!result.ok) {
