@@ -121,6 +121,13 @@ export default {
             }
           }
 
+          if (!adminResponse && url.pathname === '/api/admin/whoami' && request.method === 'GET') {
+            adminResponse = new Response(JSON.stringify({ email: gate.admin.email }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+
           if (!adminResponse && url.pathname === '/api/admin/lookup-phone' && request.method === 'POST') {
             adminResponse = await handleAdminLookupPhone(request, env);
           }
