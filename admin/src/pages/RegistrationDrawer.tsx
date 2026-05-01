@@ -5,21 +5,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { fetchAdmin, showApiError } from '@/lib/api';
 import { toast } from 'sonner';
-import type { Registration } from '@/lib/types';
+import type { Registration, Event, CustomQuestion } from '@/lib/types';
 
 export default function RegistrationDrawer() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [reg, setReg] = useState<Registration | null>(null);
   const [initial, setInitial] = useState<Registration | null>(null);
+  const [event, setEvent] = useState<Event | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     fetchAdmin<{ registration: Registration }>(`/api/admin/registrations/${id}`)
-      .then((r) => { setReg(r.registration); setInitial(r.registration); })
+      .then((r) => {
+        setReg(r.registration);
+        setInitial(r.registration);
+        return fetchAdmin<{ event: Event }>(`/api/admin/events/${r.registration.event_id}`);
+      })
+      .then((r) => setEvent(r.event))
       .catch(showApiError);
   }, [id]);
 
@@ -51,6 +58,19 @@ export default function RegistrationDrawer() {
     setReg((r) => (r ? { ...r, [k]: v } : r));
   }
 
+  function setAnswer(qid: string, value: string | boolean) {
+    setReg((r) => {
+      if (!r) return r;
+      const next = { ...(r.custom_answers || {}) };
+      if (value === '' || value === false) delete next[qid];
+      else next[qid] = value;
+      return { ...r, custom_answers: next };
+    });
+  }
+
+  const customQuestions: CustomQuestion[] = (event?.custom_questions || []) as CustomQuestion[];
+  const answers = reg?.custom_answers || {};
+
   return (
     <Sheet open onOpenChange={(o) => { if (!o) close(); }}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
@@ -76,7 +96,47 @@ export default function RegistrationDrawer() {
               </Select>
             </div>
             <div><Label>Source</Label><Input value={reg.source || ''} onChange={(e) => set('source', e.target.value || null)} /></div>
-            <div className="text-xs text-muted-foreground pt-2">Custom answers and discount can only be edited via the database.</div>
+
+            {customQuestions.length > 0 && (
+              <div className="space-y-2 pt-2 border-t">
+                <div className="text-sm font-medium">Custom answers</div>
+                {customQuestions.map((q) => (
+                  <div key={q.id}>
+                    <Label>{q.label}{q.required && ' *'}</Label>
+                    {q.type === 'text' && (
+                      <Input
+                        value={(answers[q.id] as string) || ''}
+                        onChange={(e) => setAnswer(q.id, e.target.value)}
+                      />
+                    )}
+                    {q.type === 'checkbox' && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <Checkbox
+                          checked={!!answers[q.id]}
+                          onCheckedChange={(c) => setAnswer(q.id, !!c)}
+                        />
+                        <span className="text-sm">Yes</span>
+                      </div>
+                    )}
+                    {(q.type === 'select' || q.type === 'radio') && (
+                      <Select
+                        value={(answers[q.id] as string) || ''}
+                        onValueChange={(v) => setAnswer(q.id, v)}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Pick one" /></SelectTrigger>
+                        <SelectContent>
+                          {(q.options || []).map((o) => (
+                            <SelectItem key={o.value} value={o.value}>{o.value}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground pt-2">Discount is locked once a registration is created — change via the database if needed.</div>
             <div className="flex justify-end gap-2 pt-4 border-t">
               <Button variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
               <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
