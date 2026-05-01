@@ -1,6 +1,6 @@
 import type { Env } from './index';
 
-export interface EmailPayload {
+export interface EventEmailPayload {
   to: string;
   name: string;
   event: {
@@ -18,20 +18,38 @@ export interface EmailPayload {
     id: string;
     payee_name: string;
   };
+  payment_url: string;
 }
 
-export async function sendRegistrationEmail(payload: EmailPayload, env: Env): Promise<void> {
+export interface GuildPurchaseEmailPayload {
+  to: string;
+  name: string;
+  tier_key: 'initiate' | 'adventurer' | 'guildmaster';
+  tier_name: string;
+  period_months: number;
+  starts_at: string;
+  expires_at: string;
+  total_amount: number;
+  upi: {
+    id: string;
+    payee_name: string;
+  };
+  payment_url: string;
+}
+
+async function postToAppsScript(
+  body: Record<string, unknown>,
+  env: Env
+): Promise<void> {
   if (!env.APPS_SCRIPT_URL || !env.APPS_SCRIPT_SECRET) {
     console.error('[email] APPS_SCRIPT_URL or APPS_SCRIPT_SECRET not configured; skipping');
     return;
   }
 
-  const body = JSON.stringify({ ...payload, secret: env.APPS_SCRIPT_SECRET });
-
   const res = await fetch(env.APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body,
+    body: JSON.stringify({ ...body, secret: env.APPS_SCRIPT_SECRET }),
     redirect: 'follow',
   });
 
@@ -45,4 +63,18 @@ export async function sendRegistrationEmail(payload: EmailPayload, env: Env): Pr
   if (!result?.success) {
     console.error(`[email] non-success body: ${JSON.stringify(result)}`);
   }
+}
+
+export async function sendEventRegistrationEmail(
+  payload: EventEmailPayload,
+  env: Env
+): Promise<void> {
+  await postToAppsScript({ type: 'event_registration', ...payload }, env);
+}
+
+export async function sendGuildPurchaseEmail(
+  payload: GuildPurchaseEmailPayload,
+  env: Env
+): Promise<void> {
+  await postToAppsScript({ type: 'guild_purchase', ...payload }, env);
 }
