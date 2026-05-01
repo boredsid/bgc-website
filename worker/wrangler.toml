@@ -7,9 +7,9 @@ SUPABASE_URL = "https://yhgtwqdsnrslcgdvmunz.supabase.co"
 UPI_ID = "suranjanadatta24-1@okaxis"
 BGC_SITE_URL = "https://boardgamecompany.in"
 CF_ACCESS_TEAM_DOMAIN = "boardgamecompany.cloudflareaccess.com"
-CF_ACCESS_AUD = "REPLACE_WITH_AUD_TAG_FROM_ACCESS_DASHBOARD"
-ADMIN_EMAILS = "REPLACE_WITH_COMMA_SEPARATED_EMAILS"
+CF_ACCESS_AUD = "01dff74c40a2bbed21dda3d555f4c8f6072e5bf162a0f94cf30fcf6ed5f68c45"
 ENVIRONMENT = "production"
 
 # Set secrets via: wrangler secret put SUPABASE_SERVICE_KEY
 # Email secrets: wrangler secret put APPS_SCRIPT_URL / APPS_SCRIPT_SECRET
+# Admin allowlist: wrangler secret put ADMIN_EMAILS  (comma-separated)
