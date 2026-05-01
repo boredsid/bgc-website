@@ -8,6 +8,7 @@ import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent 
 import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
 import { handleAdminLookupPhone } from './admin/lookup-phone';
+import { handleManualRegister } from './admin/register-manual';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -119,6 +120,10 @@ export default {
 
           if (!adminResponse && url.pathname === '/api/admin/lookup-phone' && request.method === 'POST') {
             adminResponse = await handleAdminLookupPhone(request, env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/registrations/manual' && request.method === 'POST') {
+            adminResponse = await handleManualRegister(request, env, ctx);
           }
 
           if (!adminResponse) {
