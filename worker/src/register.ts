@@ -1,7 +1,7 @@
 import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonResponse } from './validation';
-import { sendRegistrationEmail } from './email';
+import { sendEventRegistrationEmail } from './email';
 
 export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -186,8 +186,12 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       answer: customAnswers[q.id] as string | boolean,
     }));
 
+  const payment_url = env.BGC_SITE_URL
+    ? `${env.BGC_SITE_URL}/pay?amount=${totalAmount}&for=${encodeURIComponent(event.name)}`
+    : '';
+
   ctx.waitUntil(
-    sendRegistrationEmail(
+    sendEventRegistrationEmail(
       {
         to: email,
         name,
@@ -206,6 +210,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
           id: env.UPI_ID,
           payee_name: 'Board Game Company',
         },
+        payment_url,
       },
       env
     ).catch((err) => console.error('[email] send error', err))
