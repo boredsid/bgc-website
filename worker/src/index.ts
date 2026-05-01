@@ -3,6 +3,15 @@ import { handleRegister } from './register';
 import { handleEventSpots } from './event-spots';
 import { handleGuildPurchase } from './guild-purchase';
 import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
+import { verifyAccessJwt } from './access-auth';
+import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
+import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
+import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
+import { handleAdminLookupPhone } from './admin/lookup-phone';
+import { handleManualRegister } from './admin/register-manual';
+import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
+import { handleGetUser, handleUpdateUser } from './admin/users';
+import { handleSummary } from './admin/summary';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -11,14 +20,47 @@ export interface Env {
   APPS_SCRIPT_URL: string;
   APPS_SCRIPT_SECRET: string;
   BGC_SITE_URL: string;
+  CF_ACCESS_TEAM_DOMAIN: string;
+  CF_ACCESS_AUD: string;
+  ADMIN_EMAILS: string;
+  ENVIRONMENT: string;
+}
+
+export interface AdminContext {
+  email: string;
 }
 
 function corsHeaders(origin: string | null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': origin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Cf-Access-Jwt-Assertion',
+    'Access-Control-Allow-Credentials': 'true',
   };
+}
+
+async function gateAdmin(request: Request, env: Env): Promise<{ ok: true; admin: AdminContext } | { ok: false; response: Response }> {
+  // Local dev escape hatch: when ENVIRONMENT=development, accept the
+  // first email from ADMIN_EMAILS as the acting admin without verifying a JWT.
+  // This branch is unreachable in production because wrangler.toml hard-codes
+  // ENVIRONMENT="production".
+  if (env.ENVIRONMENT === 'development') {
+    const fallback = env.ADMIN_EMAILS.split(',')[0]?.trim();
+    if (fallback) return { ok: true, admin: { email: fallback } };
+  }
+
+  const token = request.headers.get('Cf-Access-Jwt-Assertion') || '';
+  const result = await verifyAccessJwt(token, env);
+  if (!result.ok) {
+    return {
+      ok: false,
+      response: new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    };
+  }
+  return { ok: true, admin: { email: result.email } };
 }
 
 export default {
@@ -43,10 +85,95 @@ export default {
         response = await handleEventSpots(eventId, env);
       } else if (url.pathname === '/api/guild-purchase' && request.method === 'POST') {
         response = await handleGuildPurchase(request, env, ctx);
-      } else if (url.pathname === '/api/admin/cancel-registration' && request.method === 'POST') {
-        response = await handleCancelRegistration(request, env);
-      } else if (url.pathname === '/api/admin/cancel-guild-membership' && request.method === 'POST') {
-        response = await handleCancelGuildMembership(request, env);
+      } else if (url.pathname.startsWith('/api/admin/')) {
+        const gate = await gateAdmin(request, env);
+        if (!gate.ok) {
+          response = gate.response;
+        } else {
+          let adminResponse: Response | null = null;
+          if (url.pathname === '/api/admin/cancel-registration' && request.method === 'POST') {
+            adminResponse = await handleCancelRegistration(request, env);
+          } else if (url.pathname === '/api/admin/cancel-guild-membership' && request.method === 'POST') {
+            adminResponse = await handleCancelGuildMembership(request, env);
+          }
+
+          if (!adminResponse) {
+            const eventsMatch = url.pathname.match(/^\/api\/admin\/events(?:\/([^/]+))?$/);
+            if (eventsMatch) {
+              const eventId = eventsMatch[1];
+              if (!eventId && request.method === 'GET') adminResponse = await handleListEvents(env);
+              else if (!eventId && request.method === 'POST') adminResponse = await handleCreateEvent(request, env);
+              else if (eventId && request.method === 'GET') adminResponse = await handleGetEvent(eventId, env);
+              else if (eventId && request.method === 'PATCH') adminResponse = await handleUpdateEvent(eventId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse) {
+            const gamesMatch = url.pathname.match(/^\/api\/admin\/games(?:\/([^/]+))?$/);
+            if (gamesMatch) {
+              const gameId = gamesMatch[1];
+              if (!gameId && request.method === 'GET') adminResponse = await handleListGames(env);
+              else if (!gameId && request.method === 'POST') adminResponse = await handleCreateGame(request, env);
+              else if (gameId && request.method === 'GET') adminResponse = await handleGetGame(gameId, env);
+              else if (gameId && request.method === 'PATCH') adminResponse = await handleUpdateGame(gameId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/whoami' && request.method === 'GET') {
+            adminResponse = new Response(JSON.stringify({ email: gate.admin.email }), {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/lookup-phone' && request.method === 'POST') {
+            adminResponse = await handleAdminLookupPhone(request, env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/summary' && request.method === 'GET') {
+            adminResponse = await handleSummary(env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/registrations/manual' && request.method === 'POST') {
+            adminResponse = await handleManualRegister(request, env, ctx);
+          }
+
+          if (!adminResponse) {
+            const regsMatch = url.pathname.match(/^\/api\/admin\/registrations(?:\/([^/]+))?$/);
+            if (regsMatch) {
+              const regId = regsMatch[1];
+              if (!regId && request.method === 'GET') adminResponse = await handleListRegistrations(url, env);
+              else if (regId && regId !== 'manual' && request.method === 'GET') adminResponse = await handleGetRegistration(regId, env);
+              else if (regId && regId !== 'manual' && request.method === 'PATCH') adminResponse = await handleUpdateRegistration(regId, request, env);
+              else if (regId !== 'manual') adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse) {
+            const gmMatch = url.pathname.match(/^\/api\/admin\/guild-members(?:\/([^/]+))?$/);
+            if (gmMatch) {
+              const gmId = gmMatch[1];
+              if (!gmId && request.method === 'GET') adminResponse = await handleListGuildMembers(url, env);
+              else if (gmId && request.method === 'GET') adminResponse = await handleGetGuildMember(gmId, env);
+              else if (gmId && request.method === 'PATCH') adminResponse = await handleUpdateGuildMember(gmId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse) {
+            const userMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
+            if (userMatch) {
+              const userId = userMatch[1];
+              if (request.method === 'GET') adminResponse = await handleGetUser(userId, env);
+              else if (request.method === 'PATCH') adminResponse = await handleUpdateUser(userId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          response = adminResponse ?? new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
+        }
       } else {
         response = new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
       }
@@ -57,6 +184,7 @@ export default {
       }
       return new Response(response.body, { status: response.status, headers: newHeaders });
     } catch (err) {
+      console.error('[worker] error', err);
       return new Response(
         JSON.stringify({ error: 'Internal server error' }),
         { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
