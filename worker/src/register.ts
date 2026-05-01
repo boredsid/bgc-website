@@ -131,10 +131,13 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
   // Check Guild Path membership and calculate total
   let totalAmount = event.price * seats;
   let discountApplied: string | null = null;
+  let plusOnesToConsume = 0;
+  let membershipIdToUpdate: string | null = null;
+  let membershipNewPlusOnesUsed = 0;
 
   const { data: member } = await supabase
     .from('guild_path_members')
-    .select('tier, expires_at')
+    .select('id, tier, expires_at, plus_ones_used')
     .eq('user_id', userId)
     .eq('status', 'paid')
     .gte('expires_at', new Date().toISOString().split('T')[0])
@@ -143,12 +146,32 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     .maybeSingle();
 
   if (member) {
-    if (member.tier === 'adventurer' || member.tier === 'guildmaster') {
-      totalAmount = 0;
-      discountApplied = member.tier;
-    } else if (member.tier === 'initiate') {
+    if (member.tier === 'initiate') {
       totalAmount = Math.round(totalAmount * 0.8);
       discountApplied = 'initiate';
+    } else if (member.tier === 'adventurer' || member.tier === 'guildmaster') {
+      // Sum existing seats this user already holds for this event (pending + confirmed)
+      // so a separate registration can't double-claim the free self-seat.
+      const { data: priorRegs } = await supabase
+        .from('registrations')
+        .select('seats')
+        .eq('event_id', body.event_id)
+        .eq('user_id', userId);
+
+      const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
+
+      const cap = member.tier === 'adventurer' ? 1 : 5;
+      const remainingCap = Math.max(0, cap - member.plus_ones_used);
+
+      const selfSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
+      const plusOneCandidates = seats - selfSeats;
+      plusOnesToConsume = Math.min(plusOneCandidates, remainingCap);
+      const paidSeats = plusOneCandidates - plusOnesToConsume;
+
+      totalAmount = paidSeats * event.price;
+      discountApplied = member.tier;
+      membershipIdToUpdate = member.id;
+      membershipNewPlusOnesUsed = member.plus_ones_used + plusOnesToConsume;
     }
   }
 
@@ -173,6 +196,13 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
 
   if (regError) {
     return jsonResponse({ error: 'Registration failed' }, 500);
+  }
+
+  if (membershipIdToUpdate && plusOnesToConsume > 0) {
+    await supabase
+      .from('guild_path_members')
+      .update({ plus_ones_used: membershipNewPlusOnesUsed })
+      .eq('id', membershipIdToUpdate);
   }
 
   const customQuestionsForEmail = customQuestions

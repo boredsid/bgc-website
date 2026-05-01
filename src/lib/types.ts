@@ -48,7 +48,13 @@ export interface EventSpots {
 
 export interface PhoneLookupResponse {
   user: { found: boolean; name: string | null; email: string | null };
-  membership: { isMember: boolean; tier: string | null; discount: string | null };
+  membership: {
+    isMember: boolean;
+    tier: string | null;
+    discount: string | null;
+    plus_ones_remaining: number;
+  };
+  existing_seats_for_event: number;
 }
 
 export interface RegisterRequest {

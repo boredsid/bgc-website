@@ -22,6 +22,7 @@ export default function RegistrationForm() {
   const [seats, setSeats] = useState(1);
   const [customAnswers, setCustomAnswers] = useState<Record<string, string | boolean>>({});
   const [membership, setMembership] = useState<PhoneLookupResponse['membership'] | null>(null);
+  const [existingSeatsForEvent, setExistingSeatsForEvent] = useState(0);
   const [phoneLookedUp, setPhoneLookedUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,12 +67,13 @@ export default function RegistrationForm() {
     resolveEvent();
   }, []);
 
-  const lookupPhone = useCallback(async (phoneValue: string) => {
+  const lookupPhone = useCallback(async (phoneValue: string, currentEventId: string | null) => {
     const cleaned = phoneValue.replace(/[\s\-\(\)]/g, '');
     const match = cleaned.match(/^(?:\+?91)?(\d{10})$/);
     if (!match) {
       setPhoneLookedUp(false);
       setMembership(null);
+      setExistingSeatsForEvent(0);
       return;
     }
 
@@ -79,7 +81,7 @@ export default function RegistrationForm() {
       const res = await fetch(`${WORKER_URL}/api/lookup-phone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: match[1] }),
+        body: JSON.stringify({ phone: match[1], event_id: currentEventId }),
       });
       const data: PhoneLookupResponse = await res.json();
 
@@ -88,6 +90,7 @@ export default function RegistrationForm() {
         if (data.user.email) setEmail((cur) => cur || data.user.email!);
       }
       setMembership(data.membership);
+      setExistingSeatsForEvent(data.existing_seats_for_event ?? 0);
       setPhoneLookedUp(true);
     } catch {
       setPhoneLookedUp(false);
@@ -100,12 +103,13 @@ export default function RegistrationForm() {
       if (phoneLookedUp) {
         setPhoneLookedUp(false);
         setMembership(null);
+        setExistingSeatsForEvent(0);
       }
       return;
     }
-    const t = setTimeout(() => lookupPhone(phone), 300);
+    const t = setTimeout(() => lookupPhone(phone, eventId), 300);
     return () => clearTimeout(t);
-  }, [phone, lookupPhone]);
+  }, [phone, eventId, lookupPhone]);
 
   if (loading) {
     return <div className="text-center py-12 text-[#1A1A1A]/60 font-heading">Loading...</div>;
@@ -130,12 +134,23 @@ export default function RegistrationForm() {
   let total = event.price * seats;
   let discountLabel = '';
   if (membership?.isMember) {
-    if (membership.discount === 'free') {
-      total = 0;
-      discountLabel = `${membership.tier} member — free!`;
-    } else if (membership.discount === '20') {
+    if (membership.discount === '20') {
       total = Math.round(total * 0.8);
       discountLabel = 'Initiate member — 20% off';
+    } else if (membership.discount === 'free') {
+      const selfSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
+      const plusOneCandidates = seats - selfSeats;
+      const plusOnesUsed = Math.min(plusOneCandidates, membership.plus_ones_remaining);
+      const paidSeats = plusOneCandidates - plusOnesUsed;
+      total = paidSeats * event.price;
+
+      const tierName = membership.tier === 'guildmaster' ? 'Guildmaster' : 'Adventurer';
+      const remainingAfter = membership.plus_ones_remaining - plusOnesUsed;
+      const parts: string[] = [];
+      if (selfSeats > 0) parts.push('your seat free');
+      if (plusOnesUsed > 0) parts.push(`${plusOnesUsed} plus-one${plusOnesUsed > 1 ? 's' : ''} applied`);
+      if (parts.length === 0) parts.push(`${membership.plus_ones_remaining} plus-one${membership.plus_ones_remaining === 1 ? '' : 's'} left`);
+      discountLabel = `${tierName} — ${parts.join(', ')}${plusOnesUsed > 0 ? ` (${remainingAfter} left)` : ''}`;
     }
   }
 
