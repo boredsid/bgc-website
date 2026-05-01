@@ -7,6 +7,7 @@ import { verifyAccessJwt } from './access-auth';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
 import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
+import { handleAdminLookupPhone } from './admin/lookup-phone';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -114,6 +115,10 @@ export default {
               else if (gameId && request.method === 'PATCH') adminResponse = await handleUpdateGame(gameId, request, env);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/lookup-phone' && request.method === 'POST') {
+            adminResponse = await handleAdminLookupPhone(request, env);
           }
 
           if (!adminResponse) {
