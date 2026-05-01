@@ -5,6 +5,7 @@ compatibility_date = "2025-04-01"
 [vars]
 SUPABASE_URL = "https://yhgtwqdsnrslcgdvmunz.supabase.co"
 UPI_ID = "suranjanadatta24-1@okaxis"
+BGC_SITE_URL = "https://boardgaming.in"
 
 # Set secrets via: wrangler secret put SUPABASE_SERVICE_KEY
 # Email secrets: wrangler secret put APPS_SCRIPT_URL / APPS_SCRIPT_SECRET

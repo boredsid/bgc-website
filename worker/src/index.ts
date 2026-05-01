@@ -9,6 +9,7 @@ export interface Env {
   UPI_ID: string;
   APPS_SCRIPT_URL: string;
   APPS_SCRIPT_SECRET: string;
+  BGC_SITE_URL: string;
 }
 
 function corsHeaders(origin: string | null): Record<string, string> {
@@ -40,7 +41,7 @@ export default {
         const eventId = url.pathname.split('/api/event-spots/')[1];
         response = await handleEventSpots(eventId, env);
       } else if (url.pathname === '/api/guild-purchase' && request.method === 'POST') {
-        response = await handleGuildPurchase(request, env);
+        response = await handleGuildPurchase(request, env, ctx);
       } else {
         response = new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
       }
