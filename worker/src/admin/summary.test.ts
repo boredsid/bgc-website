@@ -19,21 +19,21 @@ const regs: RegRow[] = [
 const guildUserIds = new Set(['u1']);
 
 describe('aggregateRegistrations', () => {
-  it('counts statuses correctly', () => {
+  it('sums seats per status (not row count)', () => {
     const summary = aggregateRegistrations(event, regs, guildUserIds);
-    expect(summary.totals.confirmed).toBe(2);
-    expect(summary.totals.pending).toBe(1);
+    expect(summary.totals.confirmed).toBe(3); // 2 + 1
+    expect(summary.totals.pending).toBe(3);
     expect(summary.totals.cancelled).toBe(1);
   });
 
-  it('sums confirmed seats for capacity_used', () => {
+  it('capacity_used includes confirmed AND pending seats, excludes cancelled', () => {
     const summary = aggregateRegistrations(event, regs, guildUserIds);
-    expect(summary.capacity_used).toBe(3);
+    expect(summary.capacity_used).toBe(6); // 2 + 1 + 3
   });
 
-  it('counts confirmed regs whose user_id is in guild set', () => {
+  it('guild_member_count sums seats of confirmed regs whose user_id is in guild set', () => {
     const summary = aggregateRegistrations(event, regs, guildUserIds);
-    expect(summary.guild_member_count).toBe(1);
+    expect(summary.guild_member_count).toBe(2); // r1 has 2 seats, user u1 in guild
   });
 
   it('aggregates select answers from confirmed only', () => {

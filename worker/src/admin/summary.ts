@@ -47,11 +47,16 @@ export function aggregateRegistrations(event: EventRow, regs: RegRow[], guildUse
   }
 
   for (const r of regs) {
-    totals[r.payment_status]++;
+    // totals = seats per status (not row count). capacity_used counts every
+    // non-cancelled seat — pending seats are real holds and should reduce
+    // available spots. Custom-question aggregation stays confirmed-only.
+    totals[r.payment_status] += r.seats;
+    if (r.payment_status !== 'cancelled') {
+      capacity_used += r.seats;
+    }
     if (r.payment_status !== 'confirmed') continue;
 
-    capacity_used += r.seats;
-    if (r.user_id && guildUserIds.has(r.user_id)) guild_member_count++;
+    if (r.user_id && guildUserIds.has(r.user_id)) guild_member_count += r.seats;
 
     for (const q of event.custom_questions || []) {
       const a = r.custom_answers?.[q.id];
