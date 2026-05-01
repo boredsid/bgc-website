@@ -10,9 +10,13 @@ const items = [
   { to: '/guild', label: 'Guild', icon: ShieldCheck },
 ];
 
-export default function Sidebar() {
+interface Props {
+  onNavigate?: () => void;
+}
+
+export default function Sidebar({ onNavigate }: Props) {
   return (
-    <aside className="w-56 shrink-0 bg-background border-r flex flex-col">
+    <aside className="w-56 shrink-0 bg-background border-r flex flex-col h-full">
       <div className="p-4 font-semibold text-lg">BGC Admin</div>
       <nav className="flex-1 p-2 space-y-1">
         {items.map((item) => (
@@ -20,6 +24,7 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-2 px-3 py-2 rounded-md text-sm',
