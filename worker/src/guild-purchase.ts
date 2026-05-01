@@ -1,6 +1,7 @@
 import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonResponse } from './validation';
+import { sendGuildPurchaseEmail } from './email';
 
 const VALID_TIERS = ['initiate', 'adventurer', 'guildmaster'] as const;
 type Tier = typeof VALID_TIERS[number];
@@ -17,7 +18,17 @@ const TIER_DURATION_MONTHS: Record<Tier, number> = {
   guildmaster: 12,
 };
 
-export async function handleGuildPurchase(request: Request, env: Env): Promise<Response> {
+const TIER_DISPLAY_NAME: Record<Tier, string> = {
+  initiate: 'Initiate',
+  adventurer: 'Adventurer',
+  guildmaster: 'Guildmaster',
+};
+
+export async function handleGuildPurchase(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
   const body = await request.json<{
     name: string;
     phone: string;
@@ -99,6 +110,33 @@ export async function handleGuildPurchase(request: Request, env: Env): Promise<R
   if (purchaseError || !purchase) {
     return jsonResponse({ error: 'Purchase failed' }, 500);
   }
+
+  // Send confirmation email (fire-and-forget)
+  const tierName = TIER_DISPLAY_NAME[tier];
+  const payment_url = env.BGC_SITE_URL
+    ? `${env.BGC_SITE_URL}/pay?amount=${amount}&for=${encodeURIComponent(tierName + ' (Guild Path)')}`
+    : '';
+
+  ctx.waitUntil(
+    sendGuildPurchaseEmail(
+      {
+        to: email,
+        name,
+        tier_key: tier,
+        tier_name: tierName,
+        period_months: TIER_DURATION_MONTHS[tier],
+        starts_at: startsAt,
+        expires_at: expiresAt,
+        total_amount: amount,
+        upi: {
+          id: env.UPI_ID,
+          payee_name: 'Board Game Company',
+        },
+        payment_url,
+      },
+      env
+    ).catch((err) => console.error('[email] send error', err))
+  );
 
   return jsonResponse({ success: true, purchase_id: purchase.id });
 }
