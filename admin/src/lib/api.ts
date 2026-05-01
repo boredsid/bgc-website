@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || 'https://bgc-api.boredsid.workers.dev';
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
 
 export class ApiError extends Error {
   status: number;
