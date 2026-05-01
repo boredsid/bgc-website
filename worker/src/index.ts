@@ -6,6 +6,7 @@ import { handleCancelRegistration, handleCancelGuildMembership } from './cancel'
 import { verifyAccessJwt } from './access-auth';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
 import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
+import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -112,6 +113,17 @@ export default {
               else if (gameId && request.method === 'GET') adminResponse = await handleGetGame(gameId, env);
               else if (gameId && request.method === 'PATCH') adminResponse = await handleUpdateGame(gameId, request, env);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse) {
+            const regsMatch = url.pathname.match(/^\/api\/admin\/registrations(?:\/([^/]+))?$/);
+            if (regsMatch) {
+              const regId = regsMatch[1];
+              if (!regId && request.method === 'GET') adminResponse = await handleListRegistrations(url, env);
+              else if (regId && regId !== 'manual' && request.method === 'GET') adminResponse = await handleGetRegistration(regId, env);
+              else if (regId && regId !== 'manual' && request.method === 'PATCH') adminResponse = await handleUpdateRegistration(regId, request, env);
+              else if (regId !== 'manual') adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }
 
