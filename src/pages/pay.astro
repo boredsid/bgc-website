@@ -1,0 +1,29 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PaymentPage from '../components/PaymentPage';
+---
+
+<Layout title="Pay" description="Complete your payment to Board Game Company">
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[1200px] mx-auto px-6 text-center">
+      <span class="section-tag">Payment</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        Complete Payment
+      </h1>
+      <p class="text-lg text-[#1A1A1A]/70 mt-3 max-w-xl mx-auto">
+        Securely pay using UPI and get instant confirmation.
+      </p>
+    </div>
+  </section>
+
+  <section class="pb-20">
+    <div class="max-w-[720px] mx-auto px-6">
+      <div class="overflow-hidden rounded-2xl" style="background: #FFFFFF; border: 4px solid #1A1A1A; box-shadow: 8px 8px 0 #1A1A1A;">
+        <div style="height: 12px; background: #F47B20; border-bottom: 3px solid #1A1A1A;"></div>
+        <div class="p-6 md:p-10">
+          <PaymentPage client:load />
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
