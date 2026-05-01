@@ -1,0 +1,37 @@
+import { NavLink } from 'react-router-dom';
+import { LayoutDashboard, Calendar, Library, Users, ShieldCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const items = [
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/events', label: 'Events', icon: Calendar },
+  { to: '/games', label: 'Games', icon: Library },
+  { to: '/registrations', label: 'Registrations', icon: Users },
+  { to: '/guild', label: 'Guild', icon: ShieldCheck },
+];
+
+export default function Sidebar() {
+  return (
+    <aside className="w-56 shrink-0 bg-background border-r flex flex-col">
+      <div className="p-4 font-semibold text-lg">BGC Admin</div>
+      <nav className="flex-1 p-2 space-y-1">
+        {items.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-2 px-3 py-2 rounded-md text-sm',
+                isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+              )
+            }
+          >
+            <item.icon className="h-4 w-4" />
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
+    </aside>
+  );
+}
