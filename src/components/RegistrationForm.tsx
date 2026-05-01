@@ -237,7 +237,7 @@ export default function RegistrationForm() {
       <PaymentSheet
         amount={total}
         payerName={name}
-        onConfirm={() => submitRegistration('confirmed')}
+        onConfirm={() => submitRegistration('pending')}
         onClose={() => setStep('form')}
         submitting={submitting}
       />

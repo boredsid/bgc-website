@@ -19,7 +19,7 @@ export async function handleEventSpots(eventId: string, env: Env): Promise<Respo
       .from('registrations')
       .select('seats, custom_answers')
       .eq('event_id', eventId)
-      .eq('payment_status', 'confirmed'),
+      .neq('payment_status', 'cancelled'),
   ]);
 
   if (!eventResult.data) {

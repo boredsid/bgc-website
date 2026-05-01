@@ -58,7 +58,8 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
       .from('registrations')
       .select('seats')
       .eq('event_id', body.event_id)
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .neq('payment_status', 'cancelled');
     existingSeatsForEvent = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
   }
 

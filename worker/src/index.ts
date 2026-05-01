@@ -2,6 +2,7 @@ import { handleLookupPhone } from './lookup-phone';
 import { handleRegister } from './register';
 import { handleEventSpots } from './event-spots';
 import { handleGuildPurchase } from './guild-purchase';
+import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -42,6 +43,10 @@ export default {
         response = await handleEventSpots(eventId, env);
       } else if (url.pathname === '/api/guild-purchase' && request.method === 'POST') {
         response = await handleGuildPurchase(request, env, ctx);
+      } else if (url.pathname === '/api/admin/cancel-registration' && request.method === 'POST') {
+        response = await handleCancelRegistration(request, env);
+      } else if (url.pathname === '/api/admin/cancel-guild-membership' && request.method === 'POST') {
+        response = await handleCancelGuildMembership(request, env);
       } else {
         response = new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
       }

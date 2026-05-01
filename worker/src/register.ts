@@ -52,7 +52,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     .from('registrations')
     .select('seats')
     .eq('event_id', body.event_id)
-    .eq('payment_status', 'confirmed');
+    .neq('payment_status', 'cancelled');
 
   const registered = (regs || []).reduce((sum, r) => sum + r.seats, 0);
   const remaining = event.capacity - registered;
@@ -88,7 +88,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
           .from('registrations')
           .select('seats, custom_answers')
           .eq('event_id', body.event_id)
-          .eq('payment_status', 'confirmed');
+          .neq('payment_status', 'cancelled');
 
         const optionCount = (allRegs || []).reduce((sum, r) => {
           const a = r.custom_answers as Record<string, string> | null;
@@ -156,7 +156,8 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
         .from('registrations')
         .select('seats')
         .eq('event_id', body.event_id)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .neq('payment_status', 'cancelled');
 
       const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
 
@@ -189,6 +190,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       discount_applied: discountApplied,
       custom_answers: customAnswers,
       payment_status: body.payment_status,
+      plus_ones_consumed: plusOnesToConsume,
       source,
     })
     .select('id')
