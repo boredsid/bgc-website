@@ -110,6 +110,11 @@ export async function handleSummary(env: Env): Promise<Response> {
 
   const guildIds = new Set<string>((members || []).map((m: any) => m.user_id));
 
+  const { count: pendingGuildCount } = await supabase
+    .from('guild_path_members')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending');
+
   function buildCards(events: any[]): SummaryCard[] {
     return events.map((e) => {
       const eventRegs = (regs || []).filter((r: any) => r.event_id === e.id) as RegRow[];
@@ -120,5 +125,6 @@ export async function handleSummary(env: Env): Promise<Response> {
   return jsonResponse({
     upcoming: buildCards(upcomingEvents || []),
     past: buildCards(pastEvents || []),
+    pending_guild_count: pendingGuildCount ?? 0,
   });
 }
