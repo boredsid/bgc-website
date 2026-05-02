@@ -17,7 +17,10 @@ interface Props {
 export default function Sidebar({ onNavigate }: Props) {
   return (
     <aside className="w-56 shrink-0 bg-background border-r flex flex-col h-full">
-      <div className="p-4 font-semibold text-lg">BGC Admin</div>
+      <div className="p-4 flex items-center gap-2">
+        <img src="/bgc-logo.png" alt="" className="h-7 w-7" />
+        <span className="font-heading font-semibold text-lg">Admin</span>
+      </div>
       <nav className="flex-1 p-2 space-y-1">
         {items.map((item) => (
           <NavLink
