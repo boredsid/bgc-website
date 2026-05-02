@@ -33,3 +33,41 @@ describe('DataTable sorting', () => {
     expect(cells).toEqual(['3', '2', '1']);
   });
 });
+
+describe('DataTable selection', () => {
+  it('toggles a single row when its checkbox is clicked', () => {
+    const cols: Column<Row>[] = [{ key: 'name', header: 'Name', render: (r) => r.name }];
+    let selected: string[] = [];
+    render(
+      <DataTable
+        rows={rows}
+        columns={cols}
+        rowKey={(r) => r.id}
+        selectable
+        selectedIds={selected}
+        onSelectedIdsChange={(ids) => { selected = ids; }}
+      />,
+    );
+    const checkboxes = screen.getAllByRole('checkbox');
+    // [0] is the header "select all", [1..3] are row checkboxes.
+    fireEvent.click(checkboxes[2]);
+    expect(selected).toEqual(['2']);
+  });
+
+  it('selects all rows when the header checkbox is clicked', () => {
+    const cols: Column<Row>[] = [{ key: 'name', header: 'Name', render: (r) => r.name }];
+    let selected: string[] = [];
+    render(
+      <DataTable
+        rows={rows}
+        columns={cols}
+        rowKey={(r) => r.id}
+        selectable
+        selectedIds={selected}
+        onSelectedIdsChange={(ids) => { selected = ids; }}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole('checkbox')[0]);
+    expect(selected).toEqual(['1', '2', '3']);
+  });
+});

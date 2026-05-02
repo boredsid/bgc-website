@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 export interface Column<T> {
@@ -21,12 +22,16 @@ interface Props<T> {
   onRowClick?: (row: T) => void;
   emptyMessage?: string;
   dense?: boolean;
+  selectable?: boolean;
+  selectedIds?: string[];
+  onSelectedIdsChange?: (ids: string[]) => void;
 }
 
 type SortState = { key: string; dir: 'asc' | 'desc' } | null;
 
 export default function DataTable<T>({
   rows, columns, rowKey, onRowClick, emptyMessage, dense,
+  selectable, selectedIds = [], onSelectedIdsChange,
 }: Props<T>) {
   const [sort, setSort] = useState<SortState>(null);
 
@@ -57,6 +62,21 @@ export default function DataTable<T>({
     });
   }
 
+  const allIds = useMemo(() => rows.map(rowKey), [rows, rowKey]);
+  const allSelected = selectable && allIds.length > 0 && allIds.every((id) => selectedIds.includes(id));
+
+  function toggleId(id: string) {
+    if (!onSelectedIdsChange) return;
+    onSelectedIdsChange(
+      selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id],
+    );
+  }
+
+  function toggleAll() {
+    if (!onSelectedIdsChange) return;
+    onSelectedIdsChange(allSelected ? [] : allIds);
+  }
+
   if (rows.length === 0) {
     return <div className="text-sm text-muted-foreground p-4">{emptyMessage || 'Nothing to show.'}</div>;
   }
@@ -66,6 +86,15 @@ export default function DataTable<T>({
       <Table>
         <TableHeader>
           <TableRow>
+            {selectable && (
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={toggleAll}
+                  aria-label="Select all rows"
+                />
+              </TableHead>
+            )}
             {columns.map((c) => (
               <TableHead key={c.key} className={c.className}>
                 {c.sortable ? (
@@ -94,6 +123,15 @@ export default function DataTable<T>({
                 dense && '[&>td]:py-1.5',
               )}
             >
+              {selectable && (
+                <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedIds.includes(rowKey(row))}
+                    onCheckedChange={() => toggleId(rowKey(row))}
+                    aria-label="Select row"
+                  />
+                </TableCell>
+              )}
               {columns.map((c) => (
                 <TableCell key={c.key} className={cn('truncate max-w-[24rem]', c.className)} title={typeof c.render(row) === 'string' ? (c.render(row) as string) : undefined}>
                   {c.render(row)}
