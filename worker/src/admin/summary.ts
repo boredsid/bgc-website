@@ -115,6 +115,11 @@ export async function handleSummary(env: Env): Promise<Response> {
     .select('id', { count: 'exact', head: true })
     .eq('status', 'pending');
 
+  const { count: pendingRegistrationCount } = await supabase
+    .from('registrations')
+    .select('id', { count: 'exact', head: true })
+    .eq('payment_status', 'pending');
+
   function buildCards(events: any[]): SummaryCard[] {
     return events.map((e) => {
       const eventRegs = (regs || []).filter((r: any) => r.event_id === e.id) as RegRow[];
@@ -126,5 +131,6 @@ export async function handleSummary(env: Env): Promise<Response> {
     upcoming: buildCards(upcomingEvents || []),
     past: buildCards(pastEvents || []),
     pending_guild_count: pendingGuildCount ?? 0,
+    pending_registration_count: pendingRegistrationCount ?? 0,
   });
 }
