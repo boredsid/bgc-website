@@ -37,7 +37,7 @@ export function FormDrawer({
       <Sheet open={open} onOpenChange={(o) => { if (!o) attemptCancel(); }}>
         <SheetContent
           side="bottom"
-          className="md:!right-0 md:!left-auto md:!top-0 md:!bottom-0 md:!w-full md:!max-w-2xl md:!h-full max-h-[92vh] md:max-h-none rounded-t-xl md:rounded-none flex flex-col p-0"
+          className="!h-[92vh] md:!h-full md:!right-0 md:!left-auto md:!top-0 md:!bottom-0 md:!w-full md:!max-w-2xl rounded-t-xl md:rounded-none flex flex-col p-0"
         >
           <SheetHeader className="px-4 pt-4 md:px-6 md:pt-6 pb-2 border-b">
             <SheetTitle>{title}</SheetTitle>
