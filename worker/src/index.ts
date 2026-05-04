@@ -7,6 +7,7 @@ import { verifyAccessJwt } from './access-auth';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
 import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
+import { handleExportRegistrations } from './admin/export-registrations';
 import { handleAdminLookupPhone } from './admin/lookup-phone';
 import { handleManualRegister } from './admin/register-manual';
 import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
@@ -148,6 +149,10 @@ export default {
 
           if (!adminResponse && url.pathname === '/api/admin/registrations/manual' && request.method === 'POST') {
             adminResponse = await handleManualRegister(request, env, ctx);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/registrations/export' && request.method === 'GET') {
+            adminResponse = await handleExportRegistrations(request, env);
           }
 
           if (!adminResponse) {
