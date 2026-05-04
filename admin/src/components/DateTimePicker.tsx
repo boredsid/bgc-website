@@ -1,5 +1,4 @@
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 interface Props {
   value: string;
@@ -45,28 +44,23 @@ function combine(date: string, time: string): string {
 export function DateTimePicker({ value, onChange, className }: Props) {
   const { date, time } = splitIso(value);
   return (
-    <div className={`grid grid-cols-2 gap-2 ${className || ''}`}>
-      <div>
-        <Label htmlFor="dtp-date">Date</Label>
-        <Input
-          id="dtp-date"
-          type="date"
-          value={date}
-          onChange={(e) => onChange(combine(e.target.value, time || '00:00'))}
-        />
-      </div>
-      <div>
-        <Label htmlFor="dtp-time">Time</Label>
-        <select
-          id="dtp-time"
-          value={time}
-          onChange={(e) => onChange(combine(date, e.target.value))}
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm"
-        >
-          <option value="">—</option>
-          {TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
+    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${className || ''}`}>
+      <Input
+        aria-label="Date"
+        type="date"
+        value={date}
+        onChange={(e) => onChange(combine(e.target.value, time || '00:00'))}
+        className="min-w-0"
+      />
+      <select
+        aria-label="Time"
+        value={time}
+        onChange={(e) => onChange(combine(date, e.target.value))}
+        className="flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm"
+      >
+        <option value="">—</option>
+        {TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
+      </select>
     </div>
   );
 }

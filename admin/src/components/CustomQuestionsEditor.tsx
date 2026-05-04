@@ -96,12 +96,12 @@ function EditorBody({ value, onChange, hasRegistrations }: Props) {
       )}
       {value.map((q, idx) => (
         <div key={idx} className="rounded-md border p-3 space-y-2 bg-muted/20">
-          <div className="flex gap-2 items-end">
-            <div className="flex-1">
-              <Label className="text-xs">Question</Label>
-              <Input value={q.label} onChange={(e) => update(idx, { label: e.target.value })} placeholder="What do you want to ask?" />
-            </div>
-            <div className="w-44">
+          <div>
+            <Label className="text-xs">Question</Label>
+            <Input value={q.label} onChange={(e) => update(idx, { label: e.target.value })} placeholder="What do you want to ask?" />
+          </div>
+          <div className="flex gap-2 items-end flex-wrap">
+            <div className="flex-1 min-w-[10rem]">
               <Label className="text-xs">Answer type</Label>
               <Select value={q.type} onValueChange={(t) => {
                 const next: Partial<CustomQuestion> = { type: t as CustomQuestion['type'] };
@@ -152,15 +152,15 @@ function OptionsEditor({ options, onChange }: { options: CustomQuestionOption[];
       <Label className="text-xs">Options</Label>
       {options.map((o, idx) => (
         <div key={idx} className="flex gap-2">
-          <Input value={o.value} placeholder="Option label" onChange={(e) => update(idx, { value: e.target.value })} />
+          <Input className="flex-1 min-w-0" value={o.value} placeholder="Option label" onChange={(e) => update(idx, { value: e.target.value })} />
           <Input
             type="number"
-            placeholder="Capacity (optional)"
-            className="w-40"
+            placeholder="Cap"
+            className="w-16 sm:w-24 shrink-0"
             value={o.capacity ?? ''}
             onChange={(e) => update(idx, { capacity: e.target.value ? Number(e.target.value) : undefined })}
           />
-          <Button variant="ghost" size="icon" onClick={() => remove(idx)} aria-label="Remove option">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => remove(idx)} aria-label="Remove option">
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
