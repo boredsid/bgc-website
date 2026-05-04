@@ -1,20 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Check, X, ChevronDown } from 'lucide-react';
 import DataTable, { Column } from '@/components/DataTable';
 import MobileCardList, { CardField } from '@/components/MobileCardList';
 import { StatusBadge } from '@/components/StatusBadge';
 import { PhoneCell } from '@/components/PhoneCell';
+import { BulkActionBar, type BulkAction } from '@/components/BulkActionBar';
+import { BulkConfirmDialog } from '@/components/BulkConfirmDialog';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { fetchAdmin, showApiError } from '@/lib/api';
+import { listViews, saveView, deleteView, getView } from '@/lib/savedViews';
 import { toast } from 'sonner';
 import type { GuildMember } from '@/lib/types';
 
 const TIER_DAYS: Record<string, number> = { initiate: 90, adventurer: 180, guildmaster: 365 };
+const PAGE_KEY = 'guild';
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
 
 export default function GuildList() {
   const [params, setParams] = useSearchParams();
@@ -24,6 +36,11 @@ export default function GuildList() {
   const [loading, setLoading] = useState(true);
   const [confirmTarget, setConfirmTarget] = useState<GuildMember | null>(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkPaidOpen, setBulkPaidOpen] = useState(false);
+  const [bulkPaidStartDate, setBulkPaidStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
+  const [viewsVersion, setViewsVersion] = useState(0);
   const navigate = useNavigate();
 
   const refresh = () => {
@@ -73,12 +90,104 @@ export default function GuildList() {
     } catch (e) { showApiError(e); }
   }
 
+  // ---- Bulk operations ----
+  const selectedRows = useMemo(() => members.filter((m) => selectedIds.includes(m.id)), [members, selectedIds]);
+
+  async function bulkMarkPaid() {
+    const rows = [...selectedRows];
+    if (rows.length === 0) return;
+    const start = new Date(bulkPaidStartDate);
+    const results = await Promise.allSettled(
+      rows.map((m) => {
+        const days = TIER_DAYS[m.tier] ?? 90;
+        const expires = new Date(start);
+        expires.setDate(start.getDate() + days);
+        return fetchAdmin(`/api/admin/guild-members/${m.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            status: 'paid',
+            starts_at: bulkPaidStartDate,
+            expires_at: expires.toISOString().slice(0, 10),
+          }),
+        });
+      }),
+    );
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length === 0) {
+      toast.success(`Marked ${rows.length} as paid`);
+    } else {
+      const firstError = (failed[0] as PromiseRejectedResult).reason;
+      showApiError(firstError);
+    }
+    setSelectedIds([]);
+    refresh();
+  }
+
+  async function bulkMarkCancelled() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        fetchAdmin(`/api/admin/guild-members/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'cancelled' }),
+        }),
+      ),
+    );
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length === 0) {
+      toast.success(`Marked ${ids.length} as cancelled`);
+    } else {
+      const firstError = (failed[0] as PromiseRejectedResult).reason;
+      showApiError(firstError);
+    }
+    setSelectedIds([]);
+    refresh();
+  }
+
+  function bulkExportCsv() {
+    if (selectedIds.length === 0) return;
+    window.location.href = `${API_BASE}/api/admin/guild-members/export?ids=${encodeURIComponent(selectedIds.join(','))}`;
+  }
+
+  async function bulkRenewalReminder() {
+    if (selectedRows.length === 0) return;
+    const phones = selectedRows.map((m) => m.user_phone).join(', ');
+    const message = "Hi! This is a friendly reminder from Board Game Company that your Guild membership is up for renewal. Reply if you'd like to renew.";
+    const payload = `${phones}\n\n${message}`;
+    try {
+      await navigator.clipboard.writeText(payload);
+      toast.success(`Copied ${selectedRows.length} phones + reminder to clipboard`);
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  }
+
+  const bulkActions: BulkAction[] = [
+    { label: 'Mark paid', onClick: () => setBulkPaidOpen(true) },
+    { label: 'Mark cancelled', onClick: () => setBulkCancelOpen(true), destructive: true },
+    { label: 'Export CSV', onClick: bulkExportCsv },
+    { label: 'Send renewal reminder', onClick: bulkRenewalReminder },
+  ];
+
   const columns: Column<GuildMember>[] = [
-    { key: 'name', header: 'Name', render: (m) => m.user_name || '—' },
+    {
+      key: 'name', header: 'Name', render: (m) => m.user_name || '—',
+      sortable: true, sortValue: (m) => (m.user_name ?? '').toLowerCase(),
+    },
     { key: 'phone', header: 'Phone', render: (m) => <PhoneCell phone={m.user_phone} /> },
-    { key: 'tier', header: 'Tier', render: (m) => m.tier },
-    { key: 'expires', header: 'Expires', render: (m) => m.expires_at },
-    { key: 'status', header: 'Status', render: (m) => <StatusBadge status={m.status} /> },
+    {
+      key: 'tier', header: 'Tier', render: (m) => m.tier,
+      sortable: true, sortValue: (m) => m.tier,
+    },
+    {
+      key: 'expires', header: 'Expires', render: (m) => m.expires_at,
+      sortable: true, sortValue: (m) => m.expires_at ?? '',
+    },
+    {
+      key: 'status', header: 'Status', render: (m) => <StatusBadge status={m.status} />,
+      sortable: true, sortValue: (m) => m.status,
+    },
   ];
 
   const fields: CardField<GuildMember>[] = [
@@ -88,6 +197,31 @@ export default function GuildList() {
   ];
 
   const isPendingFilter = status === 'pending';
+
+  // ---- Saved views ----
+  const savedViews = useMemo(() => listViews(PAGE_KEY), [viewsVersion]);
+
+  function applySavedView(name: string) {
+    const v = getView(PAGE_KEY, name);
+    if (!v) return;
+    setParams(new URLSearchParams(v.params));
+  }
+
+  function handleSaveView() {
+    const name = window.prompt('Name this view')?.trim();
+    if (!name) return;
+    saveView(PAGE_KEY, name, Object.fromEntries(params.entries()));
+    setViewsVersion((n) => n + 1);
+    toast.success(`Saved view "${name}"`);
+  }
+
+  function handleDeleteView() {
+    const name = window.prompt('Delete saved view (enter name)')?.trim();
+    if (!name) return;
+    deleteView(PAGE_KEY, name);
+    setViewsVersion((n) => n + 1);
+    toast.success(`Deleted view "${name}"`);
+  }
 
   return (
     <div>
@@ -111,6 +245,27 @@ export default function GuildList() {
             <SelectItem value="guildmaster">Guildmaster</SelectItem>
           </SelectContent>
         </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="hidden md:inline-flex">
+              Saved views <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {savedViews.length === 0 ? (
+              <DropdownMenuItem disabled>No saved views</DropdownMenuItem>
+            ) : (
+              savedViews.map((v) => (
+                <DropdownMenuItem key={v.name} onClick={() => applySavedView(v.name)}>
+                  {v.name}
+                </DropdownMenuItem>
+              ))
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSaveView}>Save this view…</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDeleteView}>Delete saved view…</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {loading ? <p>Loading…</p> : (
@@ -144,7 +299,21 @@ export default function GuildList() {
             )}
           </div>
           <div className="hidden md:block">
-            <DataTable rows={members} columns={columns} rowKey={(m) => m.id} onRowClick={(m) => navigate(`/guild/${m.id}`)} emptyMessage="No guild members match." />
+            <BulkActionBar
+              count={selectedIds.length}
+              actions={bulkActions}
+              onClear={() => setSelectedIds([])}
+            />
+            <DataTable
+              rows={members}
+              columns={columns}
+              rowKey={(m) => m.id}
+              onRowClick={(m) => navigate(`/guild/${m.id}`)}
+              emptyMessage="No guild members match."
+              selectable
+              selectedIds={selectedIds}
+              onSelectedIdsChange={setSelectedIds}
+            />
           </div>
         </>
       )}
@@ -167,6 +336,38 @@ export default function GuildList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={bulkPaidOpen} onOpenChange={(o) => { if (!o) setBulkPaidOpen(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark {selectedIds.length} member{selectedIds.length === 1 ? '' : 's'} as paid</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Start date</Label>
+            <Input type="date" value={bulkPaidStartDate} onChange={(e) => setBulkPaidStartDate(e.target.value)} />
+            <div className="text-xs text-muted-foreground">
+              Each member's expiry is calculated from their tier (initiate 90d, adventurer 180d, guildmaster 365d).
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBulkPaidOpen(false)}>Cancel</Button>
+            <Button onClick={() => { setBulkPaidOpen(false); bulkMarkPaid(); }}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <BulkConfirmDialog
+        open={bulkCancelOpen}
+        title="Cancel memberships?"
+        count={selectedIds.length}
+        sampleNames={selectedRows.slice(0, 3).map((m) => m.user_name || '—')}
+        confirmLabel={`Cancel ${selectedIds.length}`}
+        onConfirm={() => {
+          setBulkCancelOpen(false);
+          bulkMarkCancelled();
+        }}
+        onCancel={() => setBulkCancelOpen(false)}
+      />
     </div>
   );
 }

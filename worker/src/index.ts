@@ -7,6 +7,9 @@ import { verifyAccessJwt } from './access-auth';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
 import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
+import { handleExportRegistrations } from './admin/export-registrations';
+import { handleExportGuildMembers } from './admin/export-guild';
+import { handleExportGames } from './admin/export-games';
 import { handleAdminLookupPhone } from './admin/lookup-phone';
 import { handleManualRegister } from './admin/register-manual';
 import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
@@ -111,6 +114,10 @@ export default {
             }
           }
 
+          if (!adminResponse && url.pathname === '/api/admin/games/export' && request.method === 'GET') {
+            adminResponse = await handleExportGames(request, env);
+          }
+
           if (!adminResponse) {
             const gamesMatch = url.pathname.match(/^\/api\/admin\/games(?:\/([^/]+))?$/);
             if (gamesMatch) {
@@ -150,6 +157,10 @@ export default {
             adminResponse = await handleManualRegister(request, env, ctx);
           }
 
+          if (!adminResponse && url.pathname === '/api/admin/registrations/export' && request.method === 'GET') {
+            adminResponse = await handleExportRegistrations(request, env);
+          }
+
           if (!adminResponse) {
             const regsMatch = url.pathname.match(/^\/api\/admin\/registrations(?:\/([^/]+))?$/);
             if (regsMatch) {
@@ -159,6 +170,10 @@ export default {
               else if (regId && regId !== 'manual' && request.method === 'PATCH') adminResponse = await handleUpdateRegistration(regId, request, env);
               else if (regId !== 'manual') adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/guild-members/export' && request.method === 'GET') {
+            adminResponse = await handleExportGuildMembers(request, env);
           }
 
           if (!adminResponse) {
