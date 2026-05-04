@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { NumberInput } from './NumberInput';
@@ -31,6 +32,22 @@ describe('NumberInput', () => {
     const onChange = vi.fn();
     render(<NumberInput value={null} onChange={onChange} allowRupees aria-label="amount" />);
     fireEvent.change(screen.getByLabelText('amount'), { target: { value: '₹1,500' } });
+    expect(onChange).toHaveBeenLastCalledWith(1500);
+  });
+
+  it('preserves intermediate rupee typing (₹ alone, partial digits)', () => {
+    const onChange = vi.fn();
+    function Wrapper() {
+      const [v, setV] = useState<number | null>(null);
+      return <NumberInput value={v} onChange={(n) => { setV(n); onChange(n); }} allowRupees aria-label="amount" />;
+    }
+    render(<Wrapper />);
+    const input = screen.getByLabelText('amount') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '₹' } });
+    expect(input.value).toBe('₹');           // not snapped to ''
+    fireEvent.change(input, { target: { value: '₹1' } });
+    expect(input.value).toBe('₹1');
+    fireEvent.change(input, { target: { value: '₹1,500' } });
     expect(onChange).toHaveBeenLastCalledWith(1500);
   });
 });
