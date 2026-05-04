@@ -2,14 +2,35 @@ import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { fetchAdmin } from '@/lib/api';
+import { SearchOverlay } from './SearchOverlay';
 
 export default function TopBar() {
   const [email, setEmail] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     fetchAdmin<{ email: string }>('/api/admin/whoami')
       .then((r) => setEmail(r.email))
       .catch(() => setEmail(null));
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+      if (
+        e.key === '/' &&
+        !(e.target instanceof HTMLInputElement) &&
+        !(e.target instanceof HTMLTextAreaElement)
+      ) {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const initials = email ? email.slice(0, 1).toUpperCase() : '?';
@@ -26,8 +47,7 @@ export default function TopBar() {
           type="button"
           className="w-full flex items-center gap-2 h-9 px-3 rounded-md border bg-muted/40 text-sm text-muted-foreground hover:bg-muted"
           aria-label="Search"
-          disabled
-          title="Search arrives in Phase 3"
+          onClick={() => setSearchOpen(true)}
         >
           <Search className="h-4 w-4" />
           <span>Find someone… (Cmd-K)</span>
@@ -41,7 +61,7 @@ export default function TopBar() {
         size="icon"
         className="md:hidden min-h-11 min-w-11"
         aria-label="Search"
-        disabled
+        onClick={() => setSearchOpen(true)}
       >
         <Search className="h-5 w-5" />
       </Button>
@@ -59,6 +79,8 @@ export default function TopBar() {
           {initials}
         </div>
       </div>
+
+      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 }
