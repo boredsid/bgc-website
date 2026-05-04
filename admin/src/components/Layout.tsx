@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar, { type SidebarCounts } from './Sidebar';
 import BottomTabBar from './BottomTabBar';
 import TopBar from './TopBar';
+import { OfflineBanner } from './OfflineBanner';
 import { fetchAdmin } from '@/lib/api';
 
 interface SummaryResponse {
@@ -30,6 +31,7 @@ export default function Layout() {
         <Sidebar counts={counts} />
       </div>
       <div className="flex-1 flex flex-col min-w-0">
+        <OfflineBanner />
         <TopBar />
         <main
           className="flex-1 overflow-auto bg-muted/30 p-4 md:p-6 pb-20 md:pb-6"

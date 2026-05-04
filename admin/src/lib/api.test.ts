@@ -38,4 +38,25 @@ describe('fetchAdmin', () => {
     await expect(fetchAdmin('/api/admin/x')).rejects.toBeInstanceOf(ApiError);
     expect(reload).toHaveBeenCalled();
   });
+
+  it('refuses non-GET requests when offline', async () => {
+    let onlineValue = false;
+    const desc = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine')
+      ?? Object.getOwnPropertyDescriptor(navigator, 'onLine');
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      get: () => onlineValue,
+    });
+    try {
+      await expect(
+        fetchAdmin('/api/admin/x', { method: 'POST', body: '{}' }),
+      ).rejects.toMatchObject({ status: 0, message: "You're offline. Connect to save." });
+    } finally {
+      if (desc) {
+        Object.defineProperty(navigator, 'onLine', desc);
+      } else {
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+      }
+    }
+  });
 });

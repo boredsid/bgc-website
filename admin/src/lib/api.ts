@@ -10,6 +10,10 @@ export class ApiError extends Error {
 }
 
 export async function fetchAdmin<T>(path: string, init?: RequestInit): Promise<T> {
+  if (init?.method && init.method !== 'GET' && typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new ApiError(0, "You're offline. Connect to save.");
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     ...init,
