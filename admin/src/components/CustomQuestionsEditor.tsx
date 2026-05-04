@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +8,7 @@ import {
 } from '@/components/ui/select';
 import { Trash2, Plus } from 'lucide-react';
 import type { CustomQuestion, CustomQuestionOption } from '@/lib/types';
+import { CustomQuestionsPreview } from '@/lib/renderCustomQuestions';
 
 const TYPE_LABELS: Record<CustomQuestion['type'], string> = {
   text: 'Short text',
@@ -29,6 +31,47 @@ interface Props {
 }
 
 export default function CustomQuestionsEditor({ value, onChange, hasRegistrations }: Props) {
+  const [tab, setTab] = useState<'edit' | 'preview'>('edit');
+  const [previewValues, setPreviewValues] = useState<Record<string, string | boolean>>({});
+
+  return (
+    <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+      <div>
+        <div className="lg:hidden flex border rounded-md overflow-hidden mb-2">
+          <button
+            type="button"
+            onClick={() => setTab('edit')}
+            className={`flex-1 py-1.5 text-sm ${tab === 'edit' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('preview')}
+            className={`flex-1 py-1.5 text-sm ${tab === 'preview' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+          >
+            Preview
+          </button>
+        </div>
+        <div className={tab === 'edit' ? '' : 'hidden lg:block'}>
+          <EditorBody value={value} onChange={onChange} hasRegistrations={hasRegistrations} />
+        </div>
+      </div>
+      <div className={tab === 'preview' ? '' : 'hidden lg:block'}>
+        <div className="text-xs text-muted-foreground mb-2">
+          Live preview — what attendees see on the registration form.
+        </div>
+        <CustomQuestionsPreview
+          questions={value}
+          values={previewValues}
+          onChange={(id, v) => setPreviewValues((p) => ({ ...p, [id]: v }))}
+        />
+      </div>
+    </div>
+  );
+}
+
+function EditorBody({ value, onChange, hasRegistrations }: Props) {
   function update(idx: number, patch: Partial<CustomQuestion>) {
     const next = value.map((q, i) => (i === idx ? { ...q, ...patch } : q));
     onChange(next);
