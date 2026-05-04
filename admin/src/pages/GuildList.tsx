@@ -78,7 +78,7 @@ export default function GuildList() {
     { key: 'phone', header: 'Phone', render: (m) => <PhoneCell phone={m.user_phone} /> },
     { key: 'tier', header: 'Tier', render: (m) => m.tier },
     { key: 'expires', header: 'Expires', render: (m) => m.expires_at },
-    { key: 'status', header: 'Status', render: (m) => <StatusBadge status={m.status as any} /> },
+    { key: 'status', header: 'Status', render: (m) => <StatusBadge status={m.status} /> },
   ];
 
   const fields: CardField<GuildMember>[] = [
@@ -140,7 +140,7 @@ export default function GuildList() {
                 </div>
               ))
             ) : (
-              <MobileCardList rows={members} fields={fields} rowKey={(m) => m.id} onRowClick={(m) => navigate(`/guild/${m.id}`)} emptyMessage="No guild members match these filters." trailing={(m) => <StatusBadge status={m.status as any} />} />
+              <MobileCardList rows={members} fields={fields} rowKey={(m) => m.id} onRowClick={(m) => navigate(`/guild/${m.id}`)} emptyMessage="No guild members match these filters." trailing={(m) => <StatusBadge status={m.status} />} />
             )}
           </div>
           <div className="hidden md:block">
