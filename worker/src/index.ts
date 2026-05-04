@@ -8,6 +8,7 @@ import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent 
 import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
 import { handleExportRegistrations } from './admin/export-registrations';
+import { handleExportGuildMembers } from './admin/export-guild';
 import { handleAdminLookupPhone } from './admin/lookup-phone';
 import { handleManualRegister } from './admin/register-manual';
 import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
@@ -164,6 +165,10 @@ export default {
               else if (regId && regId !== 'manual' && request.method === 'PATCH') adminResponse = await handleUpdateRegistration(regId, request, env);
               else if (regId !== 'manual') adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/guild-members/export' && request.method === 'GET') {
+            adminResponse = await handleExportGuildMembers(request, env);
           }
 
           if (!adminResponse) {
