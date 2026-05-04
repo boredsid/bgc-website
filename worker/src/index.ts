@@ -9,6 +9,7 @@ import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } fr
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
 import { handleExportRegistrations } from './admin/export-registrations';
 import { handleExportGuildMembers } from './admin/export-guild';
+import { handleExportGames } from './admin/export-games';
 import { handleAdminLookupPhone } from './admin/lookup-phone';
 import { handleManualRegister } from './admin/register-manual';
 import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
@@ -111,6 +112,10 @@ export default {
               else if (eventId && request.method === 'PATCH') adminResponse = await handleUpdateEvent(eventId, request, env);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/games/export' && request.method === 'GET') {
+            adminResponse = await handleExportGames(request, env);
           }
 
           if (!adminResponse) {
