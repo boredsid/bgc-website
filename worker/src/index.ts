@@ -13,6 +13,7 @@ import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember }
 import { handleGetUser, handleUpdateUser } from './admin/users';
 import { handleSummary } from './admin/summary';
 import { handleSearch } from './admin/search';
+import { handleLog } from './admin/log';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -139,6 +140,10 @@ export default {
 
           if (!adminResponse && url.pathname === '/api/admin/search' && request.method === 'GET') {
             adminResponse = await handleSearch(request, env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/log' && request.method === 'POST') {
+            adminResponse = await handleLog(request, env, gate.admin.email);
           }
 
           if (!adminResponse && url.pathname === '/api/admin/registrations/manual' && request.method === 'POST') {
