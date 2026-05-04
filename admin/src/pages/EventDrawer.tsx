@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { FormDrawer } from '@/components/FormDrawer';
+import { NumberInput } from '@/components/NumberInput';
+import { DateTimePicker } from '@/components/DateTimePicker';
 import CustomQuestionsEditor from '@/components/CustomQuestionsEditor';
 import { fetchAdmin, showApiError } from '@/lib/api';
+import { validateEvent, type ValidationErrors } from '@/lib/validation';
 import { toast } from 'sonner';
 import type { Event, CustomQuestion } from '@/lib/types';
 
@@ -25,27 +27,68 @@ export default function EventDrawer({ mode }: Props) {
   const [initial, setInitial] = useState<Partial<Event>>(empty);
   const [loading, setLoading] = useState(mode === 'edit');
   const [saving, setSaving] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [venueSuggestions, setVenueSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
-    if (mode !== 'edit' || !id) return;
-    fetchAdmin<{ event: Event }>(`/api/admin/events/${id}`)
-      .then((r) => {
-        setForm(r.event);
-        setInitial(r.event);
-      })
-      .catch(showApiError)
-      .finally(() => setLoading(false));
+    if (mode === 'edit' && id) {
+      fetchAdmin<{ event: Event }>(`/api/admin/events/${id}`)
+        .then((r) => { setForm(r.event); setInitial(r.event); })
+        .catch(showApiError)
+        .finally(() => setLoading(false));
+    } else {
+      // Smart default for create: clone the most recent published event.
+      fetchAdmin<{ events: Event[] }>('/api/admin/events')
+        .then((r) => {
+          const sorted = [...r.events].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+          const latest = sorted.find((e) => e.is_published) || sorted[0];
+          if (latest) {
+            const next = new Date();
+            next.setDate(next.getDate() + 14);
+            setForm({
+              ...empty,
+              date: next.toISOString(),
+              venue_name: latest.venue_name || '',
+              venue_area: latest.venue_area || '',
+              price: latest.price,
+              capacity: latest.capacity,
+              custom_questions: latest.custom_questions || [],
+              price_includes: latest.price_includes || '',
+            });
+          }
+          // Build venue suggestion list from distinct venues.
+          const seen = new Set<string>();
+          const suggestions: string[] = [];
+          for (const e of r.events) {
+            if (e.venue_name && !seen.has(e.venue_name)) {
+              seen.add(e.venue_name);
+              suggestions.push(e.venue_name);
+            }
+          }
+          setVenueSuggestions(suggestions);
+        })
+        .catch(() => {});
+    }
   }, [mode, id]);
 
+  const errors: ValidationErrors = useMemo(() => validateEvent(form), [form]);
+  const errorCount = Object.keys(errors).length;
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initial), [form, initial]);
 
-  function close() {
-    if (dirty && !confirm('Discard changes?')) return;
-    navigate('/events');
-  }
+  function close() { navigate('/events'); }
 
   async function save() {
+    setShowErrors(true);
+    if (errorCount > 0) {
+      const first = Object.keys(errors)[0];
+      const el = document.getElementById(`field-${first}`);
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el?.focus();
+      return;
+    }
     setSaving(true);
+    setServerError(null);
     try {
       const payload = {
         ...form,
@@ -61,86 +104,82 @@ export default function EventDrawer({ mode }: Props) {
       }
       navigate('/events');
     } catch (err) {
-      showApiError(err);
+      setServerError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setSaving(false);
     }
   }
 
-  function set<K extends keyof Event>(key: K, value: Event[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
+  function set<K extends keyof Event>(k: K, v: Event[K]) { setForm((f) => ({ ...f, [k]: v })); }
+
+  function field(key: string, label: string, control: React.ReactNode) {
+    const err = showErrors ? errors[key] : undefined;
+    return (
+      <div id={`field-${key}`}>
+        <Label className={err ? 'text-destructive' : undefined}>{label}</Label>
+        {control}
+        {err && <div className="text-xs text-destructive mt-1">{err}</div>}
+      </div>
+    );
   }
 
   return (
-    <Sheet open onOpenChange={(o) => { if (!o) close(); }}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{mode === 'create' ? 'New event' : 'Edit event'}</SheetTitle>
-        </SheetHeader>
-        {loading ? <p className="p-4">Loading…</p> : (
-          <div className="space-y-4 p-4">
-            <div>
-              <Label>Name</Label>
-              <Input value={form.name || ''} onChange={(e) => set('name', e.target.value)} />
-            </div>
-            <div>
-              <Label>Description</Label>
-              <Textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={4} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Date & time</Label>
-                <Input
-                  type="datetime-local"
-                  value={form.date ? toLocalInput(form.date) : ''}
-                  onChange={(e) => set('date', new Date(e.target.value).toISOString())}
-                />
-              </div>
-              <div>
-                <Label>Capacity</Label>
-                <Input type="number" value={form.capacity ?? 0} onChange={(e) => set('capacity', Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>Venue name</Label>
-                <Input value={form.venue_name || ''} onChange={(e) => set('venue_name', e.target.value)} />
-              </div>
-              <div>
-                <Label>Venue area</Label>
-                <Input value={form.venue_area || ''} onChange={(e) => set('venue_area', e.target.value)} />
-              </div>
-              <div>
-                <Label>Price (₹)</Label>
-                <Input type="number" value={form.price ?? 0} onChange={(e) => set('price', Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>Price includes</Label>
-                <Input value={form.price_includes || ''} onChange={(e) => set('price_includes', e.target.value)} />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={!!form.is_published} onCheckedChange={(c) => set('is_published', c)} />
-              <Label>Published</Label>
-            </div>
-            <div>
-              <Label className="block mb-2">Custom questions</Label>
-              <CustomQuestionsEditor
-                value={form.custom_questions || []}
-                onChange={(qs: CustomQuestion[]) => set('custom_questions', qs)}
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
-              <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-            </div>
+    <FormDrawer
+      open
+      title={mode === 'create' ? 'New event' : 'Edit event'}
+      dirty={dirty}
+      saving={saving}
+      onCancel={close}
+      onSave={save}
+      errorCount={showErrors ? errorCount : 0}
+      errorMessage={serverError}
+    >
+      {loading ? <p>Loading…</p> : (
+        <>
+          {field('name', 'Name', (
+            <Input value={form.name || ''} onChange={(e) => set('name', e.target.value)} />
+          ))}
+          {field('description', 'Description', (
+            <Textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={4} />
+          ))}
+          {field('date', 'When', (
+            <DateTimePicker value={form.date || ''} onChange={(iso) => set('date', iso)} />
+          ))}
+          <div className="grid grid-cols-2 gap-3">
+            {field('capacity', 'Capacity', (
+              <NumberInput value={form.capacity ?? null} onChange={(n) => set('capacity', n ?? 0)} aria-label="Capacity" />
+            ))}
+            {field('price', 'Price (₹)', (
+              <NumberInput value={form.price ?? null} onChange={(n) => set('price', n ?? 0)} allowRupees aria-label="Price" />
+            ))}
           </div>
-        )}
-      </SheetContent>
-    </Sheet>
+          {field('venue_name', 'Venue name', (
+            <>
+              <Input list="venue-suggestions" value={form.venue_name || ''} onChange={(e) => set('venue_name', e.target.value)} />
+              <datalist id="venue-suggestions">
+                {venueSuggestions.map((v) => <option key={v} value={v} />)}
+              </datalist>
+            </>
+          ))}
+          {field('venue_area', 'Venue area', (
+            <Input value={form.venue_area || ''} onChange={(e) => set('venue_area', e.target.value)} />
+          ))}
+          {field('price_includes', 'Price includes', (
+            <Input value={form.price_includes || ''} onChange={(e) => set('price_includes', e.target.value)} />
+          ))}
+          <div className="flex items-center gap-2">
+            <Switch checked={!!form.is_published} onCheckedChange={(c) => set('is_published', c)} />
+            <Label>Published</Label>
+          </div>
+          <div>
+            <Label className="block mb-2">Custom questions</Label>
+            <CustomQuestionsEditor
+              value={form.custom_questions || []}
+              onChange={(qs: CustomQuestion[]) => set('custom_questions', qs)}
+            />
+          </div>
+        </>
+      )}
+    </FormDrawer>
   );
-}
-
-function toLocalInput(iso: string): string {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
