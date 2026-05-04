@@ -11,6 +11,7 @@ export default function DashboardCard({ summary }: Props) {
   const { event, totals, guild_member_count, capacity_used, custom_question_summary } = summary;
   const fillPct = event.capacity > 0 ? Math.min(100, Math.round((capacity_used / event.capacity) * 100)) : 0;
   const questions: CustomQuestion[] = (event.custom_questions || []) as CustomQuestion[];
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   return (
     <Card>
@@ -35,13 +36,22 @@ export default function DashboardCard({ summary }: Props) {
           </div>
         </div>
         {questions.length > 0 && (
-          <div className="space-y-2">
-            {questions.map((q) => {
-              const s = custom_question_summary[q.id];
-              if (!s) return null;
-              return <QuestionSummaryRow key={q.id} question={q} summary={s} />;
-            })}
-          </div>
+          <>
+            <button
+              type="button"
+              onClick={() => setBreakdownOpen((x) => !x)}
+              className="md:hidden text-sm text-primary hover:underline w-full text-left flex items-center gap-1"
+            >
+              {breakdownOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />} View breakdown
+            </button>
+            <div className={`space-y-2 ${breakdownOpen ? '' : 'hidden md:block'}`}>
+              {questions.map((q) => {
+                const s = custom_question_summary[q.id];
+                if (!s) return null;
+                return <QuestionSummaryRow key={q.id} question={q} summary={s} />;
+              })}
+            </div>
+          </>
         )}
         <div className="pt-2">
           <Button asChild variant="outline" size="sm">
