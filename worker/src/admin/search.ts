@@ -37,63 +37,72 @@ export async function handleSearch(request: Request, env: Env): Promise<Response
   if (!q) return jsonResponse(EMPTY);
 
   const supabase = getSupabase(env);
-  const phoneFilter = q.kind === 'phone' ? `phone.ilike.%${q.value}%` : null;
-  const textFilter = q.kind === 'text' ? `name.ilike.%${q.value}%,email.ilike.%${q.value}%` : null;
 
-  // Registrations
-  let regs: any[] = [];
-  {
-    const filter = phoneFilter || textFilter;
-    if (filter) {
-      const { data } = await supabase
-        .from('registrations')
-        .select('id, name, phone, event_id, payment_status, events(name)')
-        .or(filter)
-        .limit(10);
-      regs = (data || []).map((r: any) => ({
-        id: r.id, name: r.name, phone: r.phone,
-        event_id: r.event_id,
-        event_name: r.events?.name ?? null,
-        payment_status: r.payment_status,
-      }));
-    }
+  // Sanitize values used inside PostgREST `.or(...)` filters. Characters
+  // like `,` `(` `)` `*` `\` `%` are meaningful in the DSL and would produce
+  // malformed filters or unintended wildcards.
+  let phoneFilter: string | null = null;
+  let textFilter: string | null = null;
+  if (q.kind === 'phone') {
+    const safePhone = q.value.replace(/\D/g, '');
+    if (!safePhone) return jsonResponse(EMPTY);
+    phoneFilter = `phone.ilike.%${safePhone}%`;
+  } else {
+    const safeText = q.value.replace(/[,()*\\%]/g, '');
+    if (!safeText) return jsonResponse(EMPTY);
+    textFilter = `name.ilike.%${safeText}%,email.ilike.%${safeText}%`;
   }
 
-  // Users
-  let users: any[] = [];
-  {
-    const filter = phoneFilter || textFilter;
-    if (filter) {
-      const { data } = await supabase
-        .from('users')
-        .select('id, name, phone, email, last_registered_at')
-        .or(filter)
-        .order('last_registered_at', { ascending: false })
-        .limit(10);
-      users = data || [];
-    }
+  const filter = phoneFilter || textFilter;
+  if (!filter) return jsonResponse(EMPTY);
+
+  // Registrations + Users are independent — fetch in parallel.
+  const [regsRes, usersRes] = await Promise.all([
+    supabase
+      .from('registrations')
+      .select('id, name, phone, event_id, payment_status, events(name)')
+      .or(filter)
+      .limit(10),
+    supabase
+      .from('users')
+      .select('id, name, phone, email, last_registered_at')
+      .or(filter)
+      .order('last_registered_at', { ascending: false })
+      .limit(10),
+  ]);
+
+  if (regsRes.error || usersRes.error) {
+    return jsonResponse({ error: 'Search failed' }, 500);
   }
 
-  // Guild members — match by joined user.
-  let guild: any[] = [];
-  {
-    const userIds = users.map((u) => u.id);
-    if (userIds.length > 0) {
-      const { data } = await supabase
-        .from('guild_path_members')
-        .select('id, user_id, tier, status, expires_at, users(name, phone)')
-        .in('user_id', userIds)
-        .limit(10);
-      guild = (data || []).map((g: any) => ({
-        id: g.id,
-        user_id: g.user_id,
-        name: g.users?.name ?? null,
-        phone: g.users?.phone ?? '',
-        tier: g.tier,
-        status: g.status,
-        expires_at: g.expires_at,
-      }));
-    }
+  const regs: SearchResults['registrations'] = (regsRes.data || []).map((r: any) => ({
+    id: r.id, name: r.name, phone: r.phone,
+    event_id: r.event_id,
+    event_name: r.events?.name ?? null,
+    payment_status: r.payment_status,
+  }));
+
+  const users: SearchResults['users'] = (usersRes.data || []) as SearchResults['users'];
+
+  // Guild members — match by joined user (depends on user ids).
+  let guild: SearchResults['guild_members'] = [];
+  const userIds = users.map((u) => u.id);
+  if (userIds.length > 0) {
+    const { data, error } = await supabase
+      .from('guild_path_members')
+      .select('id, user_id, tier, status, expires_at, users(name, phone)')
+      .in('user_id', userIds)
+      .limit(10);
+    if (error) return jsonResponse({ error: 'Search failed' }, 500);
+    guild = (data || []).map((g: any) => ({
+      id: g.id,
+      user_id: g.user_id,
+      name: g.users?.name ?? null,
+      phone: g.users?.phone ?? '',
+      tier: g.tier,
+      status: g.status,
+      expires_at: g.expires_at,
+    }));
   }
 
   return jsonResponse({ registrations: regs, guild_members: guild, users });
