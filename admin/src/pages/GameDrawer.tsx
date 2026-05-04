@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormDrawer } from '@/components/FormDrawer';
+import { NumberInput } from '@/components/NumberInput';
 import { fetchAdmin, showApiError } from '@/lib/api';
+import { validateGame, type ValidationErrors } from '@/lib/validation';
 import { toast } from 'sonner';
 import type { Game } from '@/lib/types';
 
@@ -37,6 +38,8 @@ export default function GameDrawer({ mode }: Props) {
   const [initial, setInitial] = useState<Partial<Game>>(empty);
   const [loading, setLoading] = useState(mode === 'edit');
   const [saving, setSaving] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   useEffect(() => {
     if (mode !== 'edit' || !id) return;
@@ -46,15 +49,23 @@ export default function GameDrawer({ mode }: Props) {
       .finally(() => setLoading(false));
   }, [mode, id]);
 
+  const errors: ValidationErrors = useMemo(() => validateGame({ title: form.title }), [form.title]);
+  const errorCount = Object.keys(errors).length;
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initial), [form, initial]);
 
-  function close() {
-    if (dirty && !confirm('Discard changes?')) return;
-    navigate('/games');
-  }
+  function close() { navigate('/games'); }
 
   async function save() {
+    setShowErrors(true);
+    if (errorCount > 0) {
+      const first = Object.keys(errors)[0];
+      const el = document.getElementById(`field-${first}`);
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el?.focus();
+      return;
+    }
     setSaving(true);
+    setServerError(null);
     try {
       if (mode === 'create') {
         await fetchAdmin('/api/admin/games', { method: 'POST', body: JSON.stringify(form) });
@@ -65,46 +76,69 @@ export default function GameDrawer({ mode }: Props) {
       }
       navigate('/games');
     } catch (err) {
-      showApiError(err);
+      setServerError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setSaving(false);
     }
   }
 
-  function set(key: keyof Game, value: string) {
-    setForm((f) => ({
-      ...f,
-      [key]: value === ''
-        ? null
-        : (FIELDS.find((x) => x.key === key)?.type === 'number' ? Number(value) : value),
-    }));
+  function set<K extends keyof Game>(k: K, v: Game[K]) { setForm((f) => ({ ...f, [k]: v })); }
+
+  function field(key: string, label: string, control: React.ReactNode) {
+    const err = showErrors ? errors[key] : undefined;
+    return (
+      <div id={`field-${key}`}>
+        <Label className={err ? 'text-destructive' : undefined}>{label}</Label>
+        {control}
+        {err && <div className="text-xs text-destructive mt-1">{err}</div>}
+      </div>
+    );
   }
 
   return (
-    <Sheet open onOpenChange={(o) => { if (!o) close(); }}>
-      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{mode === 'create' ? 'Add game' : 'Edit game'}</SheetTitle>
-        </SheetHeader>
-        {loading ? <p className="p-4">Loading…</p> : (
-          <div className="grid grid-cols-2 gap-3 p-4">
-            {FIELDS.map((f) => (
-              <div key={f.key as string}>
-                <Label>{f.label}</Label>
-                <Input
-                  type={f.type || 'text'}
-                  value={(form[f.key] as string | number | null) ?? ''}
-                  onChange={(e) => set(f.key, e.target.value)}
-                />
+    <FormDrawer
+      open
+      title={mode === 'create' ? 'Add game' : 'Edit game'}
+      dirty={dirty}
+      saving={saving}
+      onCancel={close}
+      onSave={save}
+      errorCount={showErrors ? errorCount : 0}
+      errorMessage={serverError}
+    >
+      {loading ? <p>Loading…</p> : (
+        <div className="grid grid-cols-2 gap-3">
+          {FIELDS.map((f) => {
+            const key = f.key as string;
+            if (f.type === 'number') {
+              return (
+                <div key={key}>
+                  {field(key, f.label, (
+                    <NumberInput
+                      value={(form[f.key] as number | null) ?? null}
+                      onChange={(n) => set(f.key, n as Game[typeof f.key])}
+                      aria-label={f.label}
+                    />
+                  ))}
+                </div>
+              );
+            }
+            return (
+              <div key={key}>
+                {field(key, f.label, (
+                  <Input
+                    value={(form[f.key] as string | null) ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      set(f.key, (v === '' ? null : v) as Game[typeof f.key]);
+                    }}
+                  />
+                ))}
               </div>
-            ))}
-            <div className="col-span-2 flex justify-end gap-2 pt-4 border-t">
-              <Button variant="ghost" onClick={close} disabled={saving}>Cancel</Button>
-              <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-            </div>
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
+            );
+          })}
+        </div>
+      )}
+    </FormDrawer>
   );
 }
