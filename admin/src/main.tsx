@@ -2,7 +2,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import { installGlobalErrorHandler } from './lib/log';
 import './index.css';
+
+installGlobalErrorHandler();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
