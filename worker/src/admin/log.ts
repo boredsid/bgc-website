@@ -8,16 +8,9 @@ interface LogPayload {
   user_agent?: string;
 }
 
-interface ValidatedPayload extends LogPayload {
-  message: string;
-  stack?: string;
-  url?: string;
-  user_agent?: string;
-}
-
-export function validateLogPayload(raw: any): { ok: true; value: ValidatedPayload } | { ok: false } {
+export function validateLogPayload(raw: any): { ok: true; value: LogPayload } | { ok: false } {
   if (!raw || typeof raw.message !== 'string' || raw.message.length === 0) return { ok: false };
-  const v: ValidatedPayload = {
+  const v: LogPayload = {
     message: raw.message.slice(0, 2000),
     stack: typeof raw.stack === 'string' ? raw.stack.slice(0, 4000) : undefined,
     url: typeof raw.url === 'string' ? raw.url.slice(0, 500) : undefined,
@@ -27,7 +20,6 @@ export function validateLogPayload(raw: any): { ok: true; value: ValidatedPayloa
 }
 
 export async function handleLog(request: Request, env: Env, adminEmail: string): Promise<Response> {
-  void env; // reserved for future persistence
   const raw = await request.json().catch(() => null);
   const v = validateLogPayload(raw);
   if (!v.ok) return jsonResponse({ error: 'Invalid payload' }, 400);
