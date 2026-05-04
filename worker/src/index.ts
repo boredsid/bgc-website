@@ -12,6 +12,7 @@ import { handleManualRegister } from './admin/register-manual';
 import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
 import { handleGetUser, handleUpdateUser } from './admin/users';
 import { handleSummary } from './admin/summary';
+import { handleSearch } from './admin/search';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -134,6 +135,10 @@ export default {
 
           if (!adminResponse && url.pathname === '/api/admin/summary' && request.method === 'GET') {
             adminResponse = await handleSummary(env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/search' && request.method === 'GET') {
+            adminResponse = await handleSearch(request, env);
           }
 
           if (!adminResponse && url.pathname === '/api/admin/registrations/manual' && request.method === 'POST') {
