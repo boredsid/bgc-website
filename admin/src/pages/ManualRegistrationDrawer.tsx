@@ -33,20 +33,40 @@ export default function ManualRegistrationDrawer() {
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [initial, setInitial] = useState<{
+    eventId: string;
+    name: string;
+    phone: string;
+    email: string;
+    seats: number;
+    paymentStatus: 'pending' | 'confirmed';
+    customAnswers: Record<string, string | boolean>;
+  } | null>(null);
 
   useEffect(() => {
     fetchAdmin<{ events: Event[] }>('/api/admin/events')
       .then((r) => {
         setEvents(r.events);
         const remembered = typeof window !== 'undefined' ? localStorage.getItem(LAST_EVENT_KEY) : null;
+        let startEventId = '';
         if (remembered && r.events.some((e) => e.id === remembered)) {
-          setEventId(remembered);
-          return;
+          startEventId = remembered;
+        } else {
+          const upcoming = r.events
+            .filter((e) => Date.parse(e.date) >= Date.now())
+            .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+          startEventId = upcoming[0]?.id ?? '';
         }
-        const upcoming = r.events
-          .filter((e) => Date.parse(e.date) >= Date.now())
-          .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-        if (upcoming[0]) setEventId(upcoming[0].id);
+        setEventId(startEventId);
+        setInitial({
+          eventId: startEventId,
+          name: '',
+          phone: '',
+          email: '',
+          seats: 1,
+          paymentStatus: 'confirmed',
+          customAnswers: {},
+        });
       })
       .catch(showApiError);
   }, []);
@@ -61,11 +81,20 @@ export default function ManualRegistrationDrawer() {
   const errorCount = Object.keys(errors).length;
 
   const dirty =
-    name !== '' || phone !== '' || email !== '' || Object.keys(customAnswers).length > 0;
+    !!initial && (
+      initial.eventId !== eventId ||
+      initial.name !== name ||
+      initial.phone !== phone ||
+      initial.email !== email ||
+      initial.seats !== (seats ?? 0) ||
+      initial.paymentStatus !== paymentStatus ||
+      JSON.stringify(initial.customAnswers) !== JSON.stringify(customAnswers)
+    );
 
   function pickEvent(v: string) {
     setEventId(v);
     if (v && typeof window !== 'undefined') localStorage.setItem(LAST_EVENT_KEY, v);
+    setInitial((prev) => (prev ? { ...prev, eventId: v } : prev));
   }
 
   async function onPhoneBlur() {

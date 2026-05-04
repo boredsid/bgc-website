@@ -44,18 +44,20 @@ export default function EventDrawer({ mode }: Props) {
           const sorted = [...r.events].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
           const latest = sorted.find((e) => e.is_published) || sorted[0];
           if (latest) {
-            const next = new Date();
-            next.setDate(next.getDate() + 14);
-            setForm({
+            const nextDate = new Date();
+            nextDate.setDate(nextDate.getDate() + 14);
+            const cloned: Partial<Event> = {
               ...empty,
-              date: next.toISOString(),
+              date: nextDate.toISOString(),
               venue_name: latest.venue_name || '',
               venue_area: latest.venue_area || '',
               price: latest.price,
               capacity: latest.capacity,
               custom_questions: latest.custom_questions || [],
               price_includes: latest.price_includes || '',
-            });
+            };
+            setForm(cloned);
+            setInitial(cloned);
           }
           // Build venue suggestion list from distinct venues.
           const seen = new Set<string>();
