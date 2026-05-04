@@ -23,9 +23,9 @@ export default function EventsList() {
 
   const columns: Column<Event>[] = [
     { key: 'name', header: 'Name', render: (e) => e.name },
-    { key: 'date', header: 'Date', render: (e) => <RelativeDate iso={e.date} /> },
+    { key: 'date', header: 'Date', render: (e) => <RelativeDate iso={e.date} />, sortable: true, sortValue: (e) => e.date },
     { key: 'venue', header: 'Venue', render: (e) => e.venue_name || '—' },
-    { key: 'capacity', header: 'Capacity', render: (e) => e.capacity },
+    { key: 'capacity', header: 'Capacity', render: (e) => e.capacity, sortable: true, sortValue: (e) => e.capacity },
     { key: 'published', header: 'Status', render: (e) => <StatusBadge status={e.is_published ? 'published' : 'draft'} /> },
   ];
 
