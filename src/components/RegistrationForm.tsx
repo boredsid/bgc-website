@@ -141,11 +141,18 @@ export default function RegistrationForm() {
   if (membership?.isMember) {
     if (membership.discount === '20') {
       const firstSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
-      const plusOneSeats = seats - firstSeats;
-      total = Math.round(firstSeats * event.price * 0.8 + plusOneSeats * event.price * 0.9);
+      const afterFirst = seats - firstSeats;
+      const secondSeats = existingSeatsForEvent + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
+      const fullSeats = afterFirst - secondSeats;
+      total = Math.round(
+        firstSeats * event.price * 0.8 +
+          secondSeats * event.price * 0.9 +
+          fullSeats * event.price,
+      );
       const parts: string[] = [];
       if (firstSeats > 0) parts.push('20% off your seat');
-      if (plusOneSeats > 0) parts.push(`10% off ${plusOneSeats} plus-one${plusOneSeats > 1 ? 's' : ''}`);
+      if (secondSeats > 0) parts.push('10% off second seat');
+      if (fullSeats > 0) parts.push(`${fullSeats} seat${fullSeats > 1 ? 's' : ''} at full price`);
       discountLabel = `Initiate member — ${parts.join(', ')}`;
     } else if (membership.discount === 'free') {
       const selfSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;

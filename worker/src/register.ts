@@ -157,10 +157,16 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
 
     if (member.tier === 'initiate') {
-      // 20% off the first seat (event-level), 10% off every additional seat.
+      // 20% off seat 1, 10% off seat 2 (event-level — counts prior regs), full price beyond.
       const firstSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
-      const plusOneSeats = seats - firstSeats;
-      totalAmount = Math.round(firstSeats * event.price * 0.8 + plusOneSeats * event.price * 0.9);
+      const afterFirst = seats - firstSeats;
+      const secondSeats = existingSeats + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
+      const fullSeats = afterFirst - secondSeats;
+      totalAmount = Math.round(
+        firstSeats * event.price * 0.8 +
+          secondSeats * event.price * 0.9 +
+          fullSeats * event.price,
+      );
       discountApplied = 'initiate';
     } else if (member.tier === 'adventurer' || member.tier === 'guildmaster') {
       const cap = member.tier === 'adventurer' ? 1 : 5;

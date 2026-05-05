@@ -91,8 +91,14 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
 
     if (member.tier === 'initiate') {
       const firstSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
-      const plusOneSeats = seats - firstSeats;
-      totalAmount = Math.round(firstSeats * event.price * 0.8 + plusOneSeats * event.price * 0.9);
+      const afterFirst = seats - firstSeats;
+      const secondSeats = existingSeats + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
+      const fullSeats = afterFirst - secondSeats;
+      totalAmount = Math.round(
+        firstSeats * event.price * 0.8 +
+          secondSeats * event.price * 0.9 +
+          fullSeats * event.price,
+      );
       discountApplied = 'initiate';
     } else {
       const cap = member.tier === 'adventurer' ? 1 : 5;
