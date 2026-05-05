@@ -36,13 +36,13 @@ describe('aggregateRegistrations', () => {
     expect(summary.guild_member_count).toBe(2); // r1 has 2 seats, user u1 in guild
   });
 
-  it('aggregates select answers from confirmed only', () => {
+  it('aggregates select answers from confirmed and pending (excludes cancelled)', () => {
     const summary = aggregateRegistrations(event, regs, guildUserIds);
     const meal = summary.custom_question_summary.meal;
-    expect(meal).toEqual({ type: 'select', counts: { Veg: 1, NonVeg: 1 } });
+    expect(meal).toEqual({ type: 'select', counts: { Veg: 2, NonVeg: 1 } });
   });
 
-  it('collects text answers from confirmed only', () => {
+  it('collects text answers from confirmed and pending (excludes cancelled)', () => {
     const summary = aggregateRegistrations(event, regs, guildUserIds);
     const note = summary.custom_question_summary.note;
     expect(note).toEqual({ type: 'text', count: 1, answers: ['allergy: nuts'] });
