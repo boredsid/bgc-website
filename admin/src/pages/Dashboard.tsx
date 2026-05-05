@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 import DashboardCard from '@/components/DashboardCard';
 import { fetchAdmin, showApiError } from '@/lib/api';
+import { useRevalidate } from '@/lib/revalidate';
 import type { SummaryCard } from '@/lib/types';
 
 interface SummaryResponse {
@@ -17,12 +18,15 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showPast, setShowPast] = useState(false);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     fetchAdmin<SummaryResponse>('/api/admin/summary')
       .then(setData)
       .catch(showApiError)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useRevalidate(refresh);
 
   if (loading) return <p>Loading…</p>;
   if (!data) return null;

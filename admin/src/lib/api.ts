@@ -1,3 +1,5 @@
+import { emitRevalidate } from './revalidate';
+
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
 
 export class ApiError extends Error {
@@ -16,6 +18,7 @@ export async function fetchAdmin<T>(path: string, init?: RequestInit): Promise<T
 
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
+    cache: 'no-store',
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -45,6 +48,8 @@ export async function fetchAdmin<T>(path: string, init?: RequestInit): Promise<T
         : `Request failed (${res.status})`;
     throw new ApiError(res.status, msg);
   }
+
+  if (init?.method && init.method !== 'GET') emitRevalidate();
 
   return body as T;
 }

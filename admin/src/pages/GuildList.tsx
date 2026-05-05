@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { fetchAdmin, showApiError } from '@/lib/api';
+import { useRevalidate } from '@/lib/revalidate';
 import { listViews, saveView, deleteView, getView } from '@/lib/savedViews';
 import { toast } from 'sonner';
 import type { GuildMember } from '@/lib/types';
@@ -43,7 +44,7 @@ export default function GuildList() {
   const [viewsVersion, setViewsVersion] = useState(0);
   const navigate = useNavigate();
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     setLoading(true);
     const qs = new URLSearchParams();
     if (status) qs.set('status', status);
@@ -52,8 +53,9 @@ export default function GuildList() {
       .then((r) => setMembers(r.members))
       .catch(showApiError)
       .finally(() => setLoading(false));
-  };
-  useEffect(refresh, [status, tier]);
+  }, [status, tier]);
+  useEffect(() => { refresh(); }, [refresh]);
+  useRevalidate(refresh);
 
   function setFilter(k: string, v: string) {
     const next = new URLSearchParams(params);

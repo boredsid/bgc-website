@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,6 +19,7 @@ import { ActionSheet, type ActionItem } from '@/components/ActionSheet';
 import { BulkActionBar, type BulkAction } from '@/components/BulkActionBar';
 import { BulkConfirmDialog } from '@/components/BulkConfirmDialog';
 import { fetchAdmin, showApiError } from '@/lib/api';
+import { useRevalidate } from '@/lib/revalidate';
 import { listViews, saveView, deleteView, getView } from '@/lib/savedViews';
 import { toast } from 'sonner';
 import type { Registration, Event } from '@/lib/types';
@@ -39,11 +40,13 @@ export default function RegistrationsList() {
   const [viewsVersion, setViewsVersion] = useState(0);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadEvents = useCallback(() => {
     fetchAdmin<{ events: Event[] }>('/api/admin/events').then((r) => setEvents(r.events)).catch(showApiError);
   }, []);
 
-  const refresh = () => {
+  useEffect(() => { loadEvents(); }, [loadEvents]);
+
+  const refresh = useCallback(() => {
     setLoading(true);
     const qs = new URLSearchParams();
     if (eventFilter) qs.set('event_id', eventFilter);
@@ -52,9 +55,12 @@ export default function RegistrationsList() {
       .then((r) => setRegs(r.registrations))
       .catch(showApiError)
       .finally(() => setLoading(false));
-  };
+  }, [eventFilter, statusFilter]);
 
-  useEffect(refresh, [eventFilter, statusFilter]);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const reloadAll = useCallback(() => { loadEvents(); refresh(); }, [loadEvents, refresh]);
+  useRevalidate(reloadAll);
 
   const eventNameById = useMemo(() => Object.fromEntries(events.map((e) => [e.id, e.name])), [events]);
 

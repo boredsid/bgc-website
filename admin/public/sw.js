@@ -1,6 +1,7 @@
-// Minimal app-shell cache. /api/admin/* GETs use stale-while-revalidate so reads stay available offline.
-const VERSION = 'bgc-admin-v1';
-const API_CACHE = 'bgc-admin-api-v1';
+// Minimal app-shell cache. /api/admin/* GETs use network-first so updates show immediately;
+// cached responses are only served as an offline fallback.
+const VERSION = 'bgc-admin-v2';
+const API_CACHE = 'bgc-admin-api-v2';
 const SHELL = ['/', '/index.html'];
 
 self.addEventListener('install', (e) => {
@@ -23,8 +24,8 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/admin/') && e.request.method === 'GET') {
     e.respondWith((async () => {
       const cache = await caches.open(API_CACHE);
-      const cached = await cache.match(e.request);
-      const networkPromise = fetch(e.request).then(async (res) => {
+      try {
+        const res = await fetch(e.request);
         if (res.ok) {
           const body = await res.clone().text();
           const headers = new Headers(res.headers);
@@ -41,13 +42,11 @@ self.addEventListener('fetch', (e) => {
           return stamped;
         }
         return res;
-      }).catch(() => cached);
-
-      if (cached) {
-        e.waitUntil(networkPromise);
-        return cached;
+      } catch {
+        const cached = await cache.match(e.request);
+        if (cached) return cached;
+        throw new Error('Offline and no cached response');
       }
-      return networkPromise;
     })());
     return;
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import DataTable, { Column } from '@/components/DataTable';
 import MobileCardList, { CardField } from '@/components/MobileCardList';
 import { BulkActionBar, type BulkAction } from '@/components/BulkActionBar';
 import { fetchAdmin, showApiError } from '@/lib/api';
+import { useRevalidate } from '@/lib/revalidate';
 import { toast } from 'sonner';
 import type { Game } from '@/lib/types';
 
@@ -29,17 +30,16 @@ export default function GamesList() {
   const [bulkUpdateValue, setBulkUpdateValue] = useState('');
   const navigate = useNavigate();
 
-  function refresh() {
+  const refresh = useCallback(() => {
     setLoading(true);
     fetchAdmin<{ games: Game[] }>('/api/admin/games')
       .then((r) => setGames(r.games))
       .catch(showApiError)
       .finally(() => setLoading(false));
-  }
-
-  useEffect(() => {
-    refresh();
   }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useRevalidate(refresh);
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase().trim();

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import MobileCardList, { CardField } from '@/components/MobileCardList';
 import { StatusBadge } from '@/components/StatusBadge';
 import { RelativeDate } from '@/components/RelativeDate';
 import { fetchAdmin, showApiError } from '@/lib/api';
+import { useRevalidate } from '@/lib/revalidate';
 import type { Event } from '@/lib/types';
 
 export default function EventsList() {
@@ -14,12 +15,15 @@ export default function EventsList() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     fetchAdmin<{ events: Event[] }>('/api/admin/events')
       .then((r) => setEvents(r.events))
       .catch(showApiError)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+  useRevalidate(refresh);
 
   const columns: Column<Event>[] = [
     { key: 'name', header: 'Name', render: (e) => e.name },
