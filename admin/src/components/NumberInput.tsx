@@ -17,14 +17,22 @@ export function NumberInput({ value, onChange, allowRupees, ...rest }: Props) {
 }
 
 function NumberInputNumeric({ value, onChange, ...rest }: Omit<Props, 'allowRupees'>) {
-  const display = value == null ? '' : String(value);
+  const [display, setDisplay] = useState<string>(value == null ? '' : String(value));
+  useEffect(() => {
+    const parsed = display === '' ? null : Number(display);
+    if (value === parsed) return;
+    if (value == null && display === '') return;
+    setDisplay(value == null ? '' : String(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
   return (
     <Input
-      type="number"
+      type="text"
       inputMode="decimal"
       value={display}
       onChange={(e) => {
         const raw = e.target.value;
+        setDisplay(raw);
         if (raw === '') return onChange(null);
         const n = Number(raw);
         if (Number.isFinite(n)) onChange(n);
