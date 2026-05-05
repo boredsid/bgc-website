@@ -33,35 +33,40 @@ export default function RegistrationForm() {
     const paramId = params.get('event');
 
     async function resolveEvent() {
-      let id = paramId;
+      try {
+        let id = paramId;
 
-      if (!id) {
-        const { data } = await supabase
-          .from('events')
-          .select('id')
-          .eq('is_published', true)
-          .gte('date', new Date().toISOString())
-          .order('date', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        id = data?.id ?? null;
-      }
+        if (!id) {
+          const { data } = await supabase
+            .from('events')
+            .select('id')
+            .eq('is_published', true)
+            .gte('date', new Date().toISOString())
+            .order('date', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          id = data?.id ?? null;
+        }
 
-      if (!id) {
+        if (!id) return;
+
+        setEventId(id);
+
+        const eventRes = await supabase.from('events').select('*').eq('id', id).single();
+        setEvent(eventRes.data);
+
+        // Spots come from the Worker; if it's unreachable (e.g. *.workers.dev
+        // blocked by privacy extensions/Firefox ETP), allow registration to
+        // proceed with default capacity rather than blocking the whole page.
+        try {
+          const spotsRes = await fetch(`${WORKER_URL}/api/event-spots/${id}`);
+          if (spotsRes.ok) setSpots(await spotsRes.json());
+        } catch {
+          // leave spots as null — UI already handles this gracefully
+        }
+      } finally {
         setLoading(false);
-        return;
       }
-
-      setEventId(id);
-
-      const [eventRes, spotsRes] = await Promise.all([
-        supabase.from('events').select('*').eq('id', id).single(),
-        fetch(`${WORKER_URL}/api/event-spots/${id}`).then((r) => r.json()),
-      ]);
-
-      setEvent(eventRes.data);
-      setSpots(spotsRes);
-      setLoading(false);
     }
 
     resolveEvent();

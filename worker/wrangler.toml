@@ -1,6 +1,14 @@
 name = "bgc-api"
 main = "src/index.ts"
 compatibility_date = "2025-04-01"
+workers_dev = true
+
+# Custom domain: served alongside the default *.workers.dev URL. Privacy
+# extensions and Firefox ETP often block *.workers.dev, so the public site
+# should call this domain instead. Zone must be on Cloudflare DNS.
+[[routes]]
+pattern = "api.boardgamecompany.in"
+custom_domain = true
 
 [vars]
 SUPABASE_URL = "https://yhgtwqdsnrslcgdvmunz.supabase.co"
