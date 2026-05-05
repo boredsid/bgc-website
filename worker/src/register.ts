@@ -146,21 +146,23 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     .maybeSingle();
 
   if (member) {
+    // Sum existing seats this user already holds for this event (pending + confirmed)
+    // so a separate registration can't double-claim the first-seat discount.
+    const { data: priorRegs } = await supabase
+      .from('registrations')
+      .select('seats')
+      .eq('event_id', body.event_id)
+      .eq('user_id', userId)
+      .neq('payment_status', 'cancelled');
+    const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
+
     if (member.tier === 'initiate') {
-      totalAmount = Math.round(totalAmount * 0.8);
+      // 20% off the first seat (event-level), 10% off every additional seat.
+      const firstSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
+      const plusOneSeats = seats - firstSeats;
+      totalAmount = Math.round(firstSeats * event.price * 0.8 + plusOneSeats * event.price * 0.9);
       discountApplied = 'initiate';
     } else if (member.tier === 'adventurer' || member.tier === 'guildmaster') {
-      // Sum existing seats this user already holds for this event (pending + confirmed)
-      // so a separate registration can't double-claim the free self-seat.
-      const { data: priorRegs } = await supabase
-        .from('registrations')
-        .select('seats')
-        .eq('event_id', body.event_id)
-        .eq('user_id', userId)
-        .neq('payment_status', 'cancelled');
-
-      const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
-
       const cap = member.tier === 'adventurer' ? 1 : 5;
       const remainingCap = Math.max(0, cap - member.plus_ones_used);
 

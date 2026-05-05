@@ -81,13 +81,23 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     .maybeSingle();
 
   if (member) {
+    const { data: priorRegs } = await supabase
+      .from('registrations')
+      .select('seats')
+      .eq('event_id', body.event_id)
+      .eq('user_id', userId)
+      .neq('payment_status', 'cancelled');
+    const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
+
     if (member.tier === 'initiate') {
-      totalAmount = Math.round(totalAmount * 0.8);
+      const firstSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
+      const plusOneSeats = seats - firstSeats;
+      totalAmount = Math.round(firstSeats * event.price * 0.8 + plusOneSeats * event.price * 0.9);
       discountApplied = 'initiate';
     } else {
       const cap = member.tier === 'adventurer' ? 1 : 5;
       const remainingCap = Math.max(0, cap - member.plus_ones_used);
-      const selfSeats = Math.min(1, seats);
+      const selfSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
       const plusOneCandidates = seats - selfSeats;
       plusOnesToConsume = Math.min(plusOneCandidates, remainingCap);
       const paidSeats = plusOneCandidates - plusOnesToConsume;

@@ -140,8 +140,13 @@ export default function RegistrationForm() {
   let discountLabel = '';
   if (membership?.isMember) {
     if (membership.discount === '20') {
-      total = Math.round(total * 0.8);
-      discountLabel = 'Initiate member — 20% off';
+      const firstSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
+      const plusOneSeats = seats - firstSeats;
+      total = Math.round(firstSeats * event.price * 0.8 + plusOneSeats * event.price * 0.9);
+      const parts: string[] = [];
+      if (firstSeats > 0) parts.push('20% off your seat');
+      if (plusOneSeats > 0) parts.push(`10% off ${plusOneSeats} plus-one${plusOneSeats > 1 ? 's' : ''}`);
+      discountLabel = `Initiate member — ${parts.join(', ')}`;
     } else if (membership.discount === 'free') {
       const selfSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
       const plusOneCandidates = seats - selfSeats;
