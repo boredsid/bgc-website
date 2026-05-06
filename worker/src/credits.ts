@@ -29,6 +29,7 @@ export async function getUserBalance(supabase: SupabaseClient, userId: string): 
 export async function recordCreditEvent(
   supabase: SupabaseClient,
   event: CreditEvent,
+  options: { ignoreDuplicate?: boolean } = {},
 ): Promise<void> {
   const row = {
     user_id: event.user_id,
@@ -41,6 +42,7 @@ export async function recordCreditEvent(
   };
   const { error } = await supabase.from('user_credits').insert(row);
   if (error) {
+    if (options.ignoreDuplicate && (error as { code?: string }).code === '23505') return;
     console.error('[credits] insert failed', error);
     throw error;
   }

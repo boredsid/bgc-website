@@ -53,7 +53,7 @@ export async function handleGetUser(id: string, env: Env): Promise<Response> {
     .order('created_at', { ascending: false })
     .limit(100);
 
-  const credit_balance = (ledger || []).reduce((s: number, r: { amount: number }) => s + r.amount, 0);
+  const credit_balance = await getUserBalance(supabase, id);
   return jsonResponse({ user: data, credit_balance, credits: ledger || [] });
 }
 

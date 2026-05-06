@@ -44,7 +44,7 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
         amount: refund,
         reason: 'cancellation',
         registration_id: reg.id,
-      });
+      }, { ignoreDuplicate: true });
     }
   }
 

@@ -94,7 +94,7 @@ export async function handleUpdateRegistration(id: string, request: Request, env
       amount: refundAmount,
       reason: 'cancellation',
       registration_id: id,
-    });
+    }, { ignoreDuplicate: true });
   }
   if (transitioningToConfirmed && prior.user_id && refundAmount > 0) {
     await recordCreditEvent(supabase, {
@@ -102,7 +102,7 @@ export async function handleUpdateRegistration(id: string, request: Request, env
       amount: -refundAmount,
       reason: 'cancellation_reversal',
       registration_id: id,
-    });
+    }, { ignoreDuplicate: true });
   }
 
   return jsonResponse({ registration: data });
