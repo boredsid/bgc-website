@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Library, Users, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Calendar, Library, Users, ShieldCheck, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const items = [
@@ -8,6 +8,7 @@ const items = [
   { to: '/games', label: 'Games', icon: Library, end: false, countKey: null },
   { to: '/registrations', label: 'Registrations', icon: Users, end: false, countKey: 'pending_registration_count' },
   { to: '/guild', label: 'Guild', icon: ShieldCheck, end: false, countKey: 'pending_guild_count' },
+  { to: '/users', label: 'Users', icon: UserCircle, end: false, countKey: null },
 ];
 
 export interface SidebarCounts {
