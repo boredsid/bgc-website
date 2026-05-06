@@ -13,7 +13,12 @@ import { handleExportGames } from './admin/export-games';
 import { handleAdminLookupPhone } from './admin/lookup-phone';
 import { handleManualRegister } from './admin/register-manual';
 import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
-import { handleGetUser, handleUpdateUser } from './admin/users';
+import {
+  handleGetUser,
+  handleUpdateUser,
+  handleListUsers,
+  handleAdjustUserCredits,
+} from './admin/users';
 import { handleSummary } from './admin/summary';
 import { handleSearch } from './admin/search';
 import { handleLog } from './admin/log';
@@ -184,6 +189,17 @@ export default {
               else if (gmId && request.method === 'GET') adminResponse = await handleGetGuildMember(gmId, env);
               else if (gmId && request.method === 'PATCH') adminResponse = await handleUpdateGuildMember(gmId, request, env);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/users' && request.method === 'GET') {
+            adminResponse = await handleListUsers(url, env);
+          }
+
+          if (!adminResponse) {
+            const userCreditsMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/credits$/);
+            if (userCreditsMatch && request.method === 'POST') {
+              adminResponse = await handleAdjustUserCredits(userCreditsMatch[1], request, env, gate.admin.email);
             }
           }
 
