@@ -15,6 +15,7 @@ interface PhoneLookup {
   user: { found: boolean; name: string | null; email: string | null };
   membership: { isMember: boolean; tier: string | null; discount: string | null; plus_ones_remaining: number };
   existing_seats_for_event: number;
+  credit_balance: number;
 }
 
 const LAST_EVENT_KEY = 'admin.manualReg.lastEventId';
@@ -197,6 +198,11 @@ export default function ManualRegistrationDrawer() {
         {lookup && lookup.membership.isMember && (
           <div className="text-xs rounded-md bg-emerald-50 text-emerald-900 p-2">
             Active {lookup.membership.tier} member · {lookup.membership.plus_ones_remaining} plus-ones remaining
+          </div>
+        )}
+        {lookup && lookup.credit_balance > 0 && (
+          <div className="text-xs rounded-md bg-amber-50 text-amber-900 p-2">
+            ₹{lookup.credit_balance} credit available — will auto-apply against this registration's total.
           </div>
         )}
         {field('name', 'Name', (
