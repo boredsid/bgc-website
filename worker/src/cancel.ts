@@ -1,5 +1,6 @@
 import { getSupabase } from './supabase';
 import { jsonResponse } from './validation';
+import { recordCreditEvent } from './credits';
 import type { Env } from './index';
 
 export async function handleCancelRegistration(request: Request, env: Env): Promise<Response> {
@@ -12,7 +13,7 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
 
   const { data: reg, error: fetchError } = await supabase
     .from('registrations')
-    .select('id, user_id, payment_status, plus_ones_consumed, discount_applied')
+    .select('id, user_id, payment_status, plus_ones_consumed, discount_applied, total_amount, credits_applied')
     .eq('id', body.registration_id)
     .maybeSingle();
 
@@ -24,6 +25,8 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
     return jsonResponse({ success: true, already_cancelled: true });
   }
 
+  const wasConfirmed = reg.payment_status === 'confirmed';
+
   const { error: updateError } = await supabase
     .from('registrations')
     .update({ payment_status: 'cancelled' })
@@ -31,6 +34,18 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
 
   if (updateError) {
     return jsonResponse({ error: 'Cancel failed' }, 500);
+  }
+
+  if (wasConfirmed && reg.user_id) {
+    const refund = (reg.total_amount || 0) + (reg.credits_applied || 0);
+    if (refund > 0) {
+      await recordCreditEvent(supabase, {
+        user_id: reg.user_id,
+        amount: refund,
+        reason: 'cancellation',
+        registration_id: reg.id,
+      });
+    }
   }
 
   let plusOnesRefunded = 0;
