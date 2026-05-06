@@ -2,6 +2,7 @@ import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonResponse } from './validation';
 import { sendGuildPurchaseEmail } from './email';
+import { applyCreditsToTotal, recordCreditEvent } from './credits';
 
 const VALID_TIERS = ['initiate', 'adventurer', 'guildmaster'] as const;
 type Tier = typeof VALID_TIERS[number];
@@ -54,7 +55,7 @@ export async function handleGuildPurchase(
   const source = sanitizeSource(body.source);
 
   const tier = body.tier as Tier;
-  const amount = TIER_PRICES[tier];
+  let amount = TIER_PRICES[tier];
 
   const supabase = getSupabase(env);
 
@@ -92,6 +93,10 @@ export async function handleGuildPurchase(
   expiresDate.setMonth(expiresDate.getMonth() + TIER_DURATION_MONTHS[tier]);
   const expiresAt = expiresDate.toISOString().split('T')[0];
 
+  // Apply user credits against the membership price
+  const { creditsApplied, finalAmount } = await applyCreditsToTotal(supabase, userId, amount);
+  amount = finalAmount;
+
   // Insert guild_path_members row
   const { data: purchase, error: purchaseError } = await supabase
     .from('guild_path_members')
@@ -109,6 +114,15 @@ export async function handleGuildPurchase(
 
   if (purchaseError || !purchase) {
     return jsonResponse({ error: 'Purchase failed' }, 500);
+  }
+
+  if (creditsApplied > 0) {
+    await recordCreditEvent(supabase, {
+      user_id: userId,
+      amount: -creditsApplied,
+      reason: 'guild_use',
+      guild_member_id: purchase.id,
+    });
   }
 
   // Send confirmation email (fire-and-forget)
