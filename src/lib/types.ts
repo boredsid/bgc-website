@@ -55,6 +55,7 @@ export interface PhoneLookupResponse {
     plus_ones_remaining: number;
   };
   existing_seats_for_event: number;
+  credit_balance: number;
 }
 
 export interface RegisterRequest {

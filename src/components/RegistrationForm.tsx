@@ -23,6 +23,7 @@ export default function RegistrationForm() {
   const [customAnswers, setCustomAnswers] = useState<Record<string, string | boolean>>({});
   const [membership, setMembership] = useState<PhoneLookupResponse['membership'] | null>(null);
   const [existingSeatsForEvent, setExistingSeatsForEvent] = useState(0);
+  const [creditBalance, setCreditBalance] = useState(0);
   const [phoneLookedUp, setPhoneLookedUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +97,7 @@ export default function RegistrationForm() {
       }
       setMembership(data.membership);
       setExistingSeatsForEvent(data.existing_seats_for_event ?? 0);
+      setCreditBalance(data.credit_balance ?? 0);
       setPhoneLookedUp(true);
     } catch {
       setPhoneLookedUp(false);
@@ -109,6 +111,7 @@ export default function RegistrationForm() {
         setPhoneLookedUp(false);
         setMembership(null);
         setExistingSeatsForEvent(0);
+        setCreditBalance(0);
       }
       return;
     }
@@ -136,7 +139,8 @@ export default function RegistrationForm() {
   const soldOut = spots && spots.remaining <= 0;
   const maxSeats = spots ? Math.min(spots.remaining, 10) : 10;
 
-  let total = event.price * seats;
+  const grossTotal = event.price * seats;
+  let total = grossTotal;
   let discountLabel = '';
   if (membership?.isMember) {
     if (membership.discount === '20') {
@@ -170,6 +174,10 @@ export default function RegistrationForm() {
       discountLabel = `${tierName} — ${parts.join(', ')}${plusOnesUsed > 0 ? ` (${remainingAfter} left)` : ''}`;
     }
   }
+
+  const subtotalAfterDiscount = total;
+  const creditApplied = Math.max(0, Math.min(creditBalance, subtotalAfterDiscount));
+  total = subtotalAfterDiscount - creditApplied;
 
   const eventDate = new Date(event.date);
 
@@ -381,15 +389,22 @@ export default function RegistrationForm() {
             />
           ))}
 
+          {creditApplied > 0 && (
+            <div className="mt-6 mb-3 flex items-center justify-between text-sm font-heading">
+              <span>Credits applied (you have ₹{creditBalance})</span>
+              <span className="font-bold text-[#4A9B8E]">−₹{creditApplied}</span>
+            </div>
+          )}
+
           <div
-            className="card-brutal p-5 mt-6 mb-5 flex items-center justify-between"
+            className={`card-brutal p-5 ${creditApplied > 0 ? 'mb-5' : 'mt-6 mb-5'} flex items-center justify-between`}
             style={{ background: '#FFD166' }}
           >
             <span className="font-heading font-bold text-sm uppercase tracking-wider">Total</span>
             <div className="text-right">
-              {membership?.isMember && membership.discount && event.price * seats !== total && (
+              {grossTotal !== total && (
                 <span className="text-[#1A1A1A]/60 line-through text-sm mr-2">
-                  ₹{event.price * seats}
+                  ₹{grossTotal}
                 </span>
               )}
               <span className="font-heading font-bold text-3xl">₹{total}</span>
