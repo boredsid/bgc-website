@@ -13,8 +13,37 @@ export default function GuildPurchase() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [creditBalance, setCreditBalance] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    const match = cleaned.match(/^(?:\+?91)?(\d{10})$/);
+    if (!match) {
+      if (creditBalance !== 0) setCreditBalance(0);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`${WORKER_URL}/api/lookup-phone`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: match[1] }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setCreditBalance(data.credit_balance ?? 0);
+        if (data.user?.found) {
+          if (data.user.name) setName((cur) => cur || data.user.name);
+          if (data.user.email) setEmail((cur) => cur || data.user.email);
+        }
+      } catch {
+        // ignore — display falls back to gross price
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [phone, creditBalance]);
 
   function selectTier(tier: Tier) {
     setSelectedTier(tier);
@@ -124,6 +153,7 @@ export default function GuildPurchase() {
           name={name}
           phone={phone}
           email={email}
+          creditBalance={creditBalance}
           error={error}
           onName={setName}
           onPhone={setPhone}
@@ -136,7 +166,7 @@ export default function GuildPurchase() {
       {/* Payment modal */}
       {step === 'payment' && selectedTier && (
         <PaymentSheet
-          amount={selectedTier.price}
+          amount={Math.max(0, selectedTier.price - Math.min(creditBalance, selectedTier.price))}
           payerName={name}
           onConfirm={handlePaymentConfirm}
           onClose={() => setStep('form')}
@@ -151,12 +181,13 @@ export default function GuildPurchase() {
 }
 
 function FormModal({
-  tier, name, phone, email, error, onName, onPhone, onEmail, onSubmit, onClose,
+  tier, name, phone, email, creditBalance, error, onName, onPhone, onEmail, onSubmit, onClose,
 }: {
   tier: Tier;
   name: string;
   phone: string;
   email: string;
+  creditBalance: number;
   error: string | null;
   onName: (v: string) => void;
   onPhone: (v: string) => void;
@@ -164,6 +195,8 @@ function FormModal({
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }) {
+  const creditApplied = Math.min(creditBalance, tier.price);
+  const finalAmount = Math.max(0, tier.price - creditApplied);
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -247,6 +280,13 @@ function FormModal({
               />
             </div>
 
+            {creditApplied > 0 && (
+              <div className="text-sm flex justify-between">
+                <span>Credits applied (you have ₹{creditBalance})</span>
+                <span className="font-bold text-[#4A9B8E]">−₹{creditApplied}</span>
+              </div>
+            )}
+
             {error && (
               <div className="card-brutal p-4" style={{ background: '#FF6B6B' }}>
                 <p className="font-heading font-semibold">{error}</p>
@@ -254,7 +294,7 @@ function FormModal({
             )}
 
             <button type="submit" className="btn btn-primary w-full">
-              Pay {tier.priceLabel}
+              {finalAmount === 0 ? 'Confirm membership' : `Pay ₹${finalAmount}`}
             </button>
           </form>
         </div>
