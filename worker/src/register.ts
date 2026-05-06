@@ -2,6 +2,7 @@ import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonResponse } from './validation';
 import { sendEventRegistrationEmail } from './email';
+import { applyCreditsToTotal, recordCreditEvent } from './credits';
 
 export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -184,6 +185,10 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     }
   }
 
+  // Apply user credits against the remaining balance
+  const { creditsApplied, finalAmount } = await applyCreditsToTotal(supabase, userId, totalAmount);
+  totalAmount = finalAmount;
+
   // Insert registration
   const { data: registration, error: regError } = await supabase
     .from('registrations')
@@ -199,6 +204,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       custom_answers: customAnswers,
       payment_status: body.payment_status,
       plus_ones_consumed: plusOnesToConsume,
+      credits_applied: creditsApplied,
       source,
     })
     .select('id')
@@ -206,6 +212,15 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
 
   if (regError) {
     return jsonResponse({ error: 'Registration failed' }, 500);
+  }
+
+  if (creditsApplied > 0) {
+    await recordCreditEvent(supabase, {
+      user_id: userId,
+      amount: -creditsApplied,
+      reason: 'registration_use',
+      registration_id: registration.id,
+    });
   }
 
   if (membershipIdToUpdate && plusOnesToConsume > 0) {
