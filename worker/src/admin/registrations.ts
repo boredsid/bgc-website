@@ -1,6 +1,7 @@
 import type { Env } from '../index';
 import { getSupabase } from '../supabase';
 import { jsonResponse } from '../validation';
+import { getUserBalance, recordCreditEvent } from '../credits';
 
 const REG_FIELDS = [
   'event_id', 'name', 'phone', 'email', 'seats', 'total_amount',
@@ -53,9 +54,56 @@ export async function handleUpdateRegistration(id: string, request: Request, env
   if (Object.keys(payload).length === 0) return jsonResponse({ error: 'No fields to update' }, 400);
   const err = validateRegPayload(payload);
   if (err) return jsonResponse({ error: err }, 400);
+
   const supabase = getSupabase(env);
-  const { data, error } = await supabase.from('registrations').update(payload).eq('id', id).select('*').maybeSingle();
+
+  const { data: prior, error: priorError } = await supabase
+    .from('registrations')
+    .select('id, user_id, payment_status, total_amount, credits_applied')
+    .eq('id', id)
+    .maybeSingle();
+  if (priorError) return jsonResponse({ error: 'Failed to load registration' }, 500);
+  if (!prior) return jsonResponse({ error: 'Registration not found' }, 404);
+
+  const newStatus = payload.payment_status as 'pending' | 'confirmed' | 'cancelled' | undefined;
+  const transitioningToCancelled = newStatus === 'cancelled' && prior.payment_status === 'confirmed';
+  const transitioningToConfirmed = newStatus === 'confirmed' && prior.payment_status === 'cancelled';
+  const refundAmount = (prior.total_amount || 0) + (prior.credits_applied || 0);
+
+  if (transitioningToConfirmed && prior.user_id && refundAmount > 0) {
+    const balance = await getUserBalance(supabase, prior.user_id);
+    if (balance < refundAmount) {
+      return jsonResponse({
+        error: `Cannot reverse — credits from this cancellation already spent (₹${refundAmount} needed, ₹${balance} available).`,
+      }, 400);
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('registrations')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
   if (error) return jsonResponse({ error: 'Failed to update registration' }, 500);
   if (!data) return jsonResponse({ error: 'Registration not found' }, 404);
+
+  if (transitioningToCancelled && prior.user_id && refundAmount > 0) {
+    await recordCreditEvent(supabase, {
+      user_id: prior.user_id,
+      amount: refundAmount,
+      reason: 'cancellation',
+      registration_id: id,
+    });
+  }
+  if (transitioningToConfirmed && prior.user_id && refundAmount > 0) {
+    await recordCreditEvent(supabase, {
+      user_id: prior.user_id,
+      amount: -refundAmount,
+      reason: 'cancellation_reversal',
+      registration_id: id,
+    });
+  }
+
   return jsonResponse({ registration: data });
 }
