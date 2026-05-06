@@ -2,6 +2,7 @@ import type { Env } from '../index';
 import { getSupabase } from '../supabase';
 import { sanitizePhone, sanitizeEmail, sanitizeName, jsonResponse } from '../validation';
 import { sendEventRegistrationEmail } from '../email';
+import { applyCreditsToTotal, recordCreditEvent } from '../credits';
 
 export async function handleManualRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -114,6 +115,9 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     }
   }
 
+  const { creditsApplied, finalAmount } = await applyCreditsToTotal(supabase, userId, totalAmount);
+  totalAmount = finalAmount;
+
   const { data: reg, error: regErr } = await supabase
     .from('registrations')
     .insert({
@@ -126,12 +130,22 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
       custom_answers: body.custom_answers || {},
       payment_status: body.payment_status,
       plus_ones_consumed: plusOnesToConsume,
+      credits_applied: creditsApplied,
       source: 'admin',
     })
     .select('id')
     .single();
 
   if (regErr || !reg) return jsonResponse({ error: 'Registration failed' }, 500);
+
+  if (creditsApplied > 0) {
+    await recordCreditEvent(supabase, {
+      user_id: userId,
+      amount: -creditsApplied,
+      reason: 'registration_use',
+      registration_id: reg.id,
+    });
+  }
 
   if (membershipIdToUpdate && plusOnesToConsume > 0) {
     await supabase

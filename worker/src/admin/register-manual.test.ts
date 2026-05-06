@@ -80,6 +80,55 @@ describe('handleManualRegister', () => {
     expect(res.status).toBe(400);
   });
 
+  it('applies user credits against the total and records a registration_use ledger row', async () => {
+    let registrationInsert: any = null;
+    let creditInsert: any = null;
+    (getSupabase as any).mockReturnValue({
+      from: (table: string) => {
+        if (table === 'events') {
+          return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 'e1', name: 'T', date: '2026-06-01T00:00:00Z', price: 800, capacity: 10, custom_questions: null, is_published: true, venue_name: 'X', venue_area: null, price_includes: null }, error: null }) }) }) };
+        }
+        if (table === 'registrations') {
+          return {
+            select: () => ({ eq: () => ({ neq: async () => ({ data: [], error: null }) }) }),
+            insert: (row: any) => { registrationInsert = row; return { select: () => ({ single: async () => ({ data: { id: 'r-credits' }, error: null }) }) }; },
+          };
+        }
+        if (table === 'users') {
+          return {
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 'u-credit' }, error: null }) }) }),
+            update: () => ({ eq: async () => ({ error: null }) }),
+          };
+        }
+        if (table === 'guild_path_members') {
+          return noMember();
+        }
+        if (table === 'user_credits') {
+          return {
+            select: () => ({ eq: async () => ({ data: [{ amount: 500 }], error: null }) }),
+            insert: async (row: any) => { creditInsert = row; return { error: null }; },
+          };
+        }
+        return null;
+      },
+    });
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({ event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com', seats: 1, payment_status: 'confirmed', custom_answers: {} }),
+    });
+    const ctx = { waitUntil: () => {} } as any;
+    const res = await handleManualRegister(req, mockEnv(), ctx);
+    expect(res.status).toBe(200);
+    expect(registrationInsert.total_amount).toBe(300);
+    expect(registrationInsert.credits_applied).toBe(500);
+    expect(creditInsert).toMatchObject({
+      user_id: 'u-credit',
+      amount: -500,
+      reason: 'registration_use',
+      registration_id: 'r-credits',
+    });
+  });
+
   it('sets source to "admin" on success', async () => {
     let inserted: any = null;
     (getSupabase as any).mockReturnValue({
