@@ -54,6 +54,7 @@ export interface Registration {
   custom_answers: Record<string, string | boolean> | null;
   payment_status: 'pending' | 'confirmed' | 'cancelled';
   plus_ones_consumed: number;
+  credits_applied: number;
   source: string | null;
   created_at: string;
 }
@@ -94,4 +95,33 @@ export interface SummaryCard {
   guild_member_count: number;
   capacity_used: number;
   custom_question_summary: Record<string, QuestionSummary>;
+}
+
+export type UserCreditReason =
+  | 'cancellation'
+  | 'cancellation_reversal'
+  | 'registration_use'
+  | 'guild_use'
+  | 'admin_adjustment';
+
+export interface UserCreditEntry {
+  id: string;
+  user_id: string;
+  amount: number;
+  reason: UserCreditReason;
+  registration_id: string | null;
+  guild_member_id: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface UserListItem extends User {
+  credit_balance: number;
+}
+
+export interface UserDetail {
+  user: User;
+  credit_balance: number;
+  credits: UserCreditEntry[];
 }
