@@ -17,6 +17,7 @@ export default function RegistrationDrawer() {
   const [reg, setReg] = useState<Registration | null>(null);
   const [initial, setInitial] = useState<Registration | null>(null);
   const [event, setEvent] = useState<Event | null>(null);
+  const [userBalance, setUserBalance] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -27,6 +28,11 @@ export default function RegistrationDrawer() {
       .then((r) => {
         setReg(r.registration);
         setInitial(r.registration);
+        if (r.registration.user_id) {
+          fetchAdmin<{ credit_balance: number }>(`/api/admin/users/${r.registration.user_id}`)
+            .then((u) => setUserBalance(u.credit_balance))
+            .catch(() => setUserBalance(null));
+        }
         return fetchAdmin<{ event: Event }>(`/api/admin/events/${r.registration.event_id}`);
       })
       .then((r) => setEvent(r.event))
@@ -150,6 +156,20 @@ export default function RegistrationDrawer() {
               </SelectContent>
             </Select>
           ))}
+          {(() => {
+            const refund = (reg.total_amount || 0) + (reg.credits_applied || 0);
+            const initialStatus = initial?.payment_status;
+            if (reg.payment_status === 'cancelled' && initialStatus === 'confirmed' && refund > 0) {
+              return <p className="text-xs text-muted-foreground">Cancelling will add ₹{refund} to {reg.name}'s credits.</p>;
+            }
+            if (reg.payment_status === 'confirmed' && initialStatus === 'cancelled' && refund > 0) {
+              if (userBalance !== null && userBalance < refund) {
+                return <p className="text-xs text-destructive">Cannot reverse — needs ₹{refund} credit, user has ₹{userBalance}.</p>;
+              }
+              return <p className="text-xs text-muted-foreground">Reversing will deduct ₹{refund} from credits (user has ₹{userBalance ?? '?'}).</p>;
+            }
+            return null;
+          })()}
           {field('source', 'Source', (
             <Input value={reg.source || ''} onChange={(e) => set('source', e.target.value || null)} />
           ))}
