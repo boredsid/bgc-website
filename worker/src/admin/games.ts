@@ -66,3 +66,79 @@ export async function handleUpdateGame(id: string, request: Request, env: Env): 
   if (!data) return jsonResponse({ error: 'Game not found' }, 404);
   return jsonResponse({ game: data });
 }
+
+export interface OwnerGameRow {
+  owned_by: string | null;
+  currently_with: string | null;
+}
+
+export interface OwnerSummary {
+  owner: string | null;
+  total: number;
+  with_owner: number;
+  with_others: number;
+  top_holders: Array<{ name: string; count: number }>;
+  more_holders: number;
+}
+
+export function aggregateOwners(games: OwnerGameRow[]): OwnerSummary[] {
+  const groups = new Map<
+    string,
+    {
+      display: string | null;
+      total: number;
+      with_owner: number;
+      with_others: number;
+      holders: Map<string, number>;
+    }
+  >();
+
+  for (const g of games) {
+    const ownerTrim = (g.owned_by ?? '').trim();
+    const key = ownerTrim === '' ? '__unowned__' : ownerTrim;
+    const display = ownerTrim === '' ? null : ownerTrim;
+    let group = groups.get(key);
+    if (!group) {
+      group = { display, total: 0, with_owner: 0, with_others: 0, holders: new Map() };
+      groups.set(key, group);
+    }
+    group.total += 1;
+
+    const heldTrim = (g.currently_with ?? '').trim();
+    const isWithOwner = heldTrim === '' || (ownerTrim !== '' && heldTrim === ownerTrim);
+    if (isWithOwner) {
+      group.with_owner += 1;
+    } else {
+      group.with_others += 1;
+      group.holders.set(heldTrim, (group.holders.get(heldTrim) ?? 0) + 1);
+    }
+  }
+
+  const rows: OwnerSummary[] = [];
+  for (const group of groups.values()) {
+    const sortedHolders = [...group.holders.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([name, count]) => ({ name, count }));
+    const top_holders = sortedHolders.slice(0, 3);
+    const more_holders = sortedHolders.length - top_holders.length;
+    rows.push({
+      owner: group.display,
+      total: group.total,
+      with_owner: group.with_owner,
+      with_others: group.with_others,
+      top_holders,
+      more_holders,
+    });
+  }
+
+  rows.sort((a, b) => {
+    if (b.total !== a.total) return b.total - a.total;
+    // Owner asc with null sorted last
+    if (a.owner === null && b.owner === null) return 0;
+    if (a.owner === null) return 1;
+    if (b.owner === null) return -1;
+    return a.owner.localeCompare(b.owner);
+  });
+
+  return rows;
+}
