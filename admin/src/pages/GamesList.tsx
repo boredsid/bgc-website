@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import OwnersSummary from './OwnersSummary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,6 +21,7 @@ import { toast } from 'sonner';
 import type { Game } from '@/lib/types';
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
+const UNOWNED_SENTINEL = '__unowned__';
 
 export default function GamesList() {
   const [games, setGames] = useState<Game[]>([]);
@@ -29,6 +32,9 @@ export default function GamesList() {
   const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
   const [bulkUpdateValue, setBulkUpdateValue] = useState('');
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'owners' ? 'owners' : 'all';
+  const ownerFilter = tab === 'all' ? searchParams.get('owned_by') : null;
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -44,11 +50,20 @@ export default function GamesList() {
   const filtered = useMemo(() => {
     const s = search.toLowerCase().trim();
     const w = withFilter.toLowerCase().trim();
-    return games.filter((g) =>
-      (!s || g.title.toLowerCase().includes(s)) &&
-      (!w || (g.currently_with || '').toLowerCase().includes(w)),
-    );
-  }, [games, search, withFilter]);
+    return games.filter((g) => {
+      if (s && !g.title.toLowerCase().includes(s)) return false;
+      if (w && !(g.currently_with || '').toLowerCase().includes(w)) return false;
+      if (ownerFilter !== null) {
+        const ownerTrim = (g.owned_by ?? '').trim();
+        if (ownerFilter === UNOWNED_SENTINEL) {
+          if (ownerTrim !== '') return false;
+        } else if (ownerTrim !== ownerFilter) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [games, search, withFilter, ownerFilter]);
 
   // ---- Inline currently_with edit (desktop) ----
   async function updateCurrentlyWith(game: Game, next: string | null) {
@@ -108,6 +123,25 @@ export default function GamesList() {
     { label: 'Export CSV', onClick: bulkExportCsv },
   ];
 
+  function setTab(next: 'all' | 'owners') {
+    const params = new URLSearchParams(searchParams);
+    if (next === 'owners') {
+      params.set('tab', 'owners');
+      params.delete('owned_by');
+    } else {
+      params.delete('tab');
+    }
+    setSearchParams(params, { replace: true });
+  }
+
+  function clearOwnerFilter() {
+    const params = new URLSearchParams(searchParams);
+    params.delete('owned_by');
+    setSearchParams(params, { replace: true });
+  }
+
+  const ownerChipLabel = ownerFilter === UNOWNED_SENTINEL ? 'Unowned' : ownerFilter;
+
   const columns: Column<Game>[] = [
     {
       key: 'title', header: 'Title', render: (g) => g.title,
@@ -143,77 +177,128 @@ export default function GamesList() {
           <Link to="/games/new">Add game</Link>
         </Button>
       </div>
-      <div className="flex gap-2 mb-3 flex-wrap">
-        <Input placeholder="Search title…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
-        <Input placeholder="Filter by who has it…" value={withFilter} onChange={(e) => setWithFilter(e.target.value)} className="max-w-xs" />
+
+      <div role="tablist" className="flex gap-1 mb-3 border-b">
+        <button
+          role="tab"
+          aria-selected={tab === 'all'}
+          onClick={() => setTab('all')}
+          className={cn(
+            'px-3 py-2 text-sm border-b-2 -mb-px',
+            tab === 'all' ? 'border-primary font-medium' : 'border-transparent text-muted-foreground',
+          )}
+        >
+          All games
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === 'owners'}
+          onClick={() => setTab('owners')}
+          className={cn(
+            'px-3 py-2 text-sm border-b-2 -mb-px',
+            tab === 'owners' ? 'border-primary font-medium' : 'border-transparent text-muted-foreground',
+          )}
+        >
+          Owners
+        </button>
       </div>
-      {loading ? <p>Loading…</p> : (
+
+      {tab === 'owners' ? (
+        <OwnersSummary />
+      ) : (
         <>
-          <div className="md:hidden">
-            <MobileCardList
-              rows={filtered}
-              fields={fields}
-              rowKey={(g) => g.id}
-              onRowClick={(g) => navigate(`/games/${g.id}`)}
-              emptyMessage="No games match."
-              trailing={(g) => (
-                <span className="text-xs text-muted-foreground">
-                  {g.currently_with ? `with ${g.currently_with}` : ''}
-                </span>
-              )}
-            />
+          {ownerFilter !== null && (
+            <div className="mb-3">
+              <span
+                data-testid="owned-by-chip"
+                className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm"
+              >
+                Owner: {ownerChipLabel}
+                <button
+                  data-testid="owned-by-chip-clear"
+                  aria-label="Clear owner filter"
+                  className="hover:bg-background rounded-full p-0.5"
+                  onClick={clearOwnerFilter}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            </div>
+          )}
+
+          <div className="flex gap-2 mb-3 flex-wrap">
+            <Input placeholder="Search title…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+            <Input placeholder="Filter by who has it…" value={withFilter} onChange={(e) => setWithFilter(e.target.value)} className="max-w-xs" />
           </div>
-          <div className="hidden md:block">
-            <BulkActionBar
-              count={selectedIds.length}
-              actions={bulkActions}
-              onClear={() => setSelectedIds([])}
-            />
-            <DataTable
-              rows={filtered}
-              columns={columns}
-              rowKey={(g) => g.id}
-              onRowClick={(g) => navigate(`/games/${g.id}`)}
-              emptyMessage="No games match."
-              selectable
-              selectedIds={selectedIds}
-              onSelectedIdsChange={setSelectedIds}
-            />
-          </div>
+          {loading ? <p>Loading…</p> : (
+            <>
+              <div className="md:hidden">
+                <MobileCardList
+                  rows={filtered}
+                  fields={fields}
+                  rowKey={(g) => g.id}
+                  onRowClick={(g) => navigate(`/games/${g.id}`)}
+                  emptyMessage="No games match."
+                  trailing={(g) => (
+                    <span className="text-xs text-muted-foreground">
+                      {g.currently_with ? `with ${g.currently_with}` : ''}
+                    </span>
+                  )}
+                />
+              </div>
+              <div className="hidden md:block">
+                <BulkActionBar
+                  count={selectedIds.length}
+                  actions={bulkActions}
+                  onClear={() => setSelectedIds([])}
+                />
+                <DataTable
+                  rows={filtered}
+                  columns={columns}
+                  rowKey={(g) => g.id}
+                  onRowClick={(g) => navigate(`/games/${g.id}`)}
+                  emptyMessage="No games match."
+                  selectable
+                  selectedIds={selectedIds}
+                  onSelectedIdsChange={setSelectedIds}
+                />
+              </div>
+            </>
+          )}
+
+          <Link
+            to="/games/new"
+            className="md:hidden fixed right-4 bottom-20 z-30 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center"
+            style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
+            aria-label="Add game"
+          >
+            <Plus className="h-6 w-6" />
+          </Link>
+
+          <Dialog open={bulkUpdateOpen} onOpenChange={setBulkUpdateOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Update "Currently with" for {selectedIds.length} games</DialogTitle>
+              </DialogHeader>
+              <div className="py-2">
+                <Input
+                  autoFocus
+                  placeholder="Name (leave blank to clear)"
+                  value={bulkUpdateValue}
+                  onChange={(e) => setBulkUpdateValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') bulkUpdateCurrentlyWith();
+                  }}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setBulkUpdateOpen(false)}>Cancel</Button>
+                <Button onClick={bulkUpdateCurrentlyWith}>OK</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
-
-      <Link
-        to="/games/new"
-        className="md:hidden fixed right-4 bottom-20 z-30 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center"
-        style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
-        aria-label="Add game"
-      >
-        <Plus className="h-6 w-6" />
-      </Link>
-
-      <Dialog open={bulkUpdateOpen} onOpenChange={setBulkUpdateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update "Currently with" for {selectedIds.length} games</DialogTitle>
-          </DialogHeader>
-          <div className="py-2">
-            <Input
-              autoFocus
-              placeholder="Name (leave blank to clear)"
-              value={bulkUpdateValue}
-              onChange={(e) => setBulkUpdateValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') bulkUpdateCurrentlyWith();
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkUpdateOpen(false)}>Cancel</Button>
-            <Button onClick={bulkUpdateCurrentlyWith}>OK</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
