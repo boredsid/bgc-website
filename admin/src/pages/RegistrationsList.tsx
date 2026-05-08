@@ -63,10 +63,54 @@ export default function RegistrationsList() {
   useRevalidate(reloadAll);
 
   const eventNameById = useMemo(() => Object.fromEntries(events.map((e) => [e.id, e.name])), [events]);
+  const selectedEvent = useMemo(() => events.find((e) => e.id === eventFilter) || null, [events, eventFilter]);
+
+  const customFilters = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [k, v] of params.entries()) {
+      if (k.startsWith('cq_') && v) out[k.slice(3)] = v;
+    }
+    return out;
+  }, [params]);
+
+  const filterableQuestions = useMemo(
+    () => (selectedEvent?.custom_questions ?? []).filter((q) => q.type !== 'text'),
+    [selectedEvent],
+  );
+
+  const filteredRegs = useMemo(() => {
+    const entries = Object.entries(customFilters);
+    if (entries.length === 0) return regs;
+    return regs.filter((r) => {
+      const ans = r.custom_answers || {};
+      return entries.every(([qid, val]) => {
+        const a = ans[qid];
+        if (val === '__yes') return a === true;
+        if (val === '__no') return a === false;
+        return typeof a === 'string' && a === val;
+      });
+    });
+  }, [regs, customFilters]);
 
   function setFilter(key: string, value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value); else next.delete(key);
+    setParams(next);
+  }
+
+  function setEventFilter(value: string) {
+    const next = new URLSearchParams(params);
+    if (value) next.set('event', value); else next.delete('event');
+    for (const key of Array.from(next.keys())) {
+      if (key.startsWith('cq_')) next.delete(key);
+    }
+    setParams(next);
+  }
+
+  function setCustomFilter(qid: string, value: string) {
+    const next = new URLSearchParams(params);
+    const k = `cq_${qid}`;
+    if (value) next.set(k, value); else next.delete(k);
     setParams(next);
   }
 
@@ -89,7 +133,7 @@ export default function RegistrationsList() {
   ];
 
   // ---- Bulk operations ----
-  const selectedRows = useMemo(() => regs.filter((r) => selectedIds.includes(r.id)), [regs, selectedIds]);
+  const selectedRows = useMemo(() => filteredRegs.filter((r) => selectedIds.includes(r.id)), [filteredRegs, selectedIds]);
 
   async function bulkSetStatus(status: Registration['payment_status']) {
     const ids = [...selectedIds];
@@ -243,7 +287,7 @@ export default function RegistrationsList() {
         </Button>
       </div>
       <div className="flex gap-2 mb-3 flex-wrap">
-        <Select value={eventFilter || 'all'} onValueChange={(v) => setFilter('event', v === 'all' ? '' : v)}>
+        <Select value={eventFilter || 'all'} onValueChange={(v) => setEventFilter(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-72"><SelectValue placeholder="All events" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All events</SelectItem>
@@ -261,6 +305,32 @@ export default function RegistrationsList() {
             <SelectItem value="cancelled">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+        {filterableQuestions.map((q) => {
+          const value = customFilters[q.id] || 'all';
+          return (
+            <Select
+              key={q.id}
+              value={value}
+              onValueChange={(v) => setCustomFilter(q.id, v === 'all' ? '' : v)}
+            >
+              <SelectTrigger className="w-56" title={q.label}>
+                <SelectValue placeholder={q.label} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{q.label} — any</SelectItem>
+                {q.type === 'checkbox' && (
+                  <>
+                    <SelectItem value="__yes">Yes</SelectItem>
+                    <SelectItem value="__no">No</SelectItem>
+                  </>
+                )}
+                {(q.type === 'select' || q.type === 'radio') && q.options?.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.value}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          );
+        })}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="hidden md:inline-flex">
@@ -287,7 +357,7 @@ export default function RegistrationsList() {
         <>
           <div className="md:hidden">
             <MobileCardList
-              rows={regs}
+              rows={filteredRegs}
               fields={fields}
               rowKey={(r) => r.id}
               onRowClick={(r) => setActionTarget(r)}
@@ -302,7 +372,7 @@ export default function RegistrationsList() {
               onClear={() => setSelectedIds([])}
             />
             <DataTable
-              rows={regs}
+              rows={filteredRegs}
               columns={columns}
               rowKey={(r) => r.id}
               onRowClick={(r) => navigate(`/registrations/${r.id}${params.toString() ? '?' + params.toString() : ''}`)}
