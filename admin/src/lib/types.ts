@@ -125,3 +125,12 @@ export interface UserDetail {
   credit_balance: number;
   credits: UserCreditEntry[];
 }
+
+export interface OwnerSummaryRow {
+  owner: string | null;
+  total: number;
+  with_owner: number;
+  with_others: number;
+  top_holders: Array<{ name: string; count: number }>;
+  more_holders: number;
+}
