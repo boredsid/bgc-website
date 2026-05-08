@@ -5,7 +5,7 @@ import { handleGuildPurchase } from './guild-purchase';
 import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
 import { verifyAccessJwt } from './access-auth';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
-import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame } from './admin/games';
+import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame, handleOwnersSummary } from './admin/games';
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
 import { handleExportRegistrations } from './admin/export-registrations';
 import { handleExportGuildMembers } from './admin/export-guild';
@@ -121,6 +121,10 @@ export default {
 
           if (!adminResponse && url.pathname === '/api/admin/games/export' && request.method === 'GET') {
             adminResponse = await handleExportGames(request, env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/games/owners-summary' && request.method === 'GET') {
+            adminResponse = await handleOwnersSummary(env);
           }
 
           if (!adminResponse) {
