@@ -142,3 +142,11 @@ export function aggregateOwners(games: OwnerGameRow[]): OwnerSummary[] {
 
   return rows;
 }
+
+export async function handleOwnersSummary(env: Env): Promise<Response> {
+  const supabase = getSupabase(env);
+  const { data, error } = await supabase.from('games').select('owned_by, currently_with');
+  if (error) return jsonResponse({ error: 'Failed to load owners summary' }, 500);
+  const owners = aggregateOwners((data ?? []) as OwnerGameRow[]);
+  return jsonResponse({ owners });
+}
