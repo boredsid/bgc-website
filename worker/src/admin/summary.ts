@@ -63,10 +63,10 @@ export function aggregateRegistrations(event: EventRow, regs: RegRow[], guildUse
       const summary = cqs[q.id];
       if (!summary) continue;
       if (summary.type === 'select' || summary.type === 'radio') {
-        if (typeof a === 'string' && a) summary.counts[a] = (summary.counts[a] || 0) + 1;
+        if (typeof a === 'string' && a) summary.counts[a] = (summary.counts[a] || 0) + r.seats;
       } else if (summary.type === 'checkbox') {
-        if (a === true) summary.yes++;
-        else summary.no++;
+        if (a === true) summary.yes += r.seats;
+        else summary.no += r.seats;
       } else if (summary.type === 'text') {
         if (typeof a === 'string' && a.trim()) {
           summary.count++;
