@@ -20,12 +20,29 @@ try {
   upcomingEvents = [];
 }
 
+function computeEndDate(start: string): string {
+  if (start.includes('T')) {
+    const d = new Date(start);
+    d.setHours(d.getHours() + 4);
+    return d.toISOString();
+  }
+  return start;
+}
+
+const organization = {
+  '@type': 'Organization',
+  name: 'Board Game Company',
+  url: siteUrl,
+};
+
 const eventSchema = upcomingEvents.map((event) => ({
   '@context': 'https://schema.org',
   '@type': 'Event',
   name: event.name,
   description: event.description,
+  image: [`${siteUrl}/og-home.jpg`],
   startDate: event.date,
+  endDate: computeEndDate(event.date),
   eventStatus: 'https://schema.org/EventScheduled',
   eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
   url: `${siteUrl}/register?event=${event.id}`,
@@ -39,11 +56,8 @@ const eventSchema = upcomingEvents.map((event) => ({
       addressCountry: 'IN',
     },
   },
-  organizer: {
-    '@type': 'Organization',
-    name: 'Board Game Company',
-    url: siteUrl,
-  },
+  organizer: organization,
+  performer: organization,
   offers: {
     '@type': 'Offer',
     price: event.price,
