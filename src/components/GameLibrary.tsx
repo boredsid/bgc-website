@@ -8,9 +8,13 @@ const COMPLEXITY_BG: Record<string, string> = {
   Heavy: '#FF6B6B',
 };
 
-export default function GameLibrary() {
-  const [games, setGames] = useState<Game[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Props {
+  initialGames?: Game[];
+}
+
+export default function GameLibrary({ initialGames = [] }: Props) {
+  const [games, setGames] = useState<Game[]>(initialGames);
+  const [loading, setLoading] = useState(initialGames.length === 0);
   const [search, setSearch] = useState('');
   const [playerFilter, setPlayerFilter] = useState('');
   const [complexityFilter, setComplexityFilter] = useState('');
@@ -20,6 +24,7 @@ export default function GameLibrary() {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
   useEffect(() => {
+    if (initialGames.length > 0) return;
     async function fetchGames() {
       const { data, error } = await supabase
         .from('games')

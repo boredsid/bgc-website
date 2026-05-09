@@ -23,29 +23,39 @@ function groupByMonth(events: EventWithSpots[]) {
   return grouped;
 }
 
-export default function EventList() {
-  const [events, setEvents] = useState<EventWithSpots[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Props {
+  initialEvents?: Event[];
+}
+
+export default function EventList({ initialEvents = [] }: Props) {
+  const [events, setEvents] = useState<EventWithSpots[]>(
+    initialEvents.map((e) => ({ ...e, remaining: null })),
+  );
+  const [loading, setLoading] = useState(initialEvents.length === 0);
   const [pastEvents, setPastEvents] = useState<Event[] | null>(null);
   const [pastLoading, setPastLoading] = useState(false);
   const [showPast, setShowPast] = useState(false);
 
   useEffect(() => {
     async function fetchEvents() {
-      const { data } = await supabase
-        .from('events')
-        .select('*')
-        .gte('date', new Date().toISOString())
-        .order('date', { ascending: true });
+      let baseEvents: Event[] = initialEvents;
+      if (baseEvents.length === 0) {
+        const { data } = await supabase
+          .from('events')
+          .select('*')
+          .gte('date', new Date().toISOString())
+          .order('date', { ascending: true });
+        baseEvents = data ?? [];
+      }
 
-      if (!data || data.length === 0) {
+      if (baseEvents.length === 0) {
         setEvents([]);
         setLoading(false);
         return;
       }
 
       const eventsWithSpots = await Promise.all(
-        data.map(async (event: Event) => {
+        baseEvents.map(async (event: Event) => {
           try {
             const res = await fetch(`${WORKER_URL}/api/event-spots/${event.id}`);
             const spots = await res.json();
@@ -53,7 +63,7 @@ export default function EventList() {
           } catch {
             return { ...event, remaining: null };
           }
-        })
+        }),
       );
 
       setEvents(eventsWithSpots);

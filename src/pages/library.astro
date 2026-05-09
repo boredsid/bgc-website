@@ -1,9 +1,22 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import GameLibrary from '../components/GameLibrary.tsx';
+import { supabase } from '../lib/supabase';
+import type { Game } from '../lib/types';
+
+let initialGames: Game[] = [];
+try {
+  const { data } = await supabase
+    .from('games')
+    .select('id, title, player_count, max_players, avg_rating, weight, complexity, play_time, max_play_time, length')
+    .order('title');
+  initialGames = data ?? [];
+} catch {
+  initialGames = [];
+}
 ---
 
-<Layout title="Library" description="Browse BGC's collection of board games — search and filter by complexity, players, and play time">
+<Layout title="Library" description={`Browse ${initialGames.length || '130+'} board games at BGC Bangalore — search and filter by complexity, players, and play time`}>
   <section class="py-14" style="background: #FFF8E7;">
     <div class="max-w-[1200px] mx-auto px-6 text-center">
       <span class="section-tag">Games Library</span>
@@ -18,7 +31,7 @@ import GameLibrary from '../components/GameLibrary.tsx';
 
   <section class="pb-20">
     <div class="max-w-[1200px] mx-auto px-6">
-      <GameLibrary client:load />
+      <GameLibrary client:load initialGames={initialGames} />
     </div>
   </section>
 </Layout>
