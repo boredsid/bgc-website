@@ -17,9 +17,11 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
 
   return (
     <div className="mb-5">
-      <label className="label-brutal">
-        {label} {required && <span style={{ color: '#FF6B6B' }}>*</span>}
-      </label>
+      {type !== 'checkbox' && (
+        <label className="label-brutal">
+          {label} {required && <span style={{ color: '#FF6B6B' }}>*</span>}
+        </label>
+      )}
 
       {type === 'text' && (
         <input
@@ -97,7 +99,9 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
           <span className="inline-flex items-center justify-center w-5 h-5 rounded" style={{ border: '2px solid currentColor' }}>
             {(value as boolean) ? '✓' : ''}
           </span>
-          <span>{label}</span>
+          <span>
+            {label} {required && <span style={{ color: '#FF6B6B' }}>*</span>}
+          </span>
         </button>
       )}
     </div>
