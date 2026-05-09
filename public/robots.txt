@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /pay
+
+Sitemap: https://boardgamecompany.in/sitemap-index.xml

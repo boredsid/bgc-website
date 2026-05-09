@@ -7,12 +7,14 @@ interface Props {
   title: string;
   description?: string;
   image?: string;
+  schema?: Record<string, unknown> | Record<string, unknown>[];
 }
 
-const { title, description = "Bangalore's Favorite Board Gaming Community", image = '/og-home.jpg' } = Astro.props;
+const { title, description = "Bangalore's Favorite Board Gaming Community", image = '/og-home.jpg', schema } = Astro.props;
 const fullTitle = `${title} — Board Game Company`;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
 const imageURL = new URL(image, Astro.site).toString();
+const schemaBlocks = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
 ---
 
 <!doctype html>
@@ -41,6 +43,10 @@ const imageURL = new URL(image, Astro.site).toString();
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={imageURL} />
+
+    {schemaBlocks.map((block) => (
+      <script type="application/ld+json" set:html={JSON.stringify(block)} />
+    ))}
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

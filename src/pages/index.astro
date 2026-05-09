@@ -9,9 +9,35 @@ import landing2 from '../assets/landing/2.png';
 import landing4 from '../assets/landing/4.png';
 import landing5 from '../assets/landing/5.png';
 import landing6 from '../assets/landing/6.png';
+
+const siteUrl = Astro.site!.toString().replace(/\/$/, '');
+const localBusinessSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  '@id': `${siteUrl}/#organization`,
+  name: 'Board Game Company',
+  alternateName: 'BGC',
+  url: siteUrl,
+  logo: `${siteUrl}/bgc-logo.png`,
+  image: `${siteUrl}/og-home.jpg`,
+  description: "Bangalore's tabletop gaming community — 3.5k+ players, 130+ board games, weekly sessions across the city.",
+  email: 'hello@boardgamecompany.in',
+  telephone: '+91-99822-00768',
+  areaServed: { '@type': 'City', name: 'Bangalore' },
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Bangalore',
+    addressRegion: 'Karnataka',
+    addressCountry: 'IN',
+  },
+  sameAs: [
+    'https://instagram.com/boardgamecompany',
+    'https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp',
+  ],
+};
 ---
 
-<Layout title="Home" description="Bangalore's Board Gaming Community">
+<Layout title="Home" description="Bangalore's Board Gaming Community" schema={localBusinessSchema}>
 
   <!-- Hero: dark slab -->
   <section class="hero-dark" style="background: #1A1A1A;">

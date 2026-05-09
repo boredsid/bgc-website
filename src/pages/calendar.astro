@@ -1,9 +1,65 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import EventList from '../components/EventList.tsx';
+import { supabase } from '../lib/supabase';
+import type { Event } from '../lib/types';
+
+const siteUrl = Astro.site!.toString().replace(/\/$/, '');
+
+let upcomingEvents: Event[] = [];
+try {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from('events')
+    .select('*')
+    .eq('is_published', true)
+    .gte('date', todayIso)
+    .order('date', { ascending: true });
+  upcomingEvents = data ?? [];
+} catch {
+  upcomingEvents = [];
+}
+
+const eventSchema = upcomingEvents.map((event) => ({
+  '@context': 'https://schema.org',
+  '@type': 'Event',
+  name: event.name,
+  description: event.description,
+  startDate: event.date,
+  eventStatus: 'https://schema.org/EventScheduled',
+  eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+  url: `${siteUrl}/register?event=${event.id}`,
+  location: {
+    '@type': 'Place',
+    name: event.venue_name,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: event.venue_area || 'Bangalore',
+      addressRegion: 'Karnataka',
+      addressCountry: 'IN',
+    },
+  },
+  organizer: {
+    '@type': 'Organization',
+    name: 'Board Game Company',
+    url: siteUrl,
+  },
+  offers: {
+    '@type': 'Offer',
+    price: event.price,
+    priceCurrency: 'INR',
+    availability: 'https://schema.org/InStock',
+    url: `${siteUrl}/register?event=${event.id}`,
+    validFrom: event.created_at,
+  },
+}));
 ---
 
-<Layout title="Calendar" description="Upcoming BGC sessions — board game nights, TTRPGs, and tournaments in Bangalore">
+<Layout
+  title="Calendar"
+  description="Upcoming BGC sessions — board game nights, TTRPGs, and tournaments in Bangalore"
+  schema={eventSchema.length > 0 ? eventSchema : undefined}
+>
   <section class="py-14" style="background: #FFF8E7;">
     <div class="max-w-[1200px] mx-auto px-6 text-center">
       <span class="section-tag">What's Happening</span>
