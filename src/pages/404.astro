@@ -1,0 +1,26 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Page not found" description="That page doesn't exist on Board Game Company.">
+  <section class="py-20 md:py-28" style="background: #FFF8E7;">
+    <div class="max-w-[720px] mx-auto px-6 text-center">
+      <p class="font-heading font-semibold text-sm tracking-widest" style="color: #F47B20;">▸ 404</p>
+      <h1
+        class="font-heading font-bold mt-3"
+        style="font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; letter-spacing: -1.5px;"
+      >
+        That page doesn't exist.
+      </h1>
+      <p class="mt-5 text-lg text-[#1A1A1A]/70">
+        Maybe try one of these instead:
+      </p>
+      <div class="mt-8 flex flex-wrap justify-center gap-3">
+        <a href="/" class="btn btn-primary no-underline">Home</a>
+        <a href="/calendar" class="btn no-underline" style="background: transparent; color: #1A1A1A; border: 4px solid #1A1A1A;">Upcoming sessions</a>
+        <a href="/library" class="btn no-underline" style="background: transparent; color: #1A1A1A; border: 4px solid #1A1A1A;">Game library</a>
+        <a href="/guild-path" class="btn no-underline" style="background: transparent; color: #1A1A1A; border: 4px solid #1A1A1A;">Guild Path</a>
+      </div>
+    </div>
+  </section>
+</Layout>
