@@ -24,7 +24,6 @@ export default function GameLibrary({ initialGames = [] }: Props) {
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
   useEffect(() => {
-    if (initialGames.length > 0) return;
     async function fetchGames() {
       const { data, error } = await supabase
         .from('games')
@@ -32,9 +31,10 @@ export default function GameLibrary({ initialGames = [] }: Props) {
         .order('title');
       if (error) {
         console.error('Supabase error:', error);
-        setError(error.message);
+        if (initialGames.length === 0) setError(error.message);
+      } else if (data) {
+        setGames(data);
       }
-      setGames(data || []);
       setLoading(false);
     }
     fetchGames();

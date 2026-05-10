@@ -38,15 +38,12 @@ export default function EventList({ initialEvents = [] }: Props) {
 
   useEffect(() => {
     async function fetchEvents() {
-      let baseEvents: Event[] = initialEvents;
-      if (baseEvents.length === 0) {
-        const { data } = await supabase
-          .from('events')
-          .select('*')
-          .gte('date', new Date().toISOString())
-          .order('date', { ascending: true });
-        baseEvents = data ?? [];
-      }
+      const { data } = await supabase
+        .from('events')
+        .select('*')
+        .gte('date', new Date().toISOString())
+        .order('date', { ascending: true });
+      const baseEvents: Event[] = data ?? [];
 
       if (baseEvents.length === 0) {
         setEvents([]);
