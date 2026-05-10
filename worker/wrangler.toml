@@ -10,6 +10,9 @@ workers_dev = true
 pattern = "api.boardgamecompany.in"
 custom_domain = true
 
+[triggers]
+crons = ["30 21 * * *"]
+
 [vars]
 SUPABASE_URL = "https://yhgtwqdsnrslcgdvmunz.supabase.co"
 UPI_ID = "suranjanadatta24-1@okaxis"
@@ -21,3 +24,5 @@ ENVIRONMENT = "production"
 # Set secrets via: wrangler secret put SUPABASE_SERVICE_KEY
 # Email secrets: wrangler secret put APPS_SCRIPT_URL / APPS_SCRIPT_SECRET
 # Admin allowlist: wrangler secret put ADMIN_EMAILS  (comma-separated)
+# Pages rebuild webhook: wrangler secret put PAGES_DEPLOY_HOOK
+#   (Cloudflare Pages → site → Settings → Builds & deployments → Deploy hooks)

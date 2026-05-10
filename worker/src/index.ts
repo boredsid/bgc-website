@@ -34,6 +34,7 @@ export interface Env {
   CF_ACCESS_AUD: string;
   ADMIN_EMAILS: string;
   ENVIRONMENT: string;
+  PAGES_DEPLOY_HOOK?: string;
 }
 
 export interface AdminContext {
@@ -235,5 +236,17 @@ export default {
         { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }
+  },
+
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (!env.PAGES_DEPLOY_HOOK) {
+      console.warn('[worker] scheduled rebuild skipped: PAGES_DEPLOY_HOOK not set');
+      return;
+    }
+    ctx.waitUntil(
+      fetch(env.PAGES_DEPLOY_HOOK, { method: 'POST' })
+        .then((r) => console.log('[worker] pages rebuild triggered:', r.status))
+        .catch((err) => console.error('[worker] pages rebuild failed:', err))
+    );
   },
 };
