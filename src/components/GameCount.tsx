@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { dedupeGamesByTitle } from '../lib/games';
 
 export default function GameCount({ fallback = '100+' }: { fallback?: string }) {
   const [label, setLabel] = useState(fallback);
@@ -7,10 +8,11 @@ export default function GameCount({ fallback = '100+' }: { fallback?: string }) 
   useEffect(() => {
     supabase
       .from('games')
-      .select('id', { count: 'exact', head: true })
-      .then(({ count }) => {
-        if (count != null) {
-          const rounded = Math.floor(count / 10) * 10;
+      .select('title')
+      .then(({ data }) => {
+        if (data) {
+          const unique = dedupeGamesByTitle(data).length;
+          const rounded = Math.floor(unique / 10) * 10;
           setLabel(`${rounded}+`);
         }
       });

@@ -47,6 +47,19 @@ export default function GamesList() {
   useEffect(() => { refresh(); }, [refresh]);
   useRevalidate(refresh);
 
+  const titleCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const g of games) {
+      const k = g.title.trim().toLowerCase();
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return counts;
+  }, [games]);
+
+  function qtyFor(game: Game) {
+    return titleCounts.get(game.title.trim().toLowerCase()) ?? 1;
+  }
+
   const filtered = useMemo(() => {
     const s = search.toLowerCase().trim();
     const w = withFilter.toLowerCase().trim();
@@ -144,8 +157,26 @@ export default function GamesList() {
 
   const columns: Column<Game>[] = [
     {
-      key: 'title', header: 'Title', render: (g) => g.title,
-      sortable: true, sortValue: (g) => g.title.toLowerCase(),
+      key: 'title',
+      header: 'Title',
+      render: (g) => {
+        const qty = qtyFor(g);
+        return (
+          <span className="inline-flex items-center gap-2">
+            {g.title}
+            {qty > 1 && (
+              <span
+                className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                title={`${qty} copies in library`}
+              >
+                ×{qty}
+              </span>
+            )}
+          </span>
+        );
+      },
+      sortable: true,
+      sortValue: (g) => g.title.toLowerCase(),
     },
     { key: 'players', header: 'Players', render: (g) => g.player_count || '—' },
     { key: 'complexity', header: 'Complexity', render: (g) => g.complexity || '—' },
@@ -165,7 +196,14 @@ export default function GamesList() {
   ];
 
   const fields: CardField<Game>[] = [
-    { key: 'title', render: (g) => g.title, primary: true },
+    {
+      key: 'title',
+      render: (g) => {
+        const qty = qtyFor(g);
+        return qty > 1 ? `${g.title} ×${qty}` : g.title;
+      },
+      primary: true,
+    },
     { key: 'meta', render: (g) => `${g.player_count || '—'} · ${g.complexity || '—'}` },
   ];
 

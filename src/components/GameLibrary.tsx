@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Game } from '../lib/types';
+import { dedupeGamesByTitle } from '../lib/games';
 
 const COMPLEXITY_BG: Record<string, string> = {
   Light: '#A8E6CF',
@@ -33,7 +34,7 @@ export default function GameLibrary({ initialGames = [] }: Props) {
         console.error('Supabase error:', error);
         if (initialGames.length === 0) setError(error.message);
       } else if (data) {
-        setGames(data);
+        setGames(dedupeGamesByTitle(data));
       }
       setLoading(false);
     }

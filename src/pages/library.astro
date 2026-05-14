@@ -4,13 +4,15 @@ import GameLibrary from '../components/GameLibrary.tsx';
 import { supabase } from '../lib/supabase';
 import type { Game } from '../lib/types';
 
+import { dedupeGamesByTitle } from '../lib/games';
+
 let initialGames: Game[] = [];
 try {
   const { data } = await supabase
     .from('games')
     .select('id, title, player_count, max_players, avg_rating, weight, complexity, play_time, max_play_time, length')
     .order('title');
-  initialGames = data ?? [];
+  initialGames = dedupeGamesByTitle(data ?? []);
 } catch {
   initialGames = [];
 }
