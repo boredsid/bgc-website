@@ -14,6 +14,7 @@ import { handleExportGames } from './admin/export-games';
 import { handleAdminLookupPhone } from './admin/lookup-phone';
 import { handleManualRegister } from './admin/register-manual';
 import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
+import { handleListLeads, handleUpdateLead, handleExportLeads } from './admin/leads';
 import {
   handleGetUser,
   handleUpdateUser,
@@ -196,6 +197,20 @@ export default {
               if (!gmId && request.method === 'GET') adminResponse = await handleListGuildMembers(url, env);
               else if (gmId && request.method === 'GET') adminResponse = await handleGetGuildMember(gmId, env);
               else if (gmId && request.method === 'PATCH') adminResponse = await handleUpdateGuildMember(gmId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/leads/export' && request.method === 'GET') {
+            adminResponse = await handleExportLeads(request, env);
+          }
+
+          if (!adminResponse) {
+            const leadsMatch = url.pathname.match(/^\/api\/admin\/leads(?:\/([^/]+))?$/);
+            if (leadsMatch) {
+              const leadId = leadsMatch[1];
+              if (!leadId && request.method === 'GET') adminResponse = await handleListLeads(request, env);
+              else if (leadId && leadId !== 'export' && request.method === 'PATCH') adminResponse = await handleUpdateLead(leadId, request, env);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }
