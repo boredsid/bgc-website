@@ -41,12 +41,13 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 | `guild_path_members` | no | Membership tiers + expiry (renamed from `guild_members` in migration 002) |
 | `registrations` | no | Spots are summed by `seats` on confirmed rows, not row counts |
 | `user_credits` | no | Credit ledger; auto-applied on registration/purchase, idempotent |
+| `leads` | no | Partial registration capture (phone+event); auto-converted on registration; admin-managed via `/api/admin/leads*` |
 
 ## Worker endpoints
 
-**Public:** `POST /api/lookup-phone`, `POST /api/register`, `GET /api/event-spots/:id`, `POST /api/guild-purchase`, `POST /api/cancel-registration`, `POST /api/cancel-guild-membership`
+**Public:** `POST /api/lookup-phone`, `POST /api/register`, `GET /api/event-spots/:id`, `POST /api/guild-purchase`, `POST /api/cancel-registration`, `POST /api/cancel-guild-membership`, `POST /api/lead`
 
-**Admin** (gated by Cloudflare Access JWT + `ADMIN_EMAILS` allowlist, all under `/api/admin/`): `whoami`, `summary`, `search`, `log`, `lookup-phone`, `cancel-registration`, `events` (CRUD), `games` (list/get/update + `export`, `owners-summary`), `registrations` (list/get/update + `manual` + `export`), `guild-members` (CRUD + `export`), `users` (list/get/update + credit adjustment).
+**Admin** (gated by Cloudflare Access JWT + `ADMIN_EMAILS` allowlist, all under `/api/admin/`): `whoami`, `summary`, `search`, `log`, `lookup-phone`, `cancel-registration`, `events` (CRUD), `games` (list/get/update + `export`, `owners-summary`), `registrations` (list/get/update + `manual` + `export`), `guild-members` (CRUD + `export`), `users` (list/get/update + credit adjustment), `leads` (list + patch junk + `export`).
 
 Routing is a flat `if/else` chain in `worker/src/index.ts` — add new endpoints there.
 
