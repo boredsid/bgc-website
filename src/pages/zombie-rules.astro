@@ -1,0 +1,534 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const version = 'v7';
+const eventDate = '17 May 2026';
+const sections = [
+  { id: 'what-this-is', label: 'What This Is' },
+  { id: 'glossary', label: 'Glossary' },
+  { id: 'setup', label: 'Setup' },
+  { id: 'victory-loss', label: 'Victory & Loss' },
+  { id: 'the-round', label: 'The Round' },
+  { id: 'moving', label: 'Moving' },
+  { id: 'actions', label: 'Actions' },
+  { id: 'combat', label: 'Combat' },
+  { id: 'zombies-hordes', label: 'Zombies & Hordes' },
+  { id: 'infrastructure', label: 'Infrastructure & Item Cards' },
+  { id: 'research-points', label: 'Research Points' },
+  { id: 'upkeep', label: 'Upkeep & End of Round' },
+  { id: 'elimination', label: 'Elimination' },
+  { id: 'secrets-loot', label: 'Secrets & The Loot Deck' },
+  { id: 'events', label: 'Events' },
+];
+
+const glossary = [
+  ['Faction', 'A team of 2–5 players. Shares resources and population.'],
+  ['Resource', 'One of five: Population, Food, Fuel, Medicine, Data.'],
+  ['Population', 'Fuels combat, pays upkeep, keeps you alive.'],
+  ['RP (Research Point)', 'Win currency. Owned by individual players, not factions.'],
+  ['Upkeep', 'Flat per-round cost in Food and Fuel. Cannot be skipped.'],
+  ['Threat Level', 'Number of dice a single zombie horde rolls.'],
+  ['Horde', 'A group of zombies. Moves every round toward the nearest player or infrastructure.'],
+  ['Boss Horde', 'One special horde. Always rolls 8 dice. Hunts home bases.'],
+  ['Infrastructure', 'A public location hex. Claim it for bonuses and an item card.'],
+  ['Item Card', 'A card giving a passive per-round bonus. Owned by individual players.'],
+  ['Loot Deck', 'Shared deck drawn for searches and zombie-combat rewards.'],
+  ['Home Base', "Your faction's anchor hex. +3 defense dice. Destroyed = eliminated."],
+  ['Special Search', 'A guess-based search to find hidden caches or infrastructure.'],
+  ['Defection', 'Switching factions. Twice per game per player.'],
+  ['Legacy Mission', 'A special mission worth +2 RP that also breaks victory ties.'],
+  ['Survival Threshold', 'Minimum total population across all factions. Drop below = everyone loses.'],
+  ['Lock', "GM's call ending the Negotiate phase. Hands off the map."],
+  ['Colocation', 'Two markers on the same hex. Required for resource/card/RP trades.'],
+];
+
+const infra = [
+  ['Hospital', 'D10', 'Hospital Equipment (IC01)', '+1 Medicine/round'],
+  ['Fuel Depot', 'F3', 'Fuel Pump (IC02)', '+2 Fuel/round'],
+  ['Research Lab', 'C17', 'Lab Workstation (IC03)', '+2 Data/round'],
+  ['Urban Farm', 'H7', 'Greenhouse Kit (IC04)', '+2 Food/round'],
+  ['Manufacturing Plant', 'L14', 'Assembly Line Tools (IC05)', '+1 Medicine/round'],
+  ['Radio Tower', 'E12', 'Signal Antenna (IC06)', '+1 Data/round'],
+  ['Storage Warehouse', 'K2', 'Settlement Bunkhouse (IC08)', '+1 Population/round'],
+  ['Community Center', 'P11', 'Recruitment Poster (IC09)', '+1 Population/round'],
+];
+---
+
+<Layout
+  title="Zombiepuram — Player Rules"
+  description="Player rulebook for Zombiepuram, the BGC Megagame: Zombies in Bangalore! 50-player faction simulation. Negotiation, resource management, hordes."
+>
+  <!-- Hazard tape strip -->
+  <div class="hazard-strip" aria-hidden="true"></div>
+
+  <!-- Hero -->
+  <section class="relative overflow-hidden" style="background: #1A1A1A; color: #FFF8E7;">
+    <div class="absolute inset-0 opacity-[0.08] pointer-events-none" style="background-image: radial-gradient(#F47B20 1px, transparent 1px); background-size: 24px 24px;"></div>
+    <div class="max-w-[920px] mx-auto px-6 py-16 md:py-24 relative">
+      <div class="flex items-center gap-3 text-xs tracking-[0.3em] uppercase mb-5" style="color: #FFD166;">
+        <span class="inline-block w-2 h-2 rounded-full" style="background: #F47B20; box-shadow: 0 0 12px #F47B20;"></span>
+        <span>Quarantine Zone · Player Rulebook · {version}</span>
+      </div>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.8rem, 7vw, 5.2rem); letter-spacing: -2px; line-height: 0.95;">
+        ZOMBIE<span style="color: #F47B20;">PURAM</span>
+      </h1>
+      <p class="mt-5 max-w-[640px] text-lg md:text-xl" style="color: #FFF8E7; opacity: 0.85;">
+        Zombie apocalypse. You're in a faction. Keep people alive, grab resources, run missions, kill zombies, do research.
+        First faction to <strong style="color: #FFD166;">15 RP</strong> wins.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3 text-sm">
+        <span class="px-3 py-1.5 rounded-full" style="background: rgba(244,123,32,0.15); color: #F47B20; border: 1px solid rgba(244,123,32,0.4);">Megagame · 50 players</span>
+        <span class="px-3 py-1.5 rounded-full" style="background: rgba(255,209,102,0.12); color: #FFD166; border: 1px solid rgba(255,209,102,0.35);">{eventDate} · Koramangala</span>
+        <span class="px-3 py-1.5 rounded-full" style="background: rgba(74,155,142,0.15); color: #4A9B8E; border: 1px solid rgba(74,155,142,0.4);">Negotiation · Strategy · Roleplay</span>
+      </div>
+      <p class="mt-8 text-sm" style="color: #FFF8E7; opacity: 0.6;">
+        A faction shares resources and population. RP and item cards belong to individual players.
+      </p>
+    </div>
+  </section>
+
+  <!-- TOC -->
+  <section class="border-b" style="background: #FFF8E7; border-color: rgba(26,26,26,0.08);">
+    <div class="max-w-[920px] mx-auto px-6 py-6">
+      <div class="text-xs tracking-[0.25em] uppercase mb-3" style="color: #1A1A1A; opacity: 0.55;">Briefing Contents</div>
+      <nav class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        {sections.map((s, i) => (
+          <a href={`#${s.id}`} class="toc-link">
+            <span class="toc-num">{String(i + 1).padStart(2, '0')}</span>{s.label}
+          </a>
+        ))}
+      </nav>
+    </div>
+  </section>
+
+  <!-- Body -->
+  <section class="py-14">
+    <div class="max-w-[760px] mx-auto px-6 prose-z">
+
+      <h2 id="what-this-is">What This Is</h2>
+      <p>
+        Zombie apocalypse. You're in a faction. Keep people alive, grab resources, run missions, kill zombies, do research.
+        First faction to <strong>15 RP</strong> wins.
+      </p>
+      <p>A faction shares resources and population. RP and item cards belong to individual players.</p>
+
+      <h2 id="glossary">Glossary</h2>
+      <div class="z-table-wrap">
+        <table class="z-table">
+          <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+          <tbody>
+            {glossary.map(([term, meaning]) => (
+              <tr><td class="font-semibold whitespace-nowrap">{term}</td><td>{meaning}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="setup">Setup</h2>
+      <ol>
+        <li><strong>Pick starting hex.</strong> Place the home base marker and all player markers there. Two factions want the same hex? Roll 1d6, higher picks first, re-roll ties. Home base never sits on infrastructure.</li>
+        <li><strong>Starting population.</strong> Roll 4d6 + 10.</li>
+        <li><strong>Starting resources.</strong> Roll 4d6 + 10 for each resource.</li>
+        <li><strong>Get your kit.</strong> The faction gets an RP Sheet, faction secret slips, and 3 faction missions. Each player gets personal secret slips and 1 personal mission. Missions stay secret from other factions.</li>
+        <li><strong>GM sets the survival threshold</strong> and announces it.</li>
+        <li><strong>GM sets the starting threat level at 3.</strong></li>
+      </ol>
+
+      <h2 id="victory-loss">Victory & Loss</h2>
+      <p>First faction to <strong>15 RP</strong> wins. Checked at the end of every round, last step.</p>
+      <p>Two factions hit 15 the same round? Highest total wins. Still tied? The faction with a completed Legacy mission wins.</p>
+      <div class="callout callout-danger">
+        The game ends immediately and <strong>everyone loses</strong> if total population across all factions drops below the survival threshold.
+      </div>
+
+      <h2 id="the-round">The Round</h2>
+      <p><strong>1. Broadcast Phase.</strong> GM announces events. Hordes move. Zombies on your hex? Fight now.</p>
+      <p><strong>2. Negotiate & Move Phase.</strong> Floor's open. Talk, move markers, cut deals. Defection signatures happen here. Plan your action.</p>
+      <p><strong>3. Action Phase.</strong> GM calls <span class="kbd">LOCK</span>. Hands off the map. GM resolves in this strict order:</p>
+      <ol class="z-steps">
+        <li>Defection</li>
+        <li>Fuel Costs</li>
+        <li>Trades</li>
+        <li>Searches</li>
+        <li>Combat</li>
+        <li>Upkeep</li>
+        <li>Elimination Check</li>
+        <li>RP Check</li>
+      </ol>
+      <p>Announce your action at the step where it resolves. <strong>Fuel Costs and Upkeep are self-serve:</strong> run them on your own faction sheet. Anyone can request a GM audit anytime.</p>
+
+      <h2 id="moving">Moving</h2>
+      <p>Move freely during the Negotiate phase. The first non-Metro hex you move is free. Each non-Metro hex after that costs 1 Fuel. No range limit.</p>
+      <p>Fuel is deducted in the Fuel Costs step. Can't pay? Your marker goes back to its starting hex and the faction loses 3 people.</p>
+      <p><strong>Metro travel.</strong> Pay 2 Fuel to ride from one metro station to another, resolved in the Fuel Costs step. Metro doesn't consume your free hex, so walking one hex to a station and riding it costs 0 + 2.</p>
+
+      <h2 id="actions">Actions</h2>
+      <p>Each round you take <strong>one</strong> of these, or none.</p>
+      <div class="z-table-wrap">
+        <table class="z-table">
+          <thead><tr><th>Action</th><th>Resolves In</th><th>Summary</th></tr></thead>
+          <tbody>
+            <tr><td class="font-semibold">Search</td><td>Searches</td><td>Normal or Special. One search per player per round.</td></tr>
+            <tr><td class="font-semibold">Trade</td><td>Trades</td><td>Swap resources, RP, cards (needs colocation) or info (anytime).</td></tr>
+            <tr><td class="font-semibold">Research</td><td>RP Check</td><td>Spend 1 Medicine + 1 Data, gain 1 RP.</td></tr>
+            <tr><td class="font-semibold">Attack</td><td>Combat</td><td>Fight a faction or zombies in your hex.</td></tr>
+            <tr><td class="font-semibold">Defect</td><td>Defection</td><td>Switch factions. Twice per game per player.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="search">Search</h3>
+      <p>Resolved in the Searches step. The GM calls factions by population order, lowest first. Each player marker on a searchable hex may do one search. It's either a Normal Search or a Special Search, never both.</p>
+      <p><strong>You can't search</strong> infrastructure hexes or hexes with zombies on them.</p>
+      <p><strong>Normal Search.</strong> Draw 1 loot card, take the resource. The hex gets a dot marker: searched, nobody normal-searches it again. If the card shows Zombies, fight them immediately and do not draw a loot card after that fight. Normal search does <strong>not</strong> reveal hidden caches or infrastructure.</p>
+      <p><strong>Special Search.</strong> Name the specific hidden thing you're looking for in this hex.</p>
+      <div class="callout callout-quote">
+        Example: <em>"Special search at G19. Looking for the hidden Storage Warehouse."</em>
+      </div>
+      <ul>
+        <li><strong>Right guess:</strong> you find it, full reward.</li>
+        <li><strong>Wrong guess:</strong> find nothing. Zombies spawn at current threat level, fight them immediately inside the Searches step. The cache stays findable by someone who names it right.</li>
+        <li><strong>Already-claimed cache:</strong> find nothing, zombies spawn, fight immediately.</li>
+      </ul>
+      <p>You can special-search a hex that's already been normal-searched; hidden stuff survives normal searches.</p>
+      <p>Search-triggered combat resolves on the spot. The Combat step is only for declared faction attacks and pre-existing zombie fights.</p>
+
+      <h3 id="trade">Trade</h3>
+      <p><strong>Resources, item cards, RP:</strong> both players need markers on the same hex at Lock. Executes in the Trades step.</p>
+      <p><strong>Information:</strong> anytime during negotiation, no colocation needed.</p>
+      <p>Trade anything: resources, RP, info, item cards, promises. <strong>No honesty rules. Lie freely.</strong></p>
+
+      <h3 id="research">Research</h3>
+      <p>Spend 1 Medicine + 1 Data, gain 1 RP. Resolves at the RP Check.</p>
+
+      <h3 id="attack">Attack</h3>
+      <p>Declares combat against a faction or zombies in your hex. See <a href="#combat">Combat</a>.</p>
+
+      <h3 id="defect">Defect</h3>
+      <p>Leave your faction, join another. <strong>Twice per game per player.</strong></p>
+      <ul>
+        <li><strong>Need:</strong> the receiving faction signs to accept, plus one witness faction signs the defection slip. Signatures happen during the Negotiate phase.</li>
+        <li><strong>Limit:</strong> a faction can hold at most 2 defected-in players at any time.</li>
+        <li><strong>Timing:</strong> immediate. Resolves first in the Action Phase. You take the rest of your turn as the new faction, whenever their turn is.</li>
+        <li><strong>Population:</strong> none transfers. You leave alone.</li>
+        <li><strong>You take:</strong> all your item cards and RP. Keep your personal mission and secrets. Free to share any info.</li>
+      </ul>
+
+      <h2 id="combat">Combat</h2>
+      <p>Attack targets a faction or zombies in your hex.</p>
+      <div class="z-table-wrap">
+        <table class="z-table">
+          <thead><tr><th>Side</th><th>Dice</th></tr></thead>
+          <tbody>
+            <tr><td class="font-semibold">Your side</td><td>1 die per committed population</td></tr>
+            <tr><td class="font-semibold">Zombie side</td><td>Dice = current threat level</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Both sides roll everything, sum totals, higher wins. <strong>Tie = zombies win</strong> in any fight against zombies, co-op included.</p>
+      <p>If multiple hordes share a hex, you fight them all at once: zombie dice = number of hordes × current threat level. A Boss Horde in the mix adds a flat 8 instead of counting at threat level. <em>(Example: a Boss Horde plus two normal hordes = 8 + (2 × current threat level).)</em></p>
+      <p><strong>Fleeing.</strong> Lose a fight, you flee: move 1 hex in any direction, free. You take no other action that turn after fleeing. You may flee into an infrastructure hex or a faction's hex. You may flee into a zombie hex as a last resort, but that triggers combat immediately.</p>
+
+      <h4>vs Zombies.</h4>
+      <ul>
+        <li><em>Win:</em> zombies cleared. Lose 1 population. Draw 1 loot card (redraw if it's Zombies, until you get loot).</li>
+        <li><em>Lose:</em> lose all committed population plus 1 extra. Flee 1 hex.</li>
+      </ul>
+
+      <h4>vs Another Faction.</h4>
+      <p>Declared in the Combat step. Attacker and defender must both be on the same hex when it resolves.</p>
+      <ul>
+        <li><em>Win:</em> take ONE from the loser: 1 RP, or up to 5 resources (any mix). Loser has no RP? Take resources. Loser has nothing? You get nothing. Loser flees.</li>
+        <li><em>Tie:</em> both flee, nothing changes hands.</li>
+      </ul>
+
+      <h4>Co-op Combat (vs Zombies).</h4>
+      <p>30 seconds to negotiate commitments. All factions commit simultaneously. Sum every faction's dice total against the zombie total.</p>
+      <ul>
+        <li><em>Win:</em> each faction loses 1 population, draws 1 loot card.</li>
+        <li><em>Lose:</em> each faction loses its full commitment plus 1 extra population. All flee.</li>
+      </ul>
+
+      <h2 id="zombies-hordes">Zombies & Hordes</h2>
+      <p>Hordes move every round in the Broadcast step.</p>
+      <ul>
+        <li>Each horde moves <strong>2 hexes toward the nearest player marker</strong>. Tied? It moves east. Always east.</li>
+        <li>Enters a hex with a player marker: combat immediately.</li>
+        <li>Enters <strong>undefended infrastructure</strong> and wins: that infrastructure is destroyed permanently.</li>
+        <li>Enters a <strong>home base:</strong> the faction must defend. Lose or flee = eliminated.</li>
+        <li>New hordes spawn at map edges. Expect several active at once.</li>
+      </ul>
+      <p><strong>Threat Level.</strong> The dice a single horde rolls. The GM starts it at 3 and raises it, usually +1 every 2 to 3 rounds. Normal hordes cap at 6. It's visible to all.</p>
+      <p><strong>Boss Horde.</strong> One massive horde, always 8 dice, ignoring threat level. Moves 3 hexes per round toward the closest home base. Destroys infrastructure in its path unless defended. Multi-faction fights: negotiate, commit, roll, sum all successes against it.</p>
+
+      <h2 id="infrastructure">Infrastructure & Item Cards</h2>
+      <p>Infrastructure hexes are public locations. Land a marker on one and you've claimed it, no separate action. The first faction to reach it claims it permanently and gets the matching item card.</p>
+      <ul>
+        <li>Claiming gives <strong>+2 defense dice</strong> in that hex. The item card gives the resource bonus.</li>
+        <li><strong>Unclaimed infrastructure</strong> defends itself against zombies or factions, rolling 2 dice.</li>
+        <li><strong>Claim + zombie attack the same round:</strong> you claim first, then defend with the +2 dice.</li>
+        <li><strong>Two factions land the same round:</strong> the lowest-population faction claims it.</li>
+        <li><strong>Destroyed before claimed:</strong> gone forever.</li>
+        <li><strong>Destroyed after claimed:</strong> the infrastructure is gone, but the claiming faction keeps the item card.</li>
+      </ul>
+      <p>Hidden duplicates exist for some infrastructure, found via special search.</p>
+      <div class="z-table-wrap">
+        <table class="z-table">
+          <thead><tr><th>Infrastructure</th><th>Location</th><th>Item Card</th><th>Bonus</th></tr></thead>
+          <tbody>
+            {infra.map(([name, loc, card, bonus]) => (
+              <tr>
+                <td class="font-semibold">{name}</td>
+                <td><span class="hex-coord">{loc}</span></td>
+                <td>{card}</td>
+                <td style="color: #4A9B8E; font-weight: 600;">{bonus}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Metro Stations.</strong> 6 visible, at least 1 hidden. No item card, no defense bonus. Anyone can use them.</p>
+      <p><strong>Item Cards</strong> belong to individual players and move (or defect) with you. They give passive per-round bonuses and come from missions, hex secrets, hidden infrastructure, trades, and zombie loot. A faction generates the bonus from at most <strong>2 copies</strong> of each unique card held by its current players; a third copy gives no extra bonus but is still tradeable. The cap is per faction, so two factions can each hold the same card.</p>
+      <p><strong>Home Base</strong> is never on an infrastructure hex. It gives <strong>+3 dice</strong> to any defense roll in that hex, against zombies or factions. If it's destroyed in a lost defense fight, the faction is eliminated.</p>
+
+      <h2 id="research-points">Research Points</h2>
+      <p>RP belongs to individual players and moves with you when you move or defect. A faction's total is the sum of its current players' RP.</p>
+      <div class="z-table-wrap">
+        <table class="z-table">
+          <thead><tr><th>Source</th><th>Amount</th><th>Who Gets It</th></tr></thead>
+          <tbody>
+            <tr><td>Research action (1 Medicine + 1 Data)</td><td><strong>+1 RP</strong></td><td>The player who did it</td></tr>
+            <tr><td>Complete a faction mission</td><td><strong>+2 RP</strong></td><td>Faction distributes</td></tr>
+            <tr><td>Complete a personal mission</td><td><strong>+1 RP</strong></td><td>The player who completed it</td></tr>
+            <tr><td>Complete the Legacy mission</td><td><strong>+2 RP</strong>, breaks victory ties</td><td>Faction distributes</td></tr>
+            <tr><td>Win faction combat</td><td><strong>+1 RP</strong> from the loser</td><td>Player in the combat</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="upkeep">Upkeep & End of Round</h2>
+      <p>Upkeep is a flat cost, same for every faction, every round. <strong>Cannot be skipped.</strong> Run it on your own sheet; the GM audits on request or suspicion.</p>
+      <div class="z-table-wrap">
+        <table class="z-table">
+          <thead><tr><th>Cost</th><th>Can't Pay</th></tr></thead>
+          <tbody>
+            <tr><td class="font-semibold">3 Food</td><td>Lose 2 population</td></tr>
+            <tr><td class="font-semibold">3 Fuel</td><td>Lose 2 population</td></tr>
+            <tr><td class="font-semibold">Neither</td><td>Lose 4 population</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>End-of-round order:</strong> Upkeep → Elimination Check → +1 population trickle → passive and item-card bonuses → RP Check.</p>
+      <div class="callout callout-warn">
+        <strong>This order is deliberate.</strong> Upkeep losses that drop you to 0 eliminate you at the Elimination Check, <em>before</em> the +1 trickle or any +Population item card can save you. A player holding a +Population card still dies if their faction hits 0 here.
+      </div>
+
+      <h2 id="elimination">Elimination</h2>
+      <p>A faction is eliminated if either happens:</p>
+      <ul>
+        <li><strong>Home base destroyed</strong> (lost a defense fight there, against zombies or a faction), or</li>
+        <li><strong>Population hits 0,</strong> checked at the Elimination Check, before the +1 trickle.</li>
+      </ul>
+      <p>When your faction is eliminated, every player joins the next-lowest-population surviving faction. (The 2-to-5 players-per-faction limit is ignored for absorption.) You keep only your personal mission and secrets. Your RP and item cards are lost.</p>
+
+      <h2 id="secrets-loot">Secrets & The Loot Deck</h2>
+      <p>You learn what's hidden through faction secret slips, personal secret slips, trades, private GM messages, and intel rewards from certain special searches. <strong>Some secrets are wrong.</strong></p>
+      <p>The <strong>Loot Deck</strong> is one shared deck for searches and zombie-combat loot. A card shows a resource and quantity, Zombies, or nothing. Drawn cards go to the bottom; the deck recirculates.</p>
+
+      <h2 id="events">Events</h2>
+      <p>Random events announced by the GM. They can hit communication, travel, RP, resources, zombie behavior, anything. The GM tells you what and when. Adapt.</p>
+
+      <div class="end-mark">
+        <span>// END OF BRIEFING</span>
+        <span class="opacity-60">Survive. Negotiate. Outscore.</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="hazard-strip" aria-hidden="true"></div>
+
+  <style is:global>
+    .hazard-strip {
+      height: 14px;
+      background: repeating-linear-gradient(135deg, #1A1A1A 0 18px, #FFD166 18px 36px);
+    }
+
+    .toc-link {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.4rem;
+      color: #1A1A1A;
+      text-decoration: none;
+      padding: 2px 0;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .toc-link:hover { color: #F47B20; border-bottom-color: #F47B20; }
+    .toc-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #F47B20;
+      letter-spacing: 0.05em;
+    }
+
+    .prose-z { color: #1A1A1A; line-height: 1.7; font-size: 1rem; }
+    .prose-z h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 1.9rem;
+      margin-top: 3.5rem;
+      margin-bottom: 1rem;
+      letter-spacing: -0.8px;
+      padding-bottom: 0.4rem;
+      border-bottom: 3px solid #1A1A1A;
+      position: relative;
+    }
+    .prose-z h2::before {
+      content: '';
+      position: absolute;
+      bottom: -3px;
+      left: 0;
+      width: 60px;
+      height: 3px;
+      background: #F47B20;
+    }
+    .prose-z h2:first-of-type { margin-top: 0.5rem; }
+    .prose-z h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 1.25rem;
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.3px;
+      color: #1A1A1A;
+    }
+    .prose-z h4 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: 1.05rem;
+      margin-top: 1.4rem;
+      margin-bottom: 0.4rem;
+      color: #F47B20;
+    }
+    .prose-z p { margin: 0.85rem 0; }
+    .prose-z ul, .prose-z ol { margin: 0.85rem 0 0.85rem 1.4rem; padding: 0; }
+    .prose-z li { margin: 0.45rem 0; }
+    .prose-z a { color: #F47B20; text-decoration: underline; text-underline-offset: 3px; }
+    .prose-z a:hover { color: #1A1A1A; }
+    .prose-z strong { color: #1A1A1A; }
+
+    .z-steps {
+      counter-reset: step;
+      list-style: none;
+      margin-left: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 0.5rem;
+    }
+    .z-steps li {
+      counter-increment: step;
+      background: #fff;
+      border: 1px solid rgba(26,26,26,0.12);
+      padding: 0.6rem 0.8rem 0.6rem 2.2rem;
+      position: relative;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .z-steps li::before {
+      content: counter(step, decimal-leading-zero);
+      position: absolute;
+      left: 0.7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.72rem;
+      color: #F47B20;
+      font-weight: 700;
+    }
+
+    .z-table-wrap {
+      overflow-x: auto;
+      margin: 1rem 0 1.4rem;
+      border: 1px solid rgba(26,26,26,0.12);
+      border-radius: 8px;
+    }
+    .z-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.93rem;
+      background: #fff;
+    }
+    .z-table th {
+      text-align: left;
+      background: #1A1A1A;
+      color: #FFD166;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.7rem 0.9rem;
+    }
+    .z-table td {
+      padding: 0.65rem 0.9rem;
+      border-top: 1px solid rgba(26,26,26,0.08);
+      vertical-align: top;
+    }
+    .z-table tr:hover td { background: rgba(244,123,32,0.05); }
+
+    .callout {
+      margin: 1.2rem 0;
+      padding: 1rem 1.1rem;
+      border-radius: 8px;
+      border-left: 4px solid;
+      font-size: 0.97rem;
+    }
+    .callout-danger { background: rgba(220, 38, 38, 0.07); border-left-color: #DC2626; color: #1A1A1A; }
+    .callout-warn { background: rgba(255, 209, 102, 0.18); border-left-color: #FFD166; }
+    .callout-quote { background: rgba(74, 155, 142, 0.08); border-left-color: #4A9B8E; font-style: normal; }
+
+    .kbd {
+      display: inline-block;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      background: #1A1A1A;
+      color: #FFD166;
+      padding: 2px 8px;
+      border-radius: 4px;
+      vertical-align: 2px;
+    }
+
+    .hex-coord {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      background: #1A1A1A;
+      color: #FFF8E7;
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+    }
+
+    .end-mark {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 2px dashed rgba(26,26,26,0.2);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #1A1A1A;
+    }
+
+    html { scroll-behavior: smooth; }
+    .prose-z h2, .prose-z h3 { scroll-margin-top: 90px; }
+  </style>
+</Layout>
