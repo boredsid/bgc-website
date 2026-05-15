@@ -1,0 +1,96 @@
+---
+import Layout from '../layouts/Layout.astro';
+const lastUpdated = '15 May 2026';
+---
+
+<Layout title="Privacy Policy" description="How Board Game Company collects, uses, and protects your data.">
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[800px] mx-auto px-6 text-center">
+      <span class="section-tag">Legal</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        Privacy Policy
+      </h1>
+      <p class="text-sm text-[#1A1A1A]/60 mt-3">Last updated: {lastUpdated}</p>
+    </div>
+  </section>
+
+  <section class="py-12">
+    <div class="max-w-[760px] mx-auto px-6 prose-bgc">
+      <p>
+        Board Game Company ("BGC", "we", "us") runs a tabletop gaming community in Bangalore. This page explains what
+        information we collect when you interact with us — through our website, our Instagram and WhatsApp accounts,
+        or in person at events — and what we do with it.
+      </p>
+
+      <h2>What we collect</h2>
+      <ul>
+        <li><strong>Registration info:</strong> name, phone number, email when you register for an event or buy a Guild Path membership.</li>
+        <li><strong>Event participation:</strong> which events you attend, payment status, any custom answers you provide during registration.</li>
+        <li><strong>Payment references:</strong> UPI transaction references shared during checkout (we do not store your card or bank details).</li>
+        <li><strong>Instagram DMs:</strong> the content of messages you send to <a href="https://instagram.com/boardgamecompany">@boardgamecompany</a>, your Instagram-scoped user ID, and the timestamps of those messages. We use an automated assistant powered by Anthropic's Claude API to draft helpful replies; the message text is sent to Anthropic for that purpose and is not used by us or by Anthropic to train models.</li>
+        <li><strong>Website analytics:</strong> basic page-view information (referrer, UTM source) used to understand which channels drive sign-ups. We do not use third-party advertising trackers.</li>
+      </ul>
+
+      <h2>Why we collect it</h2>
+      <ul>
+        <li>To process event registrations, memberships, and refunds.</li>
+        <li>To send you confirmations, event updates, and occasional community announcements.</li>
+        <li>To answer questions you DM us on Instagram.</li>
+        <li>To improve our events and services.</li>
+      </ul>
+
+      <h2>Who we share it with</h2>
+      <p>We do not sell your data. We share it only with services that help us run BGC:</p>
+      <ul>
+        <li><strong>Supabase</strong> — database hosting for registrations, memberships, and event data.</li>
+        <li><strong>Cloudflare</strong> — website and API hosting.</li>
+        <li><strong>Meta (Instagram)</strong> — for DM delivery, per their platform terms.</li>
+        <li><strong>Anthropic</strong> — for generating Instagram DM replies (no training, no retention beyond the request).</li>
+        <li><strong>Google</strong> — for transactional email delivery (event confirmations).</li>
+      </ul>
+
+      <h2>How long we keep it</h2>
+      <p>
+        Registration and membership records are retained for as long as you remain part of the community, plus a
+        reasonable period afterwards for accounting. Instagram DM logs are kept only for as long as needed to
+        respond — typically a few days — and are not retained beyond that.
+      </p>
+
+      <h2>Your rights</h2>
+      <p>You can ask us to:</p>
+      <ul>
+        <li>See what we have on file about you.</li>
+        <li>Correct anything that's wrong.</li>
+        <li>Delete your data (subject to any records we're legally required to keep).</li>
+        <li>Stop sending you announcements.</li>
+      </ul>
+      <p>
+        Email <a href="mailto:hello@boardgamecompany.in">hello@boardgamecompany.in</a> with the request and we'll
+        action it within a reasonable timeframe.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Board Game Company<br />
+        Bangalore, Karnataka, India<br />
+        Email: <a href="mailto:hello@boardgamecompany.in">hello@boardgamecompany.in</a><br />
+        Phone / WhatsApp: <a href="tel:+919982200768">+91 99822 00768</a>
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        If we update this policy in any meaningful way, we'll bump the "Last updated" date at the top of this page.
+      </p>
+    </div>
+  </section>
+
+  <style is:global>
+    .prose-bgc { color: #1A1A1A; line-height: 1.7; }
+    .prose-bgc h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 0.75rem; letter-spacing: -0.5px; }
+    .prose-bgc p { margin: 0.75rem 0; }
+    .prose-bgc ul { margin: 0.75rem 0 0.75rem 1.25rem; padding: 0; }
+    .prose-bgc li { margin: 0.4rem 0; }
+    .prose-bgc a { color: #F47B20; text-decoration: underline; text-underline-offset: 3px; }
+    .prose-bgc a:hover { color: #1A1A1A; }
+  </style>
+</Layout>
