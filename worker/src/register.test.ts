@@ -109,4 +109,49 @@ describe('handleRegister lead conversion', () => {
     expect(capture.leadUpdate.converted_at_is).toBeNull();
     expect(capture.leadUpdate.junk_at_is).toBeNull();
   });
+
+  it('registration still succeeds when lead conversion throws', async () => {
+    // Build a mock where the leads.update chain throws — simulates a transient DB
+    // error. The conversion side-effect is wrapped in try/catch and must not fail
+    // the registration. This also covers the re-registration case: re-running on
+    // an already-converted row is a no-op at the SQL level (WHERE converted_at
+    // IS NULL matches nothing) and never throws — but if it ever did, the user
+    // would still get their registration.
+    (getSupabase as any).mockReturnValue({
+      from: (table: string) => {
+        if (table === 'events') return {
+          select: () => ({ eq: () => ({ eq: () => ({ single: async () => ({ data: {
+            id: 'E1', name: 'Test', date: '2026-06-01', venue_name: 'V', venue_area: null,
+            price: 500, capacity: 10, custom_questions: [], price_includes: null, is_published: true,
+          }, error: null }) }) }) }),
+        };
+        if (table === 'registrations') return {
+          select: () => ({ eq: () => ({ neq: async () => ({ data: [], error: null }) }) }),
+          insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'R1' }, error: null }) }) }),
+        };
+        if (table === 'users') return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+          insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'U1' }, error: null }) }) }),
+        };
+        if (table === 'guild_path_members') return {
+          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }) }),
+        };
+        if (table === 'leads') return {
+          update: () => { throw new Error('simulated DB failure'); },
+        };
+        return null;
+      },
+    });
+
+    const req = new Request('http://localhost/api/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'E1', name: 'Asha', phone: '9876543210', email: 'a@b.com',
+        seats: 1, custom_answers: {}, payment_status: 'pending',
+      }),
+    });
+    const ctx = { waitUntil: (p: Promise<unknown>) => p } as any;
+    const res = await handleRegister(req, mockEnv(), ctx);
+    expect(res.status).toBe(200);
+  });
 });

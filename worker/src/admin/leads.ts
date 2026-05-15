@@ -62,7 +62,10 @@ export async function handleUpdateLead(id: string, request: Request, env: Env): 
 
 function csvEscape(v: unknown): string {
   if (v === null || v === undefined) return '';
-  const s = typeof v === 'string' ? v : JSON.stringify(v);
+  let s = typeof v === 'string' ? v : JSON.stringify(v);
+  // Neutralise CSV formula-injection: cells starting with =, +, -, @, tab or CR
+  // get a leading apostrophe so Excel/Sheets treats them as text.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }

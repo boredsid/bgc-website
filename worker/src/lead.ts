@@ -10,8 +10,33 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const RATE_LIMIT_MS = 2000;
 const lastSeen = new Map<string, number>();
 
+// Per-isolate cache of known event ids. Stops attackers from flooding the table
+// with FK-violating writes by spamming random UUIDs as event_id.
+const EVENT_CACHE_TTL_MS = 5 * 60 * 1000;
+const knownEvents = new Map<string, number>(); // event_id -> expires at ms
+const negativeEvents = new Map<string, number>(); // event_id -> expires at ms (don't exist)
+const NEGATIVE_TTL_MS = 60 * 1000;
+
 export function _resetLeadRateLimit(): void {
   lastSeen.clear();
+  knownEvents.clear();
+  negativeEvents.clear();
+}
+
+async function eventExists(supabase: ReturnType<typeof getSupabase>, eventId: string): Promise<boolean> {
+  const now = Date.now();
+  const cachedPos = knownEvents.get(eventId);
+  if (cachedPos && cachedPos > now) return true;
+  const cachedNeg = negativeEvents.get(eventId);
+  if (cachedNeg && cachedNeg > now) return false;
+
+  const { data } = await supabase.from('events').select('id').eq('id', eventId).maybeSingle();
+  if (data) {
+    knownEvents.set(eventId, now + EVENT_CACHE_TTL_MS);
+    return true;
+  }
+  negativeEvents.set(eventId, now + NEGATIVE_TTL_MS);
+  return false;
 }
 
 interface LeadBody {
@@ -50,6 +75,11 @@ export async function handleLead(request: Request, env: Env): Promise<Response> 
   lastSeen.set(key, now);
 
   const supabase = getSupabase(env);
+
+  // Verify event exists. Stops UUID-spam attacks against the leads table.
+  if (!(await eventExists(supabase, eventId))) {
+    return jsonResponse({ error: 'Invalid event id' }, 400);
+  }
 
   // Skip if already converted.
   const { data: existing } = await supabase

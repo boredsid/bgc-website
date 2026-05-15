@@ -24,10 +24,24 @@ interface LeadRow {
   junk_at: string | null;
 }
 
-function buildSupabaseMock(initialRow: LeadRow | null, capture: { upsertArg: any; upsertOnConflict: string | null }) {
+function buildSupabaseMock(
+  initialRow: LeadRow | null,
+  capture: { upsertArg: any; upsertOnConflict: string | null },
+  opts: { eventExists?: boolean } = {},
+) {
   let row = initialRow;
+  const eventExists = opts.eventExists ?? true;
   return {
     from: (table: string) => {
+      if (table === 'events') {
+        return {
+          select: () => ({
+            eq: (_c: string, v: string) => ({
+              maybeSingle: async () => ({ data: eventExists ? { id: v } : null, error: null }),
+            }),
+          }),
+        };
+      }
       if (table !== 'leads') throw new Error('unexpected table ' + table);
       return {
         select: () => ({
@@ -129,6 +143,22 @@ describe('handleLead', () => {
     });
     const res = await handleLead(req, mockEnv());
     expect(res.status).toBe(200);
+    expect(capture.upsertArg).toBeNull();
+  });
+
+  it('rejects event_id that does not exist with 400 (no DB write)', async () => {
+    const capture = { upsertArg: null as any, upsertOnConflict: null as any };
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(null, capture, { eventExists: false }));
+    const req = new Request('http://localhost/api/lead', {
+      method: 'POST',
+      body: JSON.stringify({
+        phone: '9876543210',
+        event_id: '99999999-9999-9999-9999-999999999999',
+        last_step: 'phone_entered',
+      }),
+    });
+    const res = await handleLead(req, mockEnv());
+    expect(res.status).toBe(400);
     expect(capture.upsertArg).toBeNull();
   });
 

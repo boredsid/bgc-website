@@ -120,4 +120,20 @@ describe('handleExportLeads', () => {
     expect(lines.length).toBe(2);
     expect(lines[1]).toContain('9876543210');
   });
+
+  it('escapes formula-injection in name cells', async () => {
+    const capture: QueryCapture = { filters: [] };
+    (getSupabase as any).mockReturnValue(buildListMock([
+      {
+        id: 'L1', phone: '9876543210', name: '=cmd|attack', event_id: 'E1',
+        last_step: 'name_entered', source: null,
+        converted_at: null, junk_at: null, created_at: '2026-05-15T00:00:00Z',
+        events: { name: 'Game Night' },
+      },
+    ], capture));
+    const req = new Request('http://localhost/api/admin/leads/export');
+    const res = await handleExportLeads(req, mockEnv());
+    const body = await res.text();
+    expect(body).toContain("'=cmd|attack");
+  });
 });
