@@ -4,6 +4,7 @@ import { getSource } from '../lib/source';
 import type { Event, PhoneLookupResponse, EventSpots } from '../lib/types';
 import CustomQuestion from './CustomQuestion';
 import PaymentSheet from './PaymentSheet';
+import { useLeadCapture } from '../lib/use-lead-capture';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
 
@@ -21,6 +22,7 @@ export default function RegistrationForm() {
   const [email, setEmail] = useState('');
   const [seats, setSeats] = useState(1);
   const [customAnswers, setCustomAnswers] = useState<Record<string, string | boolean>>({});
+  const [detailsTouched, setDetailsTouched] = useState(false);
   const [membership, setMembership] = useState<PhoneLookupResponse['membership'] | null>(null);
   const [existingSeatsForEvent, setExistingSeatsForEvent] = useState(0);
   const [creditBalance, setCreditBalance] = useState(0);
@@ -119,6 +121,13 @@ export default function RegistrationForm() {
     return () => clearTimeout(t);
   }, [phone, eventId, lookupPhone]);
 
+  const updateCustomAnswer = useCallback((id: string, value: string | boolean) => {
+    setCustomAnswers((prev) => ({ ...prev, [id]: value }));
+    setDetailsTouched(true);
+  }, []);
+
+  useLeadCapture({ phone, name, eventId, detailsTouched });
+
   if (loading) {
     return <div className="text-center py-12 text-[#1A1A1A]/60 font-heading">Loading...</div>;
   }
@@ -180,10 +189,6 @@ export default function RegistrationForm() {
   total = subtotalAfterDiscount - creditApplied;
 
   const eventDate = new Date(event.date);
-
-  function handleCustomAnswer(questionId: string, value: string | boolean) {
-    setCustomAnswers((prev) => ({ ...prev, [questionId]: value }));
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -384,7 +389,7 @@ export default function RegistrationForm() {
               key={q.id}
               question={q}
               value={customAnswers[q.id] ?? (q.type === 'checkbox' ? false : '')}
-              onChange={(val) => handleCustomAnswer(q.id, val)}
+              onChange={(val) => updateCustomAnswer(q.id, val)}
               optionCounts={spots?.option_counts?.[q.id]}
             />
           ))}
