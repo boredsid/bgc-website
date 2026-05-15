@@ -214,6 +214,24 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     return jsonResponse({ error: 'Registration failed' }, 500);
   }
 
+  // Convert any open lead matching this phone+event. Best-effort — failures here
+  // must not fail the registration.
+  try {
+    await supabase
+      .from('leads')
+      .update({
+        converted_at: new Date().toISOString(),
+        registration_id: registration.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('phone', phone)
+      .eq('event_id', body.event_id)
+      .is('converted_at', null)
+      .is('junk_at', null);
+  } catch {
+    // swallow
+  }
+
   if (creditsApplied > 0) {
     await recordCreditEvent(supabase, {
       user_id: userId,
