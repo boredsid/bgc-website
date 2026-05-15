@@ -22,6 +22,7 @@ export interface Event {
   capacity: number;
   custom_questions: CustomQuestion[] | null;
   price_includes: string | null;
+  llm_notes: string | null;
   is_published: boolean;
   created_at: string;
 }

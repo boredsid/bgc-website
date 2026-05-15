@@ -26,7 +26,7 @@ export async function handleGetEvent(id: string, env: Env): Promise<Response> {
 
 const EVENT_FIELDS = [
   'name', 'description', 'date', 'venue_name', 'venue_area',
-  'price', 'capacity', 'custom_questions', 'price_includes', 'is_published',
+  'price', 'capacity', 'custom_questions', 'price_includes', 'llm_notes', 'is_published',
 ] as const;
 
 type EventField = (typeof EVENT_FIELDS)[number];

@@ -17,7 +17,7 @@ interface Props { mode: 'create' | 'edit' }
 
 const empty: Partial<Event> = {
   name: '', description: '', date: '', venue_name: '', venue_area: '',
-  price: 0, capacity: 0, custom_questions: [], price_includes: '', is_published: false,
+  price: 0, capacity: 0, custom_questions: [], price_includes: '', llm_notes: '', is_published: false,
 };
 
 export default function EventDrawer({ mode }: Props) {
@@ -168,6 +168,14 @@ export default function EventDrawer({ mode }: Props) {
           ))}
           {field('price_includes', 'Price includes', (
             <Input value={form.price_includes || ''} onChange={(e) => set('price_includes', e.target.value)} />
+          ))}
+          {field('llm_notes', 'Notes for DM agent', (
+            <Textarea
+              rows={4}
+              placeholder="Anything the Instagram DM agent should know that isn't in the other fields (e.g. BYOB, side-entrance for wheelchairs, kid-friendly until 8pm)."
+              value={form.llm_notes || ''}
+              onChange={(e) => set('llm_notes', e.target.value)}
+            />
           ))}
           <div className="flex items-center gap-2">
             <Switch checked={!!form.is_published} onCheckedChange={(c) => set('is_published', c)} />
