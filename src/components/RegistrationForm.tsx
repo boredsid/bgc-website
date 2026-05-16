@@ -255,9 +255,20 @@ export default function RegistrationForm() {
         <p className="text-sm text-[#1A1A1A]/70">
           {event.venue_name}, {event.venue_area}
         </p>
-        <a href="/calendar" className="inline-block mt-6 btn btn-black no-underline">
-          Back to events
-        </a>
+        <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center items-center">
+          <a
+            href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-black no-underline"
+            style={{ background: '#25D366', color: '#1A1A1A' }}
+          >
+            Join the WhatsApp group to stay updated
+          </a>
+          <a href="/calendar" className="btn btn-black no-underline">
+            Back to events
+          </a>
+        </div>
       </div>
     );
   }
