@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ShieldCheck, Calendar, MoreHorizontal, Library, LogOut, UserCircle, Inbox } from 'lucide-react';
+import { LayoutDashboard, Users, ShieldCheck, Calendar, MoreHorizontal, Library, LogOut, UserCircle, Inbox, Gift } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import type { SidebarCounts } from './Sidebar';
@@ -106,6 +106,19 @@ export default function BottomTabBar({ counts }: Props) {
             >
               <Inbox className="h-5 w-5" />
               Leads
+            </NavLink>
+            <NavLink
+              to="/promos"
+              onClick={() => setMoreOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-3 rounded-md text-sm min-h-11',
+                  isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+                )
+              }
+            >
+              <Gift className="h-5 w-5" />
+              Promos
             </NavLink>
             <a
               href="/cdn-cgi/access/logout"
