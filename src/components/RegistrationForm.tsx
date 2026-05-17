@@ -152,41 +152,38 @@ export default function RegistrationForm() {
   const maxSeats = spots ? Math.min(spots.remaining, 10) : 10;
 
   const grossTotal = event.price * seats;
-  const promoApplicable =
-    !!activePromo && event.price <= activePromo.max_event_price;
-  const promoSeatsApplied = promoApplicable
-    ? Math.min(seats, activePromo!.remaining_uses)
-    : 0;
-  const seatsAfterPromo = seats - promoSeatsApplied;
+  const promoFits = !!activePromo && event.price <= activePromo.max_event_price;
 
-  let total = event.price * seatsAfterPromo;
+  // 1. Apply guild discount first, building a per-seat cost array.
+  let seatCosts: number[] = Array(seats).fill(event.price);
+  let total = grossTotal;
   let discountLabel = '';
-  let promoLabel = '';
-  if (promoSeatsApplied > 0) {
-    const remainingAfter = activePromo!.remaining_uses - promoSeatsApplied;
-    promoLabel = `🎁 Free giveaway — ${promoSeatsApplied} seat${promoSeatsApplied > 1 ? 's' : ''} covered${remainingAfter > 0 ? ` (${remainingAfter} left)` : ''}`;
-  }
-  if (membership?.isMember && seatsAfterPromo > 0) {
+  if (membership?.isMember) {
     if (membership.discount === '20') {
-      const firstSeats = existingSeatsForEvent === 0 ? Math.min(1, seatsAfterPromo) : 0;
-      const afterFirst = seatsAfterPromo - firstSeats;
+      const firstSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
+      const afterFirst = seats - firstSeats;
       const secondSeats = existingSeatsForEvent + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
       const fullSeats = afterFirst - secondSeats;
-      total = Math.round(
-        firstSeats * event.price * 0.8 +
-          secondSeats * event.price * 0.9 +
-          fullSeats * event.price,
-      );
+      seatCosts = [
+        ...Array(fullSeats).fill(event.price),
+        ...Array(secondSeats).fill(event.price * 0.9),
+        ...Array(firstSeats).fill(event.price * 0.8),
+      ];
+      total = Math.round(seatCosts.reduce((s, c) => s + c, 0));
       const parts: string[] = [];
       if (firstSeats > 0) parts.push('20% off your seat');
       if (secondSeats > 0) parts.push('10% off second seat');
       if (fullSeats > 0) parts.push(`${fullSeats} seat${fullSeats > 1 ? 's' : ''} at full price`);
       discountLabel = `Initiate member — ${parts.join(', ')}`;
     } else if (membership.discount === 'free') {
-      const selfSeats = existingSeatsForEvent === 0 ? Math.min(1, seatsAfterPromo) : 0;
-      const plusOneCandidates = seatsAfterPromo - selfSeats;
+      const selfSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
+      const plusOneCandidates = seats - selfSeats;
       const plusOnesUsed = Math.min(plusOneCandidates, membership.plus_ones_remaining);
       const paidSeats = plusOneCandidates - plusOnesUsed;
+      seatCosts = [
+        ...Array(paidSeats).fill(event.price),
+        ...Array(selfSeats + plusOnesUsed).fill(0),
+      ];
       total = paidSeats * event.price;
 
       const tierName = membership.tier === 'guildmaster' ? 'Guildmaster' : 'Adventurer';
@@ -198,6 +195,22 @@ export default function RegistrationForm() {
       discountLabel = `${tierName} — ${parts.join(', ')}${plusOnesUsed > 0 ? ` (${remainingAfter} left)` : ''}`;
     }
   }
+
+  // 2. If anything's still owed, giveaway covers highest-cost paid seats first.
+  let promoLabel = '';
+  let promoSeatsApplied = 0;
+  if (total > 0 && promoFits) {
+    const paidSeatsRemaining = seatCosts.filter((c) => c > 0).length;
+    promoSeatsApplied = Math.min(paidSeatsRemaining, activePromo!.remaining_uses);
+    if (promoSeatsApplied > 0) {
+      const sortedCosts = [...seatCosts].sort((a, b) => b - a);
+      const reduction = sortedCosts.slice(0, promoSeatsApplied).reduce((s, c) => s + c, 0);
+      total = Math.max(0, Math.round(total - reduction));
+      const remainingAfter = activePromo!.remaining_uses - promoSeatsApplied;
+      promoLabel = `🎁 Free giveaway — ${promoSeatsApplied} seat${promoSeatsApplied > 1 ? 's' : ''} covered${remainingAfter > 0 ? ` (${remainingAfter} left)` : ''}`;
+    }
+  }
+  const promoPreserved = promoFits && promoSeatsApplied === 0 && activePromo!.remaining_uses > 0;
 
   const subtotalAfterDiscount = total;
   const creditApplied = Math.max(0, Math.min(creditBalance, subtotalAfterDiscount));
@@ -369,9 +382,15 @@ export default function RegistrationForm() {
             </div>
           )}
 
-          {phoneLookedUp && activePromo && !promoApplicable && (
+          {phoneLookedUp && activePromo && !promoFits && (
             <div className="mb-5 text-xs text-[#1A1A1A]/60">
               You have a giveaway for events up to ₹{activePromo.max_event_price} — doesn't apply to this event.
+            </div>
+          )}
+
+          {phoneLookedUp && promoPreserved && (
+            <div className="mb-5 text-xs text-[#1A1A1A]/60">
+              🎁 Giveaway preserved — your Guild Path already covers this. {activePromo!.remaining_uses} use{activePromo!.remaining_uses === 1 ? '' : 's'} saved for later.
             </div>
           )}
 

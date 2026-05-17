@@ -66,40 +66,26 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     userId = newUser.id;
   }
 
-  let promoIdUsed: string | null = null;
-  let promoSeatsConsumed = 0;
-  const applicablePromo = await getApplicablePromo(supabase, userId, event.price);
-  if (applicablePromo) {
-    const ok = await consumePromoUses(
-      supabase,
-      applicablePromo,
-      Math.min(seats, applicablePromo.remaining_uses),
-    );
-    if (ok) {
-      promoIdUsed = applicablePromo.id;
-      promoSeatsConsumed = Math.min(seats, applicablePromo.remaining_uses);
-    }
-  }
-  const seatsAfterPromo = seats - promoSeatsConsumed;
+  // Apply guild discount first; giveaway promo then covers any remaining
+  // paid seats. If guild brings the total to ₹0, the promo stays preserved.
+  const { data: member } = await supabase
+    .from('guild_path_members')
+    .select('id, tier, plus_ones_used')
+    .eq('user_id', userId)
+    .eq('status', 'paid')
+    .gte('expires_at', new Date().toISOString().split('T')[0])
+    .order('expires_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  let totalAmount = event.price * seatsAfterPromo;
-  let discountApplied: string | null = promoSeatsConsumed > 0 ? 'promo' : null;
+  let totalAmount = event.price * seats;
+  let discountApplied: string | null = null;
   let plusOnesToConsume = 0;
   let membershipIdToUpdate: string | null = null;
   let membershipNewPlusOnesUsed = 0;
-
-  const memberResult = seatsAfterPromo > 0
-    ? await supabase
-        .from('guild_path_members')
-        .select('id, tier, plus_ones_used')
-        .eq('user_id', userId)
-        .eq('status', 'paid')
-        .gte('expires_at', new Date().toISOString().split('T')[0])
-        .order('expires_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    : { data: null };
-  const member = memberResult.data;
+  let promoIdUsed: string | null = null;
+  let promoSeatsConsumed = 0;
+  let seatCosts: number[] = Array(seats).fill(event.price);
 
   if (member) {
     const { data: priorRegs } = await supabase
@@ -111,27 +97,51 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
 
     if (member.tier === 'initiate') {
-      const firstSeats = existingSeats === 0 ? Math.min(1, seatsAfterPromo) : 0;
-      const afterFirst = seatsAfterPromo - firstSeats;
+      const firstSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
+      const afterFirst = seats - firstSeats;
       const secondSeats = existingSeats + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
       const fullSeats = afterFirst - secondSeats;
-      totalAmount = Math.round(
-        firstSeats * event.price * 0.8 +
-          secondSeats * event.price * 0.9 +
-          fullSeats * event.price,
-      );
-      discountApplied = promoSeatsConsumed > 0 ? 'promo+initiate' : 'initiate';
+      seatCosts = [
+        ...Array(fullSeats).fill(event.price),
+        ...Array(secondSeats).fill(event.price * 0.9),
+        ...Array(firstSeats).fill(event.price * 0.8),
+      ];
+      totalAmount = Math.round(seatCosts.reduce((s, c) => s + c, 0));
+      discountApplied = 'initiate';
     } else {
       const cap = member.tier === 'adventurer' ? 1 : 5;
       const remainingCap = Math.max(0, cap - member.plus_ones_used);
-      const selfSeats = existingSeats === 0 ? Math.min(1, seatsAfterPromo) : 0;
-      const plusOneCandidates = seatsAfterPromo - selfSeats;
+      const selfSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
+      const plusOneCandidates = seats - selfSeats;
       plusOnesToConsume = Math.min(plusOneCandidates, remainingCap);
       const paidSeats = plusOneCandidates - plusOnesToConsume;
+      seatCosts = [
+        ...Array(paidSeats).fill(event.price),
+        ...Array(selfSeats + plusOnesToConsume).fill(0),
+      ];
       totalAmount = paidSeats * event.price;
-      discountApplied = promoSeatsConsumed > 0 ? `promo+${member.tier}` : member.tier;
+      discountApplied = member.tier;
       membershipIdToUpdate = member.id;
       membershipNewPlusOnesUsed = member.plus_ones_used + plusOnesToConsume;
+    }
+  }
+
+  if (totalAmount > 0) {
+    const applicablePromo = await getApplicablePromo(supabase, userId, event.price);
+    if (applicablePromo) {
+      const paidSeatsRemaining = seatCosts.filter((c) => c > 0).length;
+      const toConsume = Math.min(paidSeatsRemaining, applicablePromo.remaining_uses);
+      if (toConsume > 0) {
+        const ok = await consumePromoUses(supabase, applicablePromo, toConsume);
+        if (ok) {
+          promoIdUsed = applicablePromo.id;
+          promoSeatsConsumed = toConsume;
+          const sortedCosts = [...seatCosts].sort((a, b) => b - a);
+          const reduction = sortedCosts.slice(0, toConsume).reduce((s, c) => s + c, 0);
+          totalAmount = Math.max(0, Math.round(totalAmount - reduction));
+          if (!discountApplied) discountApplied = 'promo';
+        }
+      }
     }
   }
 

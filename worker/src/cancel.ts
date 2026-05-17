@@ -59,8 +59,7 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
   if (
     reg.plus_ones_consumed > 0 &&
     reg.user_id &&
-    (reg.discount_applied === 'adventurer' || reg.discount_applied === 'guildmaster' ||
-      reg.discount_applied === 'promo+adventurer' || reg.discount_applied === 'promo+guildmaster')
+    (reg.discount_applied === 'adventurer' || reg.discount_applied === 'guildmaster')
   ) {
     // Refund to the user's most recent paid membership. In practice users hold
     // at most one active membership at a time, so this is the one that was
