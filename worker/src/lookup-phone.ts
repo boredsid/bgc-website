@@ -2,6 +2,7 @@ import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { sanitizePhone, jsonResponse } from './validation';
 import { getUserBalance } from './credits';
+import { getActivePromo } from './promos';
 
 export async function handleLookupPhone(request: Request, env: Env): Promise<Response> {
   const body = await request.json<{ phone: string; event_id?: string }>();
@@ -65,6 +66,7 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
   }
 
   const creditBalance = user ? await getUserBalance(supabase, user.id) : 0;
+  const activePromo = user ? await getActivePromo(supabase, user.id) : null;
 
   return jsonResponse({
     user: {
@@ -80,5 +82,12 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
     },
     existing_seats_for_event: existingSeatsForEvent,
     credit_balance: creditBalance,
+    active_promo: activePromo
+      ? {
+          remaining_uses: activePromo.remaining_uses,
+          max_event_price: activePromo.max_event_price,
+          expires_at: activePromo.expires_at,
+        }
+      : null,
   });
 }

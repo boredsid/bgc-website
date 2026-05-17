@@ -16,6 +16,12 @@ import { handleManualRegister } from './admin/register-manual';
 import { handleListGuildMembers, handleGetGuildMember, handleUpdateGuildMember } from './admin/guild-members';
 import { handleListLeads, handleUpdateLead, handleExportLeads } from './admin/leads';
 import {
+  handleListPromos,
+  handleCreatePromo,
+  handleUpdatePromo,
+  handleDeletePromo,
+} from './admin/promos';
+import {
   handleGetUser,
   handleUpdateUser,
   handleListUsers,
@@ -211,6 +217,18 @@ export default {
               const leadId = leadsMatch[1];
               if (!leadId && request.method === 'GET') adminResponse = await handleListLeads(request, env);
               else if (leadId && leadId !== 'export' && request.method === 'PATCH') adminResponse = await handleUpdateLead(leadId, request, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse) {
+            const promosMatch = url.pathname.match(/^\/api\/admin\/promos(?:\/([^/]+))?$/);
+            if (promosMatch) {
+              const promoId = promosMatch[1];
+              if (!promoId && request.method === 'GET') adminResponse = await handleListPromos(url, env);
+              else if (!promoId && request.method === 'POST') adminResponse = await handleCreatePromo(request, env, gate.admin.email);
+              else if (promoId && request.method === 'PATCH') adminResponse = await handleUpdatePromo(promoId, request, env);
+              else if (promoId && request.method === 'DELETE') adminResponse = await handleDeletePromo(promoId, env);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }

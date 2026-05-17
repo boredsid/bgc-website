@@ -14,6 +14,11 @@ vi.mock('./credits', () => ({
   applyCreditsToTotal: vi.fn(async (_s: any, _u: string, total: number) => ({ creditsApplied: 0, finalAmount: total })),
   recordCreditEvent: vi.fn(async () => undefined),
 }));
+vi.mock('./promos', () => ({
+  getApplicablePromo: vi.fn(async () => null),
+  consumePromoUses: vi.fn(async () => true),
+  restorePromoUses: vi.fn(async () => undefined),
+}));
 
 import { getSupabase } from './supabase';
 import { handleRegister } from './register';

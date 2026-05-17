@@ -3,6 +3,7 @@ import { getSupabase } from '../supabase';
 import { sanitizePhone, sanitizeEmail, sanitizeName, jsonResponse } from '../validation';
 import { sendEventRegistrationEmail } from '../email';
 import { applyCreditsToTotal, recordCreditEvent } from '../credits';
+import { consumePromoUses, getApplicablePromo } from '../promos';
 
 export async function handleManualRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -65,21 +66,40 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     userId = newUser.id;
   }
 
-  let totalAmount = event.price * seats;
-  let discountApplied: string | null = null;
+  let promoIdUsed: string | null = null;
+  let promoSeatsConsumed = 0;
+  const applicablePromo = await getApplicablePromo(supabase, userId, event.price);
+  if (applicablePromo) {
+    const ok = await consumePromoUses(
+      supabase,
+      applicablePromo,
+      Math.min(seats, applicablePromo.remaining_uses),
+    );
+    if (ok) {
+      promoIdUsed = applicablePromo.id;
+      promoSeatsConsumed = Math.min(seats, applicablePromo.remaining_uses);
+    }
+  }
+  const seatsAfterPromo = seats - promoSeatsConsumed;
+
+  let totalAmount = event.price * seatsAfterPromo;
+  let discountApplied: string | null = promoSeatsConsumed > 0 ? 'promo' : null;
   let plusOnesToConsume = 0;
   let membershipIdToUpdate: string | null = null;
   let membershipNewPlusOnesUsed = 0;
 
-  const { data: member } = await supabase
-    .from('guild_path_members')
-    .select('id, tier, plus_ones_used')
-    .eq('user_id', userId)
-    .eq('status', 'paid')
-    .gte('expires_at', new Date().toISOString().split('T')[0])
-    .order('expires_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const memberResult = seatsAfterPromo > 0
+    ? await supabase
+        .from('guild_path_members')
+        .select('id, tier, plus_ones_used')
+        .eq('user_id', userId)
+        .eq('status', 'paid')
+        .gte('expires_at', new Date().toISOString().split('T')[0])
+        .order('expires_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+  const member = memberResult.data;
 
   if (member) {
     const { data: priorRegs } = await supabase
@@ -91,8 +111,8 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
 
     if (member.tier === 'initiate') {
-      const firstSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
-      const afterFirst = seats - firstSeats;
+      const firstSeats = existingSeats === 0 ? Math.min(1, seatsAfterPromo) : 0;
+      const afterFirst = seatsAfterPromo - firstSeats;
       const secondSeats = existingSeats + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
       const fullSeats = afterFirst - secondSeats;
       totalAmount = Math.round(
@@ -100,16 +120,16 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
           secondSeats * event.price * 0.9 +
           fullSeats * event.price,
       );
-      discountApplied = 'initiate';
+      discountApplied = promoSeatsConsumed > 0 ? 'promo+initiate' : 'initiate';
     } else {
       const cap = member.tier === 'adventurer' ? 1 : 5;
       const remainingCap = Math.max(0, cap - member.plus_ones_used);
-      const selfSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
-      const plusOneCandidates = seats - selfSeats;
+      const selfSeats = existingSeats === 0 ? Math.min(1, seatsAfterPromo) : 0;
+      const plusOneCandidates = seatsAfterPromo - selfSeats;
       plusOnesToConsume = Math.min(plusOneCandidates, remainingCap);
       const paidSeats = plusOneCandidates - plusOnesToConsume;
       totalAmount = paidSeats * event.price;
-      discountApplied = member.tier;
+      discountApplied = promoSeatsConsumed > 0 ? `promo+${member.tier}` : member.tier;
       membershipIdToUpdate = member.id;
       membershipNewPlusOnesUsed = member.plus_ones_used + plusOnesToConsume;
     }
@@ -131,6 +151,8 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
       payment_status: body.payment_status,
       plus_ones_consumed: plusOnesToConsume,
       credits_applied: creditsApplied,
+      promo_id: promoIdUsed,
+      promo_uses_consumed: promoSeatsConsumed,
       source: 'admin',
     })
     .select('id')

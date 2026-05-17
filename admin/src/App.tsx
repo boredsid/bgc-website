@@ -13,6 +13,7 @@ import GuildDrawer from './pages/GuildDrawer';
 import UsersList from './pages/UsersList';
 import UserDrawer from './pages/UserDrawer';
 import Leads from './pages/Leads';
+import Promos from './pages/Promos';
 import { Toaster } from '@/components/ui/sonner';
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/registrations/new" element={<><RegistrationsList /><ManualRegistrationDrawer /></>} />
           <Route path="/registrations/:id" element={<><RegistrationsList /><RegistrationDrawer /></>} />
           <Route path="/leads" element={<Leads />} />
+          <Route path="/promos" element={<Promos />} />
           <Route path="/guild" element={<GuildList />} />
           <Route path="/guild/:id" element={<><GuildList /><GuildDrawer /></>} />
           <Route path="/guild/:id/user" element={<><GuildList /><GuildDrawer /><UserDrawer /></>} />

@@ -26,6 +26,7 @@ export default function RegistrationForm() {
   const [membership, setMembership] = useState<PhoneLookupResponse['membership'] | null>(null);
   const [existingSeatsForEvent, setExistingSeatsForEvent] = useState(0);
   const [creditBalance, setCreditBalance] = useState(0);
+  const [activePromo, setActivePromo] = useState<PhoneLookupResponse['active_promo']>(null);
   const [phoneLookedUp, setPhoneLookedUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +101,7 @@ export default function RegistrationForm() {
       setMembership(data.membership);
       setExistingSeatsForEvent(data.existing_seats_for_event ?? 0);
       setCreditBalance(data.credit_balance ?? 0);
+      setActivePromo(data.active_promo ?? null);
       setPhoneLookedUp(true);
     } catch {
       setPhoneLookedUp(false);
@@ -114,6 +116,7 @@ export default function RegistrationForm() {
         setMembership(null);
         setExistingSeatsForEvent(0);
         setCreditBalance(0);
+        setActivePromo(null);
       }
       return;
     }
@@ -149,12 +152,24 @@ export default function RegistrationForm() {
   const maxSeats = spots ? Math.min(spots.remaining, 10) : 10;
 
   const grossTotal = event.price * seats;
-  let total = grossTotal;
+  const promoApplicable =
+    !!activePromo && event.price <= activePromo.max_event_price;
+  const promoSeatsApplied = promoApplicable
+    ? Math.min(seats, activePromo!.remaining_uses)
+    : 0;
+  const seatsAfterPromo = seats - promoSeatsApplied;
+
+  let total = event.price * seatsAfterPromo;
   let discountLabel = '';
-  if (membership?.isMember) {
+  let promoLabel = '';
+  if (promoSeatsApplied > 0) {
+    const remainingAfter = activePromo!.remaining_uses - promoSeatsApplied;
+    promoLabel = `🎁 Free promo — ${promoSeatsApplied} seat${promoSeatsApplied > 1 ? 's' : ''} covered${remainingAfter > 0 ? ` (${remainingAfter} left)` : ''}`;
+  }
+  if (membership?.isMember && seatsAfterPromo > 0) {
     if (membership.discount === '20') {
-      const firstSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
-      const afterFirst = seats - firstSeats;
+      const firstSeats = existingSeatsForEvent === 0 ? Math.min(1, seatsAfterPromo) : 0;
+      const afterFirst = seatsAfterPromo - firstSeats;
       const secondSeats = existingSeatsForEvent + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
       const fullSeats = afterFirst - secondSeats;
       total = Math.round(
@@ -168,8 +183,8 @@ export default function RegistrationForm() {
       if (fullSeats > 0) parts.push(`${fullSeats} seat${fullSeats > 1 ? 's' : ''} at full price`);
       discountLabel = `Initiate member — ${parts.join(', ')}`;
     } else if (membership.discount === 'free') {
-      const selfSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
-      const plusOneCandidates = seats - selfSeats;
+      const selfSeats = existingSeatsForEvent === 0 ? Math.min(1, seatsAfterPromo) : 0;
+      const plusOneCandidates = seatsAfterPromo - selfSeats;
       const plusOnesUsed = Math.min(plusOneCandidates, membership.plus_ones_remaining);
       const paidSeats = plusOneCandidates - plusOnesUsed;
       total = paidSeats * event.price;
@@ -332,7 +347,18 @@ export default function RegistrationForm() {
             />
           </div>
 
-          {phoneLookedUp && membership?.isMember && (
+          {phoneLookedUp && promoLabel && (
+            <div className="mb-3">
+              <span
+                className="pill inline-block"
+                style={{ background: '#A8E6CF', padding: '8px 16px' }}
+              >
+                {promoLabel}
+              </span>
+            </div>
+          )}
+
+          {phoneLookedUp && membership?.isMember && discountLabel && (
             <div className="mb-5">
               <span
                 className="pill inline-block"
@@ -340,6 +366,12 @@ export default function RegistrationForm() {
               >
                 👑 {discountLabel}
               </span>
+            </div>
+          )}
+
+          {phoneLookedUp && activePromo && !promoApplicable && (
+            <div className="mb-5 text-xs text-[#1A1A1A]/60">
+              You have a promo for events up to ₹{activePromo.max_event_price} — doesn't apply to this event.
             </div>
           )}
 

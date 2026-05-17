@@ -2,6 +2,7 @@ import type { Env } from '../index';
 import { getSupabase } from '../supabase';
 import { jsonResponse } from '../validation';
 import { getUserBalance, recordCreditEvent } from '../credits';
+import { consumePromoUses, restorePromoUses, type ActivePromo } from '../promos';
 
 const REG_FIELDS = [
   'event_id', 'name', 'phone', 'email', 'seats', 'total_amount',
@@ -59,7 +60,7 @@ export async function handleUpdateRegistration(id: string, request: Request, env
 
   const { data: prior, error: priorError } = await supabase
     .from('registrations')
-    .select('id, user_id, payment_status, total_amount, credits_applied')
+    .select('id, user_id, payment_status, total_amount, credits_applied, promo_id, promo_uses_consumed')
     .eq('id', id)
     .maybeSingle();
   if (priorError) return jsonResponse({ error: 'Failed to load registration' }, 500);
@@ -103,6 +104,21 @@ export async function handleUpdateRegistration(id: string, request: Request, env
       reason: 'cancellation_reversal',
       registration_id: id,
     }, { ignoreDuplicate: true });
+  }
+
+  // Promo: restore on cancel, re-consume on un-cancel (best-effort, mirrors credits).
+  if (transitioningToCancelled && prior.promo_id && prior.promo_uses_consumed > 0) {
+    await restorePromoUses(supabase, prior.promo_id, prior.promo_uses_consumed);
+  }
+  if (transitioningToConfirmed && prior.promo_id && prior.promo_uses_consumed > 0) {
+    const { data: promoRow } = await supabase
+      .from('user_promos')
+      .select('id, remaining_uses, max_event_price, expires_at')
+      .eq('id', prior.promo_id)
+      .maybeSingle();
+    if (promoRow) {
+      await consumePromoUses(supabase, promoRow as ActivePromo, prior.promo_uses_consumed);
+    }
   }
 
   return jsonResponse({ registration: data });

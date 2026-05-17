@@ -1,6 +1,7 @@
 import { getSupabase } from './supabase';
 import { jsonResponse } from './validation';
 import { recordCreditEvent } from './credits';
+import { restorePromoUses } from './promos';
 import type { Env } from './index';
 
 export async function handleCancelRegistration(request: Request, env: Env): Promise<Response> {
@@ -13,7 +14,7 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
 
   const { data: reg, error: fetchError } = await supabase
     .from('registrations')
-    .select('id, user_id, payment_status, plus_ones_consumed, discount_applied, total_amount, credits_applied')
+    .select('id, user_id, payment_status, plus_ones_consumed, discount_applied, total_amount, credits_applied, promo_id, promo_uses_consumed')
     .eq('id', body.registration_id)
     .maybeSingle();
 
@@ -48,11 +49,18 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
     }
   }
 
+  // Restore promo uses if any were consumed by this registration. Guarded by
+  // payment_status above so re-cancelling a cancelled reg is a no-op.
+  if (wasConfirmed && reg.promo_id && reg.promo_uses_consumed > 0) {
+    await restorePromoUses(supabase, reg.promo_id, reg.promo_uses_consumed);
+  }
+
   let plusOnesRefunded = 0;
   if (
     reg.plus_ones_consumed > 0 &&
     reg.user_id &&
-    (reg.discount_applied === 'adventurer' || reg.discount_applied === 'guildmaster')
+    (reg.discount_applied === 'adventurer' || reg.discount_applied === 'guildmaster' ||
+      reg.discount_applied === 'promo+adventurer' || reg.discount_applied === 'promo+guildmaster')
   ) {
     // Refund to the user's most recent paid membership. In practice users hold
     // at most one active membership at a time, so this is the one that was

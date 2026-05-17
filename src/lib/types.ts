@@ -57,6 +57,11 @@ export interface PhoneLookupResponse {
   };
   existing_seats_for_event: number;
   credit_balance: number;
+  active_promo: {
+    remaining_uses: number;
+    max_event_price: number;
+    expires_at: string | null;
+  } | null;
 }
 
 export interface RegisterRequest {

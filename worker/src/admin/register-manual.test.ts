@@ -16,6 +16,12 @@ vi.mock('../email', () => ({
   sendEventRegistrationEmail: vi.fn(async () => undefined),
 }));
 
+vi.mock('../promos', () => ({
+  getApplicablePromo: vi.fn(async () => null),
+  consumePromoUses: vi.fn(async () => true),
+  restorePromoUses: vi.fn(async () => undefined),
+}));
+
 import { getSupabase } from '../supabase';
 import { handleManualRegister } from './register-manual';
 
