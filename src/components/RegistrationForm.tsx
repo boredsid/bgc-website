@@ -164,7 +164,7 @@ export default function RegistrationForm() {
   let promoLabel = '';
   if (promoSeatsApplied > 0) {
     const remainingAfter = activePromo!.remaining_uses - promoSeatsApplied;
-    promoLabel = `🎁 Free promo — ${promoSeatsApplied} seat${promoSeatsApplied > 1 ? 's' : ''} covered${remainingAfter > 0 ? ` (${remainingAfter} left)` : ''}`;
+    promoLabel = `🎁 Free giveaway — ${promoSeatsApplied} seat${promoSeatsApplied > 1 ? 's' : ''} covered${remainingAfter > 0 ? ` (${remainingAfter} left)` : ''}`;
   }
   if (membership?.isMember && seatsAfterPromo > 0) {
     if (membership.discount === '20') {
@@ -371,7 +371,7 @@ export default function RegistrationForm() {
 
           {phoneLookedUp && activePromo && !promoApplicable && (
             <div className="mb-5 text-xs text-[#1A1A1A]/60">
-              You have a promo for events up to ₹{activePromo.max_event_price} — doesn't apply to this event.
+              You have a giveaway for events up to ₹{activePromo.max_event_price} — doesn't apply to this event.
             </div>
           )}
 

@@ -10,7 +10,7 @@ const items = [
   { to: '/leads', label: 'Leads', icon: Inbox, end: false, countKey: null },
   { to: '/guild', label: 'Guild', icon: ShieldCheck, end: false, countKey: 'pending_guild_count' },
   { to: '/users', label: 'Users', icon: UserCircle, end: false, countKey: null },
-  { to: '/promos', label: 'Promos', icon: Gift, end: false, countKey: null },
+  { to: '/giveaways', label: 'Giveaways', icon: Gift, end: false, countKey: null },
 ];
 
 export interface SidebarCounts {

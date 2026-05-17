@@ -1,9 +1,12 @@
 import type { Env } from '../index';
 import { getSupabase } from '../supabase';
-import { jsonResponse } from '../validation';
+import { jsonResponse, sanitizePhone, sanitizeName, sanitizeEmail } from '../validation';
 
 interface PromoInput {
   user_id?: string;
+  phone?: string;
+  name?: string;
+  email?: string;
   remaining_uses?: number;
   max_event_price?: number;
   expires_at?: string | null;
@@ -11,7 +14,7 @@ interface PromoInput {
 }
 
 function validatePromoCreate(p: PromoInput): string | null {
-  if (!p.user_id || typeof p.user_id !== 'string') return 'user_id required';
+  if (!p.user_id && !p.phone) return 'user_id or phone required';
   if (typeof p.remaining_uses !== 'number' || p.remaining_uses < 1) {
     return 'remaining_uses must be at least 1';
   }
@@ -71,10 +74,45 @@ export async function handleCreatePromo(
   if (err) return jsonResponse({ error: err }, 400);
 
   const supabase = getSupabase(env);
+
+  // Resolve user_id: explicit id wins; otherwise look up or create by phone.
+  let userId = body.user_id;
+  if (!userId && body.phone) {
+    const phone = sanitizePhone(body.phone);
+    if (!phone) return jsonResponse({ error: 'Invalid phone number' }, 400);
+    const { data: existing } = await supabase
+      .from('users')
+      .select('id')
+      .eq('phone', phone)
+      .maybeSingle();
+    if (existing) {
+      userId = existing.id;
+    } else {
+      // Creating a new user — name is required so the recipient has a label.
+      const name = sanitizeName(body.name || '');
+      if (!name) return jsonResponse({ error: 'Name is required for a new user' }, 400);
+      let email: string | null = null;
+      if (body.email) {
+        email = sanitizeEmail(body.email);
+        if (!email) return jsonResponse({ error: 'Invalid email' }, 400);
+      }
+      const { data: created, error: createErr } = await supabase
+        .from('users')
+        .insert({ phone, name, email, source: 'admin_giveaway' })
+        .select('id')
+        .single();
+      if (createErr || !created) {
+        console.error('[promos] user create failed', createErr);
+        return jsonResponse({ error: 'Failed to create user' }, 500);
+      }
+      userId = created.id;
+    }
+  }
+
   const { data, error } = await supabase
     .from('user_promos')
     .insert({
-      user_id: body.user_id,
+      user_id: userId,
       remaining_uses: body.remaining_uses,
       max_event_price: body.max_event_price,
       expires_at: body.expires_at || null,

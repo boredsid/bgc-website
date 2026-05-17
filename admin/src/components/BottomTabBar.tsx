@@ -108,7 +108,7 @@ export default function BottomTabBar({ counts }: Props) {
               Leads
             </NavLink>
             <NavLink
-              to="/promos"
+              to="/giveaways"
               onClick={() => setMoreOpen(false)}
               className={({ isActive }) =>
                 cn(
@@ -118,7 +118,7 @@ export default function BottomTabBar({ counts }: Props) {
               }
             >
               <Gift className="h-5 w-5" />
-              Promos
+              Giveaways
             </NavLink>
             <a
               href="/cdn-cgi/access/logout"

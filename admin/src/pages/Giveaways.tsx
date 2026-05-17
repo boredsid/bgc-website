@@ -15,7 +15,7 @@ interface PromoUser {
   email: string | null;
 }
 
-interface Promo {
+interface Giveaway {
   id: string;
   user_id: string;
   remaining_uses: number;
@@ -27,14 +27,18 @@ interface Promo {
   user: PromoUser | null;
 }
 
-function isInactive(p: Promo): boolean {
-  if (p.remaining_uses <= 0) return true;
-  if (p.expires_at && new Date(p.expires_at) < new Date(new Date().toDateString())) return true;
+function cleanPhone(raw: string): string {
+  return raw.replace(/[\s\-()]/g, '').replace(/^\+?91/, '');
+}
+
+function isInactive(g: Giveaway): boolean {
+  if (g.remaining_uses <= 0) return true;
+  if (g.expires_at && new Date(g.expires_at) < new Date(new Date().toDateString())) return true;
   return false;
 }
 
-export default function Promos() {
-  const [promos, setPromos] = useState<Promo[]>([]);
+export default function Giveaways() {
+  const [giveaways, setGiveaways] = useState<Giveaway[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showInactive, setShowInactive] = useState(false);
@@ -42,12 +46,18 @@ export default function Promos() {
   const [grantOpen, setGrantOpen] = useState(false);
   const [phoneQuery, setPhoneQuery] = useState('');
   const [matchedUser, setMatchedUser] = useState<PromoUser | null>(null);
+  const [lookupChecked, setLookupChecked] = useState(false);
   const [lookingUp, setLookingUp] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [remainingUses, setRemainingUses] = useState('1');
   const [maxEventPrice, setMaxEventPrice] = useState('500');
   const [expiresAt, setExpiresAt] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const cleanedPhone = cleanPhone(phoneQuery);
+  const phoneValid = /^\d{10}$/.test(cleanedPhone);
 
   async function load() {
     setLoading(true);
@@ -55,8 +65,8 @@ export default function Promos() {
     try {
       const p = new URLSearchParams();
       if (showInactive) p.set('include_inactive', '1');
-      const data = await fetchAdmin<{ promos: Promo[] }>(`/api/admin/promos?${p}`);
-      setPromos(data.promos);
+      const data = await fetchAdmin<{ promos: Giveaway[] }>(`/api/admin/promos?${p}`);
+      setGiveaways(data.promos);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to load');
     } finally {
@@ -67,21 +77,16 @@ export default function Promos() {
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [showInactive]);
 
   async function lookupPhone() {
-    const cleaned = phoneQuery.replace(/[\s\-()]/g, '').replace(/^\+?91/, '');
-    if (!/^\d{10}$/.test(cleaned)) {
+    if (!phoneValid) {
       toast.error('Enter a valid 10-digit phone');
       return;
     }
     setLookingUp(true);
     try {
-      const data = await fetchAdmin<{ users: PromoUser[] }>(`/api/admin/users?q=${cleaned}`);
-      const match = data.users.find((u) => u.phone === cleaned) || data.users[0];
-      if (!match) {
-        toast.error('No user with that phone. They must register at least once first.');
-        setMatchedUser(null);
-        return;
-      }
+      const data = await fetchAdmin<{ users: PromoUser[] }>(`/api/admin/users?q=${cleanedPhone}`);
+      const match = data.users.find((u) => u.phone === cleanedPhone) || null;
       setMatchedUser(match);
+      setLookupChecked(true);
     } catch (e) {
       showApiError(e);
     } finally {
@@ -92,15 +97,30 @@ export default function Promos() {
   function resetGrantForm() {
     setPhoneQuery('');
     setMatchedUser(null);
+    setLookupChecked(false);
+    setNewName('');
+    setNewEmail('');
     setRemainingUses('1');
     setMaxEventPrice('500');
     setExpiresAt('');
     setNotes('');
   }
 
+  const needsNewUserDetails = lookupChecked && !matchedUser && phoneValid;
+  const canGrant =
+    phoneValid && (matchedUser !== null ? true : (lookupChecked && newName.trim().length > 0));
+
   async function grant() {
-    if (!matchedUser) {
-      toast.error('Look up a user first');
+    if (!phoneValid) {
+      toast.error('Enter a valid 10-digit phone');
+      return;
+    }
+    if (!lookupChecked) {
+      toast.error('Tap "Find user" first');
+      return;
+    }
+    if (!matchedUser && !newName.trim()) {
+      toast.error('Name is required for a new user');
       return;
     }
     const uses = parseInt(remainingUses, 10);
@@ -118,14 +138,16 @@ export default function Promos() {
       await fetchAdmin('/api/admin/promos', {
         method: 'POST',
         body: JSON.stringify({
-          user_id: matchedUser.id,
+          phone: cleanedPhone,
+          name: matchedUser ? undefined : newName.trim(),
+          email: matchedUser ? undefined : (newEmail.trim() || undefined),
           remaining_uses: uses,
           max_event_price: cap,
           expires_at: expiresAt || null,
           notes: notes.trim() || null,
         }),
       });
-      toast.success(`Promo granted to ${matchedUser.name || matchedUser.phone}`);
+      toast.success(`Giveaway granted to ${matchedUser?.name || newName.trim() || cleanedPhone}`);
       resetGrantForm();
       setGrantOpen(false);
       load();
@@ -136,49 +158,77 @@ export default function Promos() {
     }
   }
 
-  async function revoke(p: Promo) {
-    if (!confirm(`Delete promo for ${p.user?.name || p.user?.phone}?`)) return;
+  async function revoke(g: Giveaway) {
+    if (!confirm(`Delete giveaway for ${g.user?.name || g.user?.phone}?`)) return;
     try {
-      await fetchAdmin(`/api/admin/promos/${p.id}`, { method: 'DELETE' });
-      toast.success('Promo deleted');
+      await fetchAdmin(`/api/admin/promos/${g.id}`, { method: 'DELETE' });
+      toast.success('Giveaway deleted');
       load();
     } catch (e) {
       showApiError(e);
     }
   }
 
-  const filtered = useMemo(() => promos, [promos]);
+  const filtered = useMemo(() => giveaways, [giveaways]);
 
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
-        <h1 className="text-2xl font-heading font-semibold">Promos</h1>
-        <p className="text-sm text-muted-foreground">Grant free registrations for giveaways.</p>
+        <h1 className="text-2xl font-heading font-semibold">Giveaways</h1>
+        <p className="text-sm text-muted-foreground">Grant free registrations to specific users.</p>
         <Button className="ml-auto" onClick={() => setGrantOpen((v) => !v)}>
-          {grantOpen ? 'Close' : 'Grant promo'}
+          {grantOpen ? 'Close' : 'Grant giveaway'}
         </Button>
       </div>
 
       {grantOpen && (
         <div className="rounded border p-4 space-y-3 bg-muted/30">
           <div className="space-y-2">
-            <Label>Phone (existing user)</Label>
+            <Label>Phone</Label>
             <div className="flex gap-2">
               <Input
                 value={phoneQuery}
-                onChange={(e) => setPhoneQuery(e.target.value)}
+                onChange={(e) => {
+                  setPhoneQuery(e.target.value);
+                  setLookupChecked(false);
+                  setMatchedUser(null);
+                }}
                 placeholder="10-digit phone"
                 inputMode="numeric"
               />
-              <Button type="button" variant="outline" onClick={lookupPhone} disabled={lookingUp}>
+              <Button type="button" variant="outline" onClick={lookupPhone} disabled={lookingUp || !phoneValid}>
                 {lookingUp ? 'Looking…' : 'Find user'}
               </Button>
             </div>
-            {matchedUser && (
+            {lookupChecked && matchedUser && (
               <div className="text-sm">
                 Granting to{' '}
                 <strong>{matchedUser.name || '(no name)'}</strong>{' '}
                 <span className="text-muted-foreground">· {matchedUser.phone}</span>
+              </div>
+            )}
+            {needsNewUserDetails && (
+              <div className="space-y-3 rounded border p-3 bg-background">
+                <div className="text-sm text-muted-foreground">
+                  No existing user with this phone. Add their details — they'll be linked when they register.
+                </div>
+                <div>
+                  <Label>Name (required)</Label>
+                  <Input
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Recipient's name"
+                  />
+                </div>
+                <div>
+                  <Label>Email (optional)</Label>
+                  <Input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="name@example.com"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -221,8 +271,8 @@ export default function Promos() {
             />
           </div>
 
-          <Button onClick={grant} disabled={saving || !matchedUser}>
-            {saving ? 'Saving…' : 'Grant promo'}
+          <Button onClick={grant} disabled={saving || !canGrant}>
+            {saving ? 'Saving…' : 'Grant giveaway'}
           </Button>
         </div>
       )}
@@ -236,7 +286,7 @@ export default function Promos() {
       {error && <div className="text-sm text-destructive">{error}</div>}
 
       {!loading && filtered.length === 0 && (
-        <div className="text-sm text-muted-foreground">No promos to show.</div>
+        <div className="text-sm text-muted-foreground">No giveaways to show.</div>
       )}
 
       {!loading && filtered.length > 0 && (
@@ -255,23 +305,23 @@ export default function Promos() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-t">
-                  <td className="p-2">{p.user?.name || '—'}</td>
-                  <td className="p-2 whitespace-nowrap">{p.user?.phone || '—'}</td>
+              {filtered.map((g) => (
+                <tr key={g.id} className="border-t">
+                  <td className="p-2">{g.user?.name || '—'}</td>
+                  <td className="p-2 whitespace-nowrap">{g.user?.phone || '—'}</td>
                   <td className="p-2">
-                    {p.remaining_uses}
-                    {isInactive(p) && <Badge className="ml-2" variant="secondary">inactive</Badge>}
+                    {g.remaining_uses}
+                    {isInactive(g) && <Badge className="ml-2" variant="secondary">inactive</Badge>}
                   </td>
-                  <td className="p-2">₹{p.max_event_price}</td>
-                  <td className="p-2 whitespace-nowrap">{p.expires_at || 'never'}</td>
-                  <td className="p-2 max-w-xs truncate" title={p.notes || ''}>{p.notes || '—'}</td>
+                  <td className="p-2">₹{g.max_event_price}</td>
+                  <td className="p-2 whitespace-nowrap">{g.expires_at || 'never'}</td>
+                  <td className="p-2 max-w-xs truncate" title={g.notes || ''}>{g.notes || '—'}</td>
                   <td className="p-2 whitespace-nowrap text-xs text-muted-foreground">
-                    {new Date(p.created_at).toLocaleDateString()}
-                    {p.created_by ? ` · ${p.created_by}` : ''}
+                    {new Date(g.created_at).toLocaleDateString()}
+                    {g.created_by ? ` · ${g.created_by}` : ''}
                   </td>
                   <td className="p-2 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => revoke(p)}>Delete</Button>
+                    <Button variant="ghost" size="sm" onClick={() => revoke(g)}>Delete</Button>
                   </td>
                 </tr>
               ))}
