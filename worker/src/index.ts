@@ -3,6 +3,7 @@ import { handleRegister } from './register';
 import { handleEventSpots } from './event-spots';
 import { handleGuildPurchase } from './guild-purchase';
 import { handleLead } from './lead';
+import { handleGuildStatus } from './guild-status';
 import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
 import { verifyAccessJwt } from './access-auth';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
@@ -43,6 +44,7 @@ export interface Env {
   ADMIN_EMAILS: string;
   ENVIRONMENT: string;
   PAGES_DEPLOY_HOOK?: string;
+  REPLAY_TO_BGC_SECRET: string;
 }
 
 export interface AdminContext {
@@ -106,6 +108,8 @@ export default {
         response = await handleGuildPurchase(request, env, ctx);
       } else if (url.pathname === '/api/lead' && request.method === 'POST') {
         response = await handleLead(request, env);
+      } else if (url.pathname === '/api/guild-status' && request.method === 'POST') {
+        response = await handleGuildStatus(request, env);
       } else if (url.pathname.startsWith('/api/admin/')) {
         const gate = await gateAdmin(request, env);
         if (!gate.ok) {
