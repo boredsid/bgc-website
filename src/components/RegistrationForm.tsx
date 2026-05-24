@@ -131,6 +131,15 @@ export default function RegistrationForm() {
 
   useLeadCapture({ phone, name, eventId, detailsTouched });
 
+  function resetLookup() {
+    setPhone('');
+    setPhoneLookedUp(false);
+    setMembership(null);
+    setExistingSeatsForEvent(0);
+    setCreditBalance(0);
+    setActivePromo(null);
+  }
+
   if (loading) {
     return <div className="text-center py-12 text-[#1A1A1A]/60 font-heading">Loading...</div>;
   }
@@ -215,6 +224,9 @@ export default function RegistrationForm() {
   const subtotalAfterDiscount = total;
   const creditApplied = Math.max(0, Math.min(creditBalance, subtotalAfterDiscount));
   total = subtotalAfterDiscount - creditApplied;
+
+  const guildGate =
+    event.guild_path_exclusive && phoneLookedUp && membership?.isMember === false;
 
   const eventDate = new Date(event.date);
 
@@ -339,6 +351,23 @@ export default function RegistrationForm() {
             {event.price_includes}
           </div>
         )}
+        {event.guild_path_exclusive && (
+          <div className="mt-3">
+            <span
+              className="pill inline-block"
+              style={{
+                background: '#C3A6FF',
+                padding: '6px 14px',
+                fontSize: '0.75rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                border: '2px solid #1A1A1A',
+              }}
+            >
+              👑 Guild Path Exclusive
+            </span>
+          </div>
+        )}
       </div>
 
       {soldOut ? (
@@ -360,139 +389,173 @@ export default function RegistrationForm() {
             />
           </div>
 
-          {phoneLookedUp && promoLabel && (
-            <div className="mb-3">
-              <span
-                className="pill inline-block"
-                style={{ background: '#A8E6CF', padding: '8px 16px' }}
-              >
-                {promoLabel}
-              </span>
-            </div>
-          )}
-
-          {phoneLookedUp && membership?.isMember && discountLabel && (
-            <div className="mb-5">
-              <span
-                className="pill inline-block"
-                style={{ background: '#C3A6FF', padding: '8px 16px' }}
-              >
-                👑 {discountLabel}
-              </span>
-            </div>
-          )}
-
-          {phoneLookedUp && activePromo && !promoFits && (
-            <div className="mb-5 text-xs text-[#1A1A1A]/60">
-              You have a giveaway for events up to ₹{activePromo.max_event_price} — doesn't apply to this event.
-            </div>
-          )}
-
-          {phoneLookedUp && promoPreserved && (
-            <div className="mb-5 text-xs text-[#1A1A1A]/60">
-              🎁 Giveaway preserved — your Guild Path already covers this. {activePromo!.remaining_uses} use{activePromo!.remaining_uses === 1 ? '' : 's'} saved for later.
-            </div>
-          )}
-
-          <div className="mb-5">
-            <label className="label-brutal">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your full name"
-              required
-              className="input-brutal"
-            />
-          </div>
-
-          <div className="mb-5">
-            <label className="label-brutal">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-              className="input-brutal"
-            />
-          </div>
-
-          <div className="mb-5">
-            <label className="label-brutal">Number of Seats</label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setSeats(Math.max(1, seats - 1))}
-                className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
-                style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
-              >
-                −
-              </button>
-              <span className="font-heading font-bold text-xl w-8 text-center">{seats}</span>
-              <button
-                type="button"
-                onClick={() => setSeats(Math.min(maxSeats, seats + 1))}
-                className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
-                style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          {event.custom_questions?.map((q) => (
-            <CustomQuestion
-              key={q.id}
-              question={q}
-              value={customAnswers[q.id] ?? (q.type === 'checkbox' ? false : '')}
-              onChange={(val) => updateCustomAnswer(q.id, val)}
-              optionCounts={spots?.option_counts?.[q.id]}
-            />
-          ))}
-
-          {creditApplied > 0 && (
-            <div className="mt-6 mb-3 flex items-center justify-between text-sm font-heading">
-              <span>Credits applied (you have ₹{creditBalance})</span>
-              <span className="font-bold text-[#4A9B8E]">−₹{creditApplied}</span>
-            </div>
-          )}
-
-          <div
-            className={`card-brutal p-5 ${creditApplied > 0 ? 'mb-5' : 'mt-6 mb-5'} flex items-center justify-between`}
-            style={{ background: '#FFD166' }}
-          >
-            <span className="font-heading font-bold text-sm uppercase tracking-wider">Total</span>
-            <div className="text-right">
-              {grossTotal !== total && (
-                <span className="text-[#1A1A1A]/60 line-through text-sm mr-2">
-                  ₹{grossTotal}
-                </span>
-              )}
-              <span className="font-heading font-bold text-3xl">₹{total}</span>
-            </div>
-          </div>
-
-          {error && (
+          {guildGate ? (
             <div
-              className="card-brutal p-4 mb-4"
-              style={{ background: '#FF6B6B' }}
+              className="card-brutal p-6 mt-2"
+              style={{ background: '#C3A6FF' }}
             >
-              <p className="font-heading font-semibold">{error}</p>
+              <div className="text-3xl mb-2">👑</div>
+              <h2 className="font-heading text-xl font-bold mb-2">
+                Guild Path Exclusive Event
+              </h2>
+              <p className="text-sm text-[#1A1A1A]/85 leading-relaxed mb-4">
+                This session is open only to current Guild Path members. Join the
+                Guild Path to register for this and other member-only events,
+                plus get discounts and free seats on regular events.
+              </p>
+              <a
+                href="/guild-path"
+                className="btn btn-primary no-underline inline-block"
+              >
+                Join Guild Path →
+              </a>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={resetLookup}
+                  className="text-sm underline text-[#1A1A1A]/70 bg-transparent border-0 cursor-pointer p-0"
+                >
+                  Try a different phone number
+                </button>
+              </div>
             </div>
-          )}
+          ) : (
+            <>
+              {phoneLookedUp && promoLabel && (
+                <div className="mb-3">
+                  <span
+                    className="pill inline-block"
+                    style={{ background: '#A8E6CF', padding: '8px 16px' }}
+                  >
+                    {promoLabel}
+                  </span>
+                </div>
+              )}
 
-          <button type="submit" disabled={submitting} className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
-            {submitting
-              ? 'Submitting...'
-              : total === 0
-                ? 'Get my spot'
-                : 'Proceed to Pay'}
-          </button>
-          {total > 0 && (
-            <p className="text-center text-xs text-[#1A1A1A]/60 mt-3">
-              You'll be able to pay via UPI in the next step
-            </p>
+              {phoneLookedUp && membership?.isMember && discountLabel && (
+                <div className="mb-5">
+                  <span
+                    className="pill inline-block"
+                    style={{ background: '#C3A6FF', padding: '8px 16px' }}
+                  >
+                    👑 {discountLabel}
+                  </span>
+                </div>
+              )}
+
+              {phoneLookedUp && activePromo && !promoFits && (
+                <div className="mb-5 text-xs text-[#1A1A1A]/60">
+                  You have a giveaway for events up to ₹{activePromo.max_event_price} — doesn't apply to this event.
+                </div>
+              )}
+
+              {phoneLookedUp && promoPreserved && (
+                <div className="mb-5 text-xs text-[#1A1A1A]/60">
+                  🎁 Giveaway preserved — your Guild Path already covers this. {activePromo!.remaining_uses} use{activePromo!.remaining_uses === 1 ? '' : 's'} saved for later.
+                </div>
+              )}
+
+              <div className="mb-5">
+                <label className="label-brutal">Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                  required
+                  className="input-brutal"
+                />
+              </div>
+
+              <div className="mb-5">
+                <label className="label-brutal">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                  className="input-brutal"
+                />
+              </div>
+
+              <div className="mb-5">
+                <label className="label-brutal">Number of Seats</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSeats(Math.max(1, seats - 1))}
+                    className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
+                    style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
+                  >
+                    −
+                  </button>
+                  <span className="font-heading font-bold text-xl w-8 text-center">{seats}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSeats(Math.min(maxSeats, seats + 1))}
+                    className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
+                    style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {event.custom_questions?.map((q) => (
+                <CustomQuestion
+                  key={q.id}
+                  question={q}
+                  value={customAnswers[q.id] ?? (q.type === 'checkbox' ? false : '')}
+                  onChange={(val) => updateCustomAnswer(q.id, val)}
+                  optionCounts={spots?.option_counts?.[q.id]}
+                />
+              ))}
+
+              {creditApplied > 0 && (
+                <div className="mt-6 mb-3 flex items-center justify-between text-sm font-heading">
+                  <span>Credits applied (you have ₹{creditBalance})</span>
+                  <span className="font-bold text-[#4A9B8E]">−₹{creditApplied}</span>
+                </div>
+              )}
+
+              <div
+                className={`card-brutal p-5 ${creditApplied > 0 ? 'mb-5' : 'mt-6 mb-5'} flex items-center justify-between`}
+                style={{ background: '#FFD166' }}
+              >
+                <span className="font-heading font-bold text-sm uppercase tracking-wider">Total</span>
+                <div className="text-right">
+                  {grossTotal !== total && (
+                    <span className="text-[#1A1A1A]/60 line-through text-sm mr-2">
+                      ₹{grossTotal}
+                    </span>
+                  )}
+                  <span className="font-heading font-bold text-3xl">₹{total}</span>
+                </div>
+              </div>
+
+              {error && (
+                <div
+                  className="card-brutal p-4 mb-4"
+                  style={{ background: '#FF6B6B' }}
+                >
+                  <p className="font-heading font-semibold">{error}</p>
+                </div>
+              )}
+
+              <button type="submit" disabled={submitting} className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
+                {submitting
+                  ? 'Submitting...'
+                  : total === 0
+                    ? 'Get my spot'
+                    : 'Proceed to Pay'}
+              </button>
+              {total > 0 && (
+                <p className="text-center text-xs text-[#1A1A1A]/60 mt-3">
+                  You'll be able to pay via UPI in the next step
+                </p>
+              )}
+            </>
           )}
         </form>
       )}
