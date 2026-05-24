@@ -170,8 +170,48 @@ function EventCard({ event, past = false }: { event: EventWithSpots; past?: bool
         style={{ background: featured ? '#FFD166' : past ? '#F5F1EA' : '#FFFFFF', borderBottom: '4px solid #1A1A1A' }}
       >
         <span className="font-heading font-bold text-base">{dateStr}</span>
-        {featured && <span className="pill pill-black" style={{ fontSize: '0.7rem', padding: '6px 12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Featured</span>}
-        {past && <span className="pill" style={{ fontSize: '0.7rem', padding: '6px 12px', textTransform: 'uppercase', letterSpacing: '0.08em', background: '#E5E5E5', color: '#1A1A1A', border: '2px solid #1A1A1A' }}>Past</span>}
+        <div className="flex items-center gap-2">
+          {event.guild_path_exclusive && (
+            <span
+              className="pill"
+              style={{
+                fontSize: '0.7rem',
+                padding: '6px 12px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                background: '#C3A6FF',
+                color: '#1A1A1A',
+                border: '2px solid #1A1A1A',
+              }}
+            >
+              Guild Only
+            </span>
+          )}
+          {featured && (
+            <span
+              className="pill pill-black"
+              style={{ fontSize: '0.7rem', padding: '6px 12px', textTransform: 'uppercase', letterSpacing: '0.08em' }}
+            >
+              Featured
+            </span>
+          )}
+          {past && (
+            <span
+              className="pill"
+              style={{
+                fontSize: '0.7rem',
+                padding: '6px 12px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                background: '#E5E5E5',
+                color: '#1A1A1A',
+                border: '2px solid #1A1A1A',
+              }}
+            >
+              Past
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex-1 flex flex-col gap-2.5 px-5 pt-5 pb-5">
         <h3 className="font-heading font-bold text-lg leading-tight">{event.name}</h3>
