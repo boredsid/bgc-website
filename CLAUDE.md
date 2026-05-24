@@ -28,7 +28,7 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 - `src/lib/` — `supabase.ts`, `types.ts`, `guild-tiers.ts`, `source.ts` (UTM/source attribution via sessionStorage)
 - `worker/src/` — root handlers + `worker/src/admin/` (admin endpoints) + `*.test.ts` (Vitest)
 - `admin/src/` — admin SPA, separate package, shadcn-based
-- `supabase/migrations/` — `001`–`009` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits)
+- `supabase/migrations/` — `001`–`013` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits, leads, llm_notes, user_promos, guild_path_exclusive)
 - `docs/superpowers/specs/` — design specs + implementation plans
 
 ## Supabase tables
@@ -36,7 +36,7 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 | Table | Public read | Notes |
 |---|---|---|
 | `games` | yes | Library, ~130 games. `owned_by` / `currently_with` are internal — never expose to public site |
-| `events` | yes (published only via RLS) | `custom_questions` JSONB drives dynamic registration fields |
+| `events` | yes (published only via RLS) | `custom_questions` JSONB drives dynamic registration fields. `guild_path_exclusive` gates public registration to active Guild Path members (worker-enforced) |
 | `users` | no | All registrants ever |
 | `guild_path_members` | no | Membership tiers + expiry (renamed from `guild_members` in migration 002) |
 | `registrations` | no | Spots are summed by `seats` on confirmed rows, not row counts |
