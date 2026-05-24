@@ -17,7 +17,8 @@ interface Props { mode: 'create' | 'edit' }
 
 const empty: Partial<Event> = {
   name: '', description: '', date: '', venue_name: '', venue_area: '',
-  price: 0, capacity: 0, custom_questions: [], price_includes: '', llm_notes: '', is_published: false,
+  price: 0, capacity: 0, custom_questions: [], price_includes: '', llm_notes: '',
+  is_published: false, guild_path_exclusive: false,
 };
 
 export default function EventDrawer({ mode }: Props) {
@@ -180,6 +181,18 @@ export default function EventDrawer({ mode }: Props) {
           <div className="flex items-center gap-2">
             <Switch checked={!!form.is_published} onCheckedChange={(c) => set('is_published', c)} />
             <Label>Published</Label>
+          </div>
+          <div className="flex items-start gap-2">
+            <Switch
+              checked={!!form.guild_path_exclusive}
+              onCheckedChange={(c) => set('guild_path_exclusive', c)}
+            />
+            <div>
+              <Label>Guild Path Exclusive</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Only current Guild Path members can register on the public site.
+              </p>
+            </div>
           </div>
           <div>
             <Label className="block mb-2">Custom questions</Label>
