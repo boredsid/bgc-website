@@ -142,6 +142,10 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     .limit(1)
     .maybeSingle();
 
+  if (event.guild_path_exclusive && !member) {
+    return jsonResponse({ success: false, error: 'guild_path_required' }, 403);
+  }
+
   let totalAmount = event.price * seats;
   let discountApplied: string | null = null;
   let plusOnesToConsume = 0;
