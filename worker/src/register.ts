@@ -104,13 +104,34 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     }
   }
 
-  // Upsert user first so we can stamp user_id onto the registration.
+  // Look up the user (if any) and their active guild membership BEFORE creating
+  // a user row. This lets us gate guild-exclusive events without polluting the
+  // users table with phantom rows for non-members who get rejected.
   const { data: existingUser } = await supabase
     .from('users')
     .select('id')
     .eq('phone', phone)
     .maybeSingle();
 
+  let member: { id: string; tier: string; expires_at: string; plus_ones_used: number } | null = null;
+  if (existingUser) {
+    const { data: memberData } = await supabase
+      .from('guild_path_members')
+      .select('id, tier, expires_at, plus_ones_used')
+      .eq('user_id', existingUser.id)
+      .eq('status', 'paid')
+      .gte('expires_at', new Date().toISOString().split('T')[0])
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    member = memberData;
+  }
+
+  if (event.guild_path_exclusive && !member) {
+    return jsonResponse({ success: false, error: 'guild_path_required' }, 403);
+  }
+
+  // Now safe to upsert the user — gate has passed.
   let userId: string;
   if (existingUser) {
     userId = existingUser.id;
@@ -128,22 +149,6 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       return jsonResponse({ error: 'Registration failed' }, 500);
     }
     userId = newUser.id;
-  }
-
-  // Apply guild discount first; the giveaway promo then covers any remaining
-  // paid seats. If guild brings the total to ₹0, the promo stays preserved.
-  const { data: member } = await supabase
-    .from('guild_path_members')
-    .select('id, tier, expires_at, plus_ones_used')
-    .eq('user_id', userId)
-    .eq('status', 'paid')
-    .gte('expires_at', new Date().toISOString().split('T')[0])
-    .order('expires_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (event.guild_path_exclusive && !member) {
-    return jsonResponse({ success: false, error: 'guild_path_required' }, 403);
   }
 
   let totalAmount = event.price * seats;

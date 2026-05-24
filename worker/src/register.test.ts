@@ -191,8 +191,9 @@ describe('handleRegister guild-path exclusive gate', () => {
         }
         if (table === 'users') {
           return {
-            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: opts.isMember ? { id: 'U1' } : null, error: null }) }) }),
             insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'U1' }, error: null }) }) }),
+            update: () => ({ eq: async () => ({ error: null }) }),
           };
         }
         if (table === 'guild_path_members') {
@@ -242,5 +243,24 @@ describe('handleRegister guild-path exclusive gate', () => {
     (getSupabase as any).mockReturnValue(buildSupabaseMock({ eventExclusive: false, isMember: false }));
     const res = await handleRegister(makeReq(), mockEnv(), ctx);
     expect(res.status).toBe(200);
+  });
+
+  it('does not create a user row when 403ing a non-member for exclusive event', async () => {
+    let userInsertCalled = false;
+    const mock = buildSupabaseMock({ eventExclusive: true, isMember: false });
+    const origFrom = mock.from;
+    mock.from = (table: string) => {
+      if (table === 'users') {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+          insert: () => { userInsertCalled = true; return { select: () => ({ single: async () => ({ data: { id: 'U1' }, error: null }) }) }; },
+        };
+      }
+      return origFrom(table);
+    };
+    (getSupabase as any).mockReturnValue(mock);
+    const res = await handleRegister(makeReq(), mockEnv(), ctx);
+    expect(res.status).toBe(403);
+    expect(userInsertCalled).toBe(false);
   });
 });
