@@ -205,6 +205,12 @@ export default function ManualRegistrationDrawer() {
             ₹{lookup.credit_balance} credit available — will auto-apply against this registration's total.
           </div>
         )}
+        {lookup && !lookup.membership.isMember && event?.guild_path_exclusive && (
+          <div className="text-xs rounded-md bg-yellow-50 text-yellow-900 border border-yellow-200 p-2">
+            ⚠️ This event is Guild Path Exclusive and this user isn't a current member.
+            You can still register them, but consider adding them to Guild Path first.
+          </div>
+        )}
         {field('name', 'Name', (
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         ))}
