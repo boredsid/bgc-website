@@ -133,6 +133,11 @@ export default function RegistrationForm() {
 
   function resetLookup() {
     setPhone('');
+    setName('');
+    setEmail('');
+    setSeats(1);
+    setCustomAnswers({});
+    setDetailsTouched(false);
     setPhoneLookedUp(false);
     setMembership(null);
     setExistingSeatsForEvent(0);
