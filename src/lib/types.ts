@@ -24,6 +24,7 @@ export interface Event {
   price_includes: string | null;
   llm_notes: string | null;
   is_published: boolean;
+  guild_path_exclusive: boolean;
   created_at: string;
 }
 
