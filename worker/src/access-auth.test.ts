@@ -12,14 +12,20 @@ const baseEnv = (): AccessAuthEnv => ({
 // We'll mock fetch to return the Cloudflare JWKS endpoint.
 // For tests we use a static JWK pair generated via crypto.subtle.
 
+let kidCounter = 0;
+// Unique kid per generated key so the module-level JWKS cache in access-auth
+// (keyed by kid) never serves a stale key from a previous test's keypair.
+let currentKid = 'test-kid';
+
 async function generateTestKey() {
   const keyPair = await crypto.subtle.generateKey(
     { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
     true,
     ['sign', 'verify'],
   );
+  const kid = `test-kid-${kidCounter++}`;
   const jwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
-  return { keyPair, jwk: { ...jwk, kid: 'test-kid', alg: 'RS256', use: 'sig' } };
+  return { keyPair, kid, jwk: { ...jwk, kid, alg: 'RS256', use: 'sig' } };
 }
 
 function b64url(bytes: ArrayBuffer | Uint8Array): string {
@@ -29,8 +35,8 @@ function b64url(bytes: ArrayBuffer | Uint8Array): string {
   return btoa(s).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
-async function signJwt(privateKey: CryptoKey, payload: Record<string, unknown>) {
-  const header = { alg: 'RS256', typ: 'JWT', kid: 'test-kid' };
+async function signJwt(privateKey: CryptoKey, payload: Record<string, unknown>, kid = currentKid) {
+  const header = { alg: 'RS256', typ: 'JWT', kid };
   const enc = new TextEncoder();
   const headerB64 = b64url(enc.encode(JSON.stringify(header)));
   const payloadB64 = b64url(enc.encode(JSON.stringify(payload)));
@@ -46,6 +52,7 @@ describe('verifyAccessJwt', () => {
   beforeEach(async () => {
     const k = await generateTestKey();
     keyPair = k.keyPair;
+    currentKid = k.kid;
     jwk = k.jwk as JsonWebKey & { kid: string };
 
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -104,7 +111,7 @@ describe('verifyAccessJwt', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('rejects when email is not in allowlist', async () => {
+  it('accepts any validly-signed token regardless of allowlist (allowlist moved to gateAdmin)', async () => {
     const token = await signJwt(keyPair.privateKey, {
       iss: 'https://boardgamecompany.cloudflareaccess.com',
       aud: 'test-aud-tag',
@@ -112,7 +119,8 @@ describe('verifyAccessJwt', () => {
       exp: Math.floor(Date.now() / 1000) + 3600,
     });
     const result = await verifyAccessJwt(token, baseEnv());
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.email).toBe('stranger@x.com');
   });
 
   it('rejects malformed tokens', async () => {

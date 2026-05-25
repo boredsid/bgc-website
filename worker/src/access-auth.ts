@@ -90,8 +90,5 @@ export async function verifyAccessJwt(token: string, env: AccessAuthEnv): Promis
   }
 
   const email = (payload.email || '').toLowerCase();
-  const allowed = env.ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
-  if (!allowed.includes(email)) return { ok: false, reason: 'email not allowed' };
-
   return { ok: true, email };
 }
