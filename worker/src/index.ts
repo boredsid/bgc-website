@@ -47,9 +47,10 @@ export interface Env {
   REPLAY_TO_BGC_SECRET: string;
 }
 
-export interface AdminContext {
-  email: string;
-}
+export type AdminContext =
+  | { email: string; role: 'admin' }
+  | { email: string; role: 'guest'; eventIds: string[] }
+  | { email: string; role: 'none' };
 
 function corsHeaders(origin: string | null): Record<string, string> {
   return {
@@ -67,7 +68,7 @@ async function gateAdmin(request: Request, env: Env): Promise<{ ok: true; admin:
   // ENVIRONMENT="production".
   if (env.ENVIRONMENT === 'development') {
     const fallback = env.ADMIN_EMAILS.split(',')[0]?.trim();
-    if (fallback) return { ok: true, admin: { email: fallback } };
+    if (fallback) return { ok: true, admin: { email: fallback, role: 'admin' } };
   }
 
   const token = request.headers.get('Cf-Access-Jwt-Assertion') || '';
@@ -81,7 +82,7 @@ async function gateAdmin(request: Request, env: Env): Promise<{ ok: true; admin:
       }),
     };
   }
-  return { ok: true, admin: { email: result.email } };
+  return { ok: true, admin: { email: result.email, role: 'admin' } };
 }
 
 export default {
