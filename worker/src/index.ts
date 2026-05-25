@@ -33,6 +33,7 @@ import { handleSearch } from './admin/search';
 import { handleLog } from './admin/log';
 import { resolveRole } from './guest/auth';
 import { handleGuestRequest } from './guest';
+import { syncCfAccessGroup } from './guest/cf-access';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -296,6 +297,7 @@ export default {
   },
 
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(syncCfAccessGroup(env));
     if (!env.PAGES_DEPLOY_HOOK) {
       console.warn('[worker] scheduled rebuild skipped: PAGES_DEPLOY_HOOK not set');
       return;
