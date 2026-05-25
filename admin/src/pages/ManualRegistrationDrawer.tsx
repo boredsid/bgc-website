@@ -10,12 +10,14 @@ import { fetchAdmin, showApiError } from '@/lib/api';
 import { validateManualRegistration, type ValidationErrors } from '@/lib/validation';
 import { toast } from 'sonner';
 import type { Event, CustomQuestion } from '@/lib/types';
+import { useWhoAmI } from '@/lib/whoami';
+import { useSearchParams } from 'react-router-dom';
 
 interface PhoneLookup {
   user: { found: boolean; name: string | null; email: string | null };
-  membership: { isMember: boolean; tier: string | null; discount: string | null; plus_ones_remaining: number };
+  membership?: { isMember: boolean; tier: string | null; discount: string | null; plus_ones_remaining: number };
   existing_seats_for_event: number;
-  credit_balance: number;
+  credit_balance?: number;
 }
 
 const LAST_EVENT_KEY = 'admin.manualReg.lastEventId';
@@ -44,7 +46,21 @@ export default function ManualRegistrationDrawer() {
     customAnswers: Record<string, string | boolean>;
   } | null>(null);
 
+  const who = useWhoAmI();
+  const isGuest = who?.role === 'guest';
+  const guestEvents = who?.events ?? [];
+  const [searchParams] = useSearchParams();
+
   useEffect(() => {
+    if (isGuest) {
+      const evts = guestEvents as unknown as Event[];
+      setEvents(evts);
+      const fromUrl = searchParams.get('event');
+      const startEventId = (fromUrl && evts.some((e) => e.id === fromUrl) ? fromUrl : evts[0]?.id) ?? '';
+      setEventId(startEventId);
+      setInitial({ eventId: startEventId, name: '', phone: '', email: '', seats: 1, paymentStatus: 'confirmed', customAnswers: {} });
+      return;
+    }
     fetchAdmin<{ events: Event[] }>('/api/admin/events')
       .then((r) => {
         setEvents(r.events);
@@ -59,18 +75,11 @@ export default function ManualRegistrationDrawer() {
           startEventId = upcoming[0]?.id ?? '';
         }
         setEventId(startEventId);
-        setInitial({
-          eventId: startEventId,
-          name: '',
-          phone: '',
-          email: '',
-          seats: 1,
-          paymentStatus: 'confirmed',
-          customAnswers: {},
-        });
+        setInitial({ eventId: startEventId, name: '', phone: '', email: '', seats: 1, paymentStatus: 'confirmed', customAnswers: {} });
       })
       .catch(showApiError);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, guestEvents.length]);
 
   const event = events.find((e) => e.id === eventId);
   const customQuestions: CustomQuestion[] = (event?.custom_questions || []) as CustomQuestion[];
@@ -176,7 +185,7 @@ export default function ManualRegistrationDrawer() {
     >
       <div className="space-y-3">
         {field('event_id', 'Event', (
-          <Select value={eventId} onValueChange={pickEvent}>
+          <Select value={eventId} onValueChange={pickEvent} disabled={isGuest && guestEvents.length <= 1}>
             <SelectTrigger><SelectValue placeholder="Pick an event" /></SelectTrigger>
             <SelectContent>
               {events.map((e) => (
@@ -195,17 +204,17 @@ export default function ManualRegistrationDrawer() {
             placeholder="10-digit number"
           />
         ))}
-        {lookup && lookup.membership.isMember && (
+        {lookup && lookup.membership?.isMember && (
           <div className="text-xs rounded-md bg-emerald-50 text-emerald-900 p-2">
             Active {lookup.membership.tier} member · {lookup.membership.plus_ones_remaining} plus-ones remaining
           </div>
         )}
-        {lookup && lookup.credit_balance > 0 && (
+        {lookup && (lookup.credit_balance ?? 0) > 0 && (
           <div className="text-xs rounded-md bg-amber-50 text-amber-900 p-2">
             ₹{lookup.credit_balance} credit available — will auto-apply against this registration's total.
           </div>
         )}
-        {lookup && !lookup.membership.isMember && event?.guild_path_exclusive && (
+        {lookup && !lookup.membership?.isMember && event?.guild_path_exclusive && (
           <div className="text-xs rounded-md bg-yellow-50 text-yellow-900 border border-yellow-200 p-2">
             ⚠️ This event is Guild Path Exclusive and this user isn't a current member.
             You can still register them, but consider adding them to Guild Path first.
