@@ -18,7 +18,7 @@ interface Props { mode: 'create' | 'edit' }
 const empty: Partial<Event> = {
   name: '', description: '', date: '', venue_name: '', venue_area: '',
   price: 0, capacity: 0, custom_questions: [], price_includes: '', llm_notes: '',
-  is_published: false, guild_path_exclusive: false,
+  is_published: false, guild_path_exclusive: false, is_collaboration: false,
 };
 
 export default function EventDrawer({ mode }: Props) {
@@ -31,11 +31,20 @@ export default function EventDrawer({ mode }: Props) {
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [venueSuggestions, setVenueSuggestions] = useState<string[]>([]);
+  const [guestAdmins, setGuestAdmins] = useState<string[]>([]);
+  const [guestInput, setGuestInput] = useState('');
+  const [initialGuests, setInitialGuests] = useState<string[]>([]);
 
   useEffect(() => {
     if (mode === 'edit' && id) {
       fetchAdmin<{ event: Event }>(`/api/admin/events/${id}`)
-        .then((r) => { setForm(r.event); setInitial(r.event); })
+        .then((r) => {
+          setForm(r.event);
+          setInitial(r.event);
+          const loaded = ((r.event as Event & { guest_admins?: string[] }).guest_admins) ?? [];
+          setGuestAdmins(loaded);
+          setInitialGuests(loaded);
+        })
         .catch(showApiError)
         .finally(() => setLoading(false));
     } else {
@@ -77,7 +86,10 @@ export default function EventDrawer({ mode }: Props) {
 
   const errors: ValidationErrors = useMemo(() => validateEvent(form), [form]);
   const errorCount = Object.keys(errors).length;
-  const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(initial), [form, initial]);
+  const dirty = useMemo(
+    () => JSON.stringify(form) !== JSON.stringify(initial) || JSON.stringify(guestAdmins) !== JSON.stringify(initialGuests),
+    [form, initial, guestAdmins, initialGuests],
+  );
 
   function close() { navigate('/events'); }
 
@@ -97,6 +109,7 @@ export default function EventDrawer({ mode }: Props) {
         ...form,
         date: form.date ? new Date(form.date).toISOString() : '',
         custom_questions: form.custom_questions || [],
+        ...(mode === 'edit' ? { guest_admins: form.is_collaboration ? guestAdmins : [] } : {}),
       };
       if (mode === 'create') {
         await fetchAdmin('/api/admin/events', { method: 'POST', body: JSON.stringify(payload) });
@@ -194,6 +207,58 @@ export default function EventDrawer({ mode }: Props) {
               </p>
             </div>
           </div>
+          <div className="flex items-start gap-2">
+            <Switch
+              checked={!!form.is_collaboration}
+              onCheckedChange={(c) => set('is_collaboration', c)}
+            />
+            <div className="flex-1">
+              <Label>Collaboration event</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Lets guest admins from a partner community manage this event's registrations only.
+                Access auto-expires 2 days after the event date.
+              </p>
+            </div>
+          </div>
+          {form.is_collaboration && mode === 'edit' && (
+            <div className="rounded-md border p-3 space-y-2">
+              <Label className="block">Guest admin emails</Label>
+              <div className="flex flex-wrap gap-1">
+                {guestAdmins.map((email) => (
+                  <span key={email} className="inline-flex items-center gap-1 text-xs bg-muted rounded px-2 py-1">
+                    {email}
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setGuestAdmins((list) => list.filter((e) => e !== email))}
+                      aria-label={`Remove ${email}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {guestAdmins.length === 0 && <span className="text-xs text-muted-foreground">No guests yet.</span>}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={guestInput}
+                  placeholder="partner@community.in"
+                  onChange={(e) => setGuestInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const email = guestInput.trim().toLowerCase();
+                      if (email.includes('@') && !guestAdmins.includes(email)) {
+                        setGuestAdmins((list) => [...list, email]);
+                      }
+                      setGuestInput('');
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Press Enter to add. They log in at this admin URL with the email you list.</p>
+            </div>
+          )}
           <div>
             <Label className="block mb-2">Custom questions</Label>
             <CustomQuestionsEditor

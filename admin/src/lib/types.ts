@@ -25,6 +25,7 @@ export interface Event {
   llm_notes: string | null;
   is_published: boolean;
   guild_path_exclusive: boolean;
+  is_collaboration: boolean;
   created_at: string;
 }
 
