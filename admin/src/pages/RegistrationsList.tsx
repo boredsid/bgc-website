@@ -23,6 +23,7 @@ import { useRevalidate } from '@/lib/revalidate';
 import { listViews, saveView, deleteView, getView } from '@/lib/savedViews';
 import { toast } from 'sonner';
 import type { Registration, Event } from '@/lib/types';
+import { useWhoAmI } from '@/lib/whoami';
 
 const PAGE_KEY = 'registrations';
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
@@ -40,11 +41,28 @@ export default function RegistrationsList() {
   const [viewsVersion, setViewsVersion] = useState(0);
   const navigate = useNavigate();
 
+  const who = useWhoAmI();
+  const isGuest = who?.role === 'guest';
+  const guestEvents = who?.events ?? [];
+
   const loadEvents = useCallback(() => {
+    if (isGuest) {
+      // Guests cannot call /api/admin/events (admin-only). Use the scoped list from whoami.
+      setEvents(guestEvents as unknown as Event[]);
+      return;
+    }
     fetchAdmin<{ events: Event[] }>('/api/admin/events').then((r) => setEvents(r.events)).catch(showApiError);
-  }, []);
+  }, [isGuest, guestEvents]);
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
+
+  // A guest must always have an event selected (the API requires event_id and never returns "all").
+  useEffect(() => {
+    if (isGuest && !eventFilter && guestEvents.length >= 1) {
+      setEventFilter(guestEvents[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuest, guestEvents.length]);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -287,15 +305,26 @@ export default function RegistrationsList() {
         </Button>
       </div>
       <div className="flex gap-2 mb-3 flex-wrap">
-        <Select value={eventFilter || 'all'} onValueChange={(v) => setEventFilter(v === 'all' ? '' : v)}>
-          <SelectTrigger className="w-72"><SelectValue placeholder="All events" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All events</SelectItem>
-            {upcoming.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
-            {past.length > 0 && <SelectItem value="__sep" disabled>── past ──</SelectItem>}
-            {past.map((e) => <SelectItem key={e.id} value={e.id}>{e.name} (past)</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {isGuest ? (
+          guestEvents.length > 1 ? (
+            <Select value={eventFilter} onValueChange={(v) => setEventFilter(v)}>
+              <SelectTrigger className="w-72"><SelectValue placeholder="Pick an event" /></SelectTrigger>
+              <SelectContent>
+                {guestEvents.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          ) : null
+        ) : (
+          <Select value={eventFilter || 'all'} onValueChange={(v) => setEventFilter(v === 'all' ? '' : v)}>
+            <SelectTrigger className="w-72"><SelectValue placeholder="All events" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All events</SelectItem>
+              {upcoming.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
+              {past.length > 0 && <SelectItem value="__sep" disabled>── past ──</SelectItem>}
+              {past.map((e) => <SelectItem key={e.id} value={e.id}>{e.name} (past)</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={statusFilter || 'all'} onValueChange={(v) => setFilter('status', v === 'all' ? '' : v)}>
           <SelectTrigger className="w-48"><SelectValue placeholder="All statuses" /></SelectTrigger>
           <SelectContent>
@@ -331,7 +360,7 @@ export default function RegistrationsList() {
             </Select>
           );
         })}
-        <DropdownMenu>
+        {!isGuest && <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="hidden md:inline-flex">
               Saved views <ChevronDown className="ml-1 h-3 w-3" />
@@ -351,7 +380,7 @@ export default function RegistrationsList() {
             <DropdownMenuItem onClick={handleSaveView}>Save this view…</DropdownMenuItem>
             <DropdownMenuItem onClick={handleDeleteView}>Delete saved view…</DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </DropdownMenu>}
       </div>
       {loading ? <p>Loading…</p> : (
         <>
