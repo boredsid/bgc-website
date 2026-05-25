@@ -92,7 +92,9 @@ Lists the event subfolders of the parent folder.
 
 - Drive call:
   `files.list?q='<EVENT_PHOTOS_FOLDER_ID>' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)&orderBy=name&pageSize=1000&key=<DRIVE_API_KEY>`
-- For each folder, parse the name: strip a trailing `M/D/YYYY` token →
+- Exclude the reserved `Archive` folder (case-insensitive exact name match) — it
+  is not an event.
+- For each remaining folder, parse the name: strip a trailing `M/D/YYYY` token →
   `{ title, date }`. Folders whose name has no parseable trailing date keep the
   full name as `title`, `date: null`, and sort last.
 - Sort by date descending (newest first); null dates at the end.
@@ -155,6 +157,7 @@ mocked:
 
 - Folder-name parsing: trailing `M/D/YYYY` split into title + ISO date.
 - Unparseable folder name → full name as title, `date: null`, sorted last.
+- `Archive` folder is excluded from the event list (case-insensitive).
 - Sort order: newest event first.
 - Image list mapping: correct `thumbUrl` / `viewUrl` / `downloadUrl` construction.
 - Image proxy: returns upstream content-type + CORS headers; validates `fileId`.
