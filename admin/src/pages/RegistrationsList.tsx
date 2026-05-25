@@ -198,7 +198,8 @@ export default function RegistrationsList() {
   const bulkActions: BulkAction[] = [
     { label: 'Mark confirmed', onClick: () => bulkSetStatus('confirmed') },
     { label: 'Mark cancelled', onClick: () => setConfirmCancelOpen(true), destructive: true },
-    { label: 'Export CSV', onClick: bulkExportCsv },
+    // Export hits an admin-only worker endpoint (403 for guests), so hide it for them.
+    ...(isGuest ? [] : [{ label: 'Export CSV', onClick: bulkExportCsv }]),
     { label: 'WhatsApp broadcast', onClick: bulkWhatsappBroadcast },
   ];
 

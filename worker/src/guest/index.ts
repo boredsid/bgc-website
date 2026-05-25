@@ -86,7 +86,7 @@ export async function handleGuestRequest(
   const evMatch = p.match(/^\/api\/admin\/events\/([^/]+)$/);
   if (evMatch && request.method === 'GET') {
     if (!allowed.has(evMatch[1])) return jsonResponse({ error: 'Forbidden' }, 403);
-    return handleGetEvent(evMatch[1], env);
+    return handleGetEvent(evMatch[1], env, false);
   }
 
   return jsonResponse({ error: 'Forbidden' }, 403);

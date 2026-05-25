@@ -13,7 +13,7 @@ export async function handleListEvents(env: Env): Promise<Response> {
   return jsonResponse({ events: data || [] });
 }
 
-export async function handleGetEvent(id: string, env: Env): Promise<Response> {
+export async function handleGetEvent(id: string, env: Env, includeGuestAdmins = true): Promise<Response> {
   const supabase = getSupabase(env);
   const { data, error } = await supabase
     .from('events')
@@ -22,6 +22,10 @@ export async function handleGetEvent(id: string, env: Env): Promise<Response> {
     .maybeSingle();
   if (error) return jsonResponse({ error: 'Failed to load event' }, 500);
   if (!data) return jsonResponse({ error: 'Event not found' }, 404);
+
+  // Guest admins must not see the co-partner email list, so the guest path
+  // omits it. Only the full-admin editor needs it to populate the form.
+  if (!includeGuestAdmins) return jsonResponse({ event: data });
 
   const { data: guests } = await supabase
     .from('event_guest_admins')
