@@ -146,7 +146,7 @@ export default {
               if (!eventId && request.method === 'GET') adminResponse = await handleListEvents(env);
               else if (!eventId && request.method === 'POST') adminResponse = await handleCreateEvent(request, env);
               else if (eventId && request.method === 'GET') adminResponse = await handleGetEvent(eventId, env);
-              else if (eventId && request.method === 'PATCH') adminResponse = await handleUpdateEvent(eventId, request, env);
+              else if (eventId && request.method === 'PATCH') adminResponse = await handleUpdateEvent(eventId, request, env, ctx, gate.admin.email);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }
