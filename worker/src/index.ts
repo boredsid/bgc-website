@@ -31,6 +31,7 @@ import {
 import { handleSummary } from './admin/summary';
 import { handleSearch } from './admin/search';
 import { handleLog } from './admin/log';
+import { resolveRole } from './guest/auth';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -63,9 +64,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
 
 async function gateAdmin(request: Request, env: Env): Promise<{ ok: true; admin: AdminContext } | { ok: false; response: Response }> {
   // Local dev escape hatch: when ENVIRONMENT=development, accept the
-  // first email from ADMIN_EMAILS as the acting admin without verifying a JWT.
-  // This branch is unreachable in production because wrangler.toml hard-codes
-  // ENVIRONMENT="production".
+  // first email from ADMIN_EMAILS as a full admin without verifying a JWT.
   if (env.ENVIRONMENT === 'development') {
     const fallback = env.ADMIN_EMAILS.split(',')[0]?.trim();
     if (fallback) return { ok: true, admin: { email: fallback, role: 'admin' } };
@@ -82,7 +81,18 @@ async function gateAdmin(request: Request, env: Env): Promise<{ ok: true; admin:
       }),
     };
   }
-  return { ok: true, admin: { email: result.email, role: 'admin' } };
+
+  const admin = await resolveRole(result.email, env);
+  if (admin.role === 'none') {
+    return {
+      ok: false,
+      response: new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    };
+  }
+  return { ok: true, admin };
 }
 
 export default {
@@ -156,7 +166,7 @@ export default {
           }
 
           if (!adminResponse && url.pathname === '/api/admin/whoami' && request.method === 'GET') {
-            adminResponse = new Response(JSON.stringify({ email: gate.admin.email }), {
+            adminResponse = new Response(JSON.stringify({ email: gate.admin.email, role: 'admin' }), {
               status: 200,
               headers: { 'Content-Type': 'application/json' },
             });
