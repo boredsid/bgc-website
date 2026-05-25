@@ -32,6 +32,7 @@ import { handleSummary } from './admin/summary';
 import { handleSearch } from './admin/search';
 import { handleLog } from './admin/log';
 import { resolveRole } from './guest/auth';
+import { handleGuestRequest } from './guest';
 
 export interface Env {
   SUPABASE_URL: string;
@@ -125,6 +126,8 @@ export default {
         const gate = await gateAdmin(request, env);
         if (!gate.ok) {
           response = gate.response;
+        } else if (gate.admin.role === 'guest') {
+          response = await handleGuestRequest(url, request, env, ctx, gate.admin);
         } else {
           let adminResponse: Response | null = null;
           if (url.pathname === '/api/admin/cancel-registration' && request.method === 'POST') {
