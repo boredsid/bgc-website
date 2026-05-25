@@ -12,7 +12,7 @@ export async function handleGuildStatus(request: Request, env: Env): Promise<Res
   let phone = '';
   try {
     const body = await request.json<{ phone?: string }>();
-    phone = sanitizePhone(body.phone || '');
+    phone = sanitizePhone(body.phone || '') || '';
   } catch {
     return jsonResponse({ tier: null, active: false });
   }
