@@ -46,13 +46,15 @@ export default function RegistrationsList() {
   const guestEvents = who?.events ?? [];
 
   const loadEvents = useCallback(() => {
-    if (isGuest) {
+    if (who?.role === 'guest') {
       // Guests cannot call /api/admin/events (admin-only). Use the scoped list from whoami.
-      setEvents(guestEvents as unknown as Event[]);
+      // Depend on the stable `who` context object, not the per-render `guestEvents` array,
+      // to avoid recreating this callback every render (which would loop the load effect).
+      setEvents((who.events ?? []) as unknown as Event[]);
       return;
     }
     fetchAdmin<{ events: Event[] }>('/api/admin/events').then((r) => setEvents(r.events)).catch(showApiError);
-  }, [isGuest, guestEvents]);
+  }, [who]);
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
