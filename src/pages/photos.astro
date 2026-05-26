@@ -1,0 +1,24 @@
+---
+import Layout from '../layouts/Layout.astro';
+import EventPhotos from '../components/EventPhotos.tsx';
+---
+
+<Layout title="Photos" description="Photos from past Board Game Company events in Bangalore — find your snaps and share them.">
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[1200px] mx-auto px-6 text-center">
+      <span class="section-tag">Event Photos</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        Past Event Photos
+      </h1>
+      <p class="text-lg text-[#1A1A1A]/70 mt-3">
+        Relive the games — find your photos and share them.
+      </p>
+    </div>
+  </section>
+
+  <section class="pb-20 pt-10">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <EventPhotos client:load />
+    </div>
+  </section>
+</Layout>
