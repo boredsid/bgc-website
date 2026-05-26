@@ -4,6 +4,7 @@ import { handleEventSpots } from './event-spots';
 import { handleGuildPurchase } from './guild-purchase';
 import { handleLead } from './lead';
 import { handleGuildStatus } from './guild-status';
+import { handleEventPhotos, handleEventPhotosFolder, handleEventPhotoImage } from './event-photos';
 import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
 import { verifyAccessJwt } from './access-auth';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
@@ -51,6 +52,8 @@ export interface Env {
   CF_API_TOKEN?: string;
   CF_ACCOUNT_ID?: string;
   CF_ACCESS_GROUP_ID?: string;
+  DRIVE_API_KEY: string;
+  EVENT_PHOTOS_FOLDER_ID: string;
 }
 
 export type AdminContext =
@@ -126,6 +129,14 @@ export default {
         response = await handleLead(request, env);
       } else if (url.pathname === '/api/guild-status' && request.method === 'POST') {
         response = await handleGuildStatus(request, env);
+      } else if (url.pathname === '/api/event-photos' && request.method === 'GET') {
+        response = await handleEventPhotos(request, env, ctx);
+      } else if (url.pathname.startsWith('/api/event-photos/folder/') && request.method === 'GET') {
+        const folderId = decodeURIComponent(url.pathname.split('/api/event-photos/folder/')[1] ?? '');
+        response = await handleEventPhotosFolder(folderId, request, env, ctx);
+      } else if (url.pathname.startsWith('/api/event-photos/image/') && request.method === 'GET') {
+        const fileId = decodeURIComponent(url.pathname.split('/api/event-photos/image/')[1] ?? '');
+        response = await handleEventPhotoImage(fileId, request, env, ctx);
       } else if (url.pathname.startsWith('/api/admin/')) {
         const gate = await gateAdmin(request, env);
         if (!gate.ok) {
