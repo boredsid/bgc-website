@@ -113,7 +113,7 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
               title={lightbox.name}
               allow="autoplay; fullscreen"
               allowFullScreen
-              className="w-[90vw] max-w-[900px] aspect-video rounded-lg bg-black"
+              className="w-[90vw] max-w-[900px] max-h-[75vh] aspect-video rounded-lg bg-black"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
