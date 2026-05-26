@@ -6,7 +6,7 @@ async function driveList(query: string, env: Env): Promise<DriveFile[]> {
   const url =
     `${DRIVE_API}` +
     `?q=${encodeURIComponent(query)}` +
-    `&fields=${encodeURIComponent('files(id,name)')}` +
+    `&fields=${encodeURIComponent('files(id,name,mimeType)')}` +
     `&orderBy=name` +
     `&pageSize=1000` +
     `&key=${encodeURIComponent(env.DRIVE_API_KEY)}`;
@@ -49,6 +49,7 @@ async function withCache(
 export interface DriveFile {
   id: string;
   name: string;
+  mimeType?: string;
 }
 
 export interface EventFolder {
@@ -60,9 +61,11 @@ export interface EventFolder {
 export interface EventPhoto {
   id: string;
   name: string;
+  kind: 'image' | 'video';
   thumbUrl: string;
   viewUrl: string;
   downloadUrl: string;
+  previewUrl?: string; // present only when kind === 'video'
 }
 
 // Drive IDs are URL-safe strings; reject anything with path/illegal chars.
@@ -97,13 +100,21 @@ export function buildEventList(files: DriveFile[]): EventFolder[] {
 }
 
 export function buildPhotoList(files: DriveFile[]): EventPhoto[] {
-  return files.map((f) => ({
-    id: f.id,
-    name: f.name,
-    thumbUrl: `https://drive.google.com/thumbnail?id=${f.id}&sz=w800`,
-    viewUrl: `https://drive.google.com/file/d/${f.id}/view`,
-    downloadUrl: `https://drive.google.com/uc?export=download&id=${f.id}`,
-  }));
+  return files.map((f) => {
+    const kind: 'image' | 'video' = f.mimeType?.startsWith('video/') ? 'video' : 'image';
+    const item: EventPhoto = {
+      id: f.id,
+      name: f.name,
+      kind,
+      thumbUrl: `https://drive.google.com/thumbnail?id=${f.id}&sz=w800`,
+      viewUrl: `https://drive.google.com/file/d/${f.id}/view`,
+      downloadUrl: `https://drive.google.com/uc?export=download&id=${f.id}`,
+    };
+    if (kind === 'video') {
+      item.previewUrl = `https://drive.google.com/file/d/${f.id}/preview`;
+    }
+    return item;
+  });
 }
 
 export async function handleEventPhotos(
@@ -129,7 +140,7 @@ export async function handleEventPhotosFolder(
   if (!isValidDriveId(folderId)) return badRequest('Invalid folder ID');
   return withCache(request, ctx, async () => {
     const files = await driveList(
-      `'${folderId}' in parents and mimeType contains 'image/' and trashed=false`,
+      `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed=false`,
       env,
     );
     return jsonCached({ photos: buildPhotoList(files) });
