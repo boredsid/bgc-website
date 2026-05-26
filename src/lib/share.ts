@@ -10,6 +10,23 @@ export function canNativeShare(): boolean {
   return typeof navigator !== 'undefined' && typeof navigator.canShare === 'function';
 }
 
+export function canShareUrl(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+}
+
+// Share a URL (e.g. a video's Drive link) via the OS share sheet. Returns true if
+// handled (including user-cancel), false if the caller should fall back to copy-link.
+export async function shareUrlLink(url: string, text = 'Board Game Company'): Promise<boolean> {
+  if (!canShareUrl()) return false;
+  try {
+    await navigator.share({ url, text });
+    return true;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return true;
+    return false;
+  }
+}
+
 // Attempt to share the actual image file via the OS share sheet (Instagram,
 // WhatsApp, etc. on mobile). Bytes are pulled through the worker proxy so the
 // cross-origin fetch().blob() is allowed. Returns true if the share was handled
