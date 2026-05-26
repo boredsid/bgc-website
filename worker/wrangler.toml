@@ -23,6 +23,7 @@ ENVIRONMENT = "production"
 EVENT_PHOTOS_FOLDER_ID = "11e-Aibjt3IztaW-Qd1BU24T-V1ECPXn-"
 
 # Set secrets via: wrangler secret put SUPABASE_SERVICE_KEY
+# Google Drive API key (event photos): wrangler secret put DRIVE_API_KEY
 # Email secrets: wrangler secret put APPS_SCRIPT_URL / APPS_SCRIPT_SECRET
 # Admin allowlist: wrangler secret put ADMIN_EMAILS  (comma-separated)
 # Pages rebuild webhook: wrangler secret put PAGES_DEPLOY_HOOK
