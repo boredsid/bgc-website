@@ -1,10 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   parseEventFolder,
   buildEventList,
   buildPhotoList,
   isValidDriveId,
+  handleEventPhotos,
+  handleEventPhotosFolder,
+  handleEventPhotoImage,
 } from './event-photos';
+
+const env = { DRIVE_API_KEY: 'test-key', EVENT_PHOTOS_FOLDER_ID: 'PARENT' } as any;
+const ctx = { waitUntil: () => {} } as any;
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('parseEventFolder', () => {
   it('parses a trailing M/D/YYYY date into title + ISO date', () => {
@@ -57,5 +68,65 @@ describe('isValidDriveId', () => {
     expect(isValidDriveId('11e-Aibjt3IztaW-Qd1BU24T-V1ECPXn-')).toBe(true);
     expect(isValidDriveId('abc')).toBe(false);
     expect(isValidDriveId('../etc/passwd')).toBe(false);
+  });
+});
+
+describe('handleEventPhotos', () => {
+  it('queries the parent folder and returns the parsed event list', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ files: [{ id: '3', name: 'New 5/24/2026' }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await handleEventPhotos(new Request('https://api.test/api/event-photos'), env, ctx);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      events: [{ folderId: '3', title: 'New', date: '2026-05-24' }],
+    });
+
+    const calledUrl = String(fetchMock.mock.calls[0][0]);
+    expect(decodeURIComponent(calledUrl)).toContain("'PARENT' in parents");
+    expect(calledUrl).toContain('key=test-key');
+  });
+});
+
+describe('handleEventPhotosFolder', () => {
+  it('rejects an invalid folder id with 400', async () => {
+    const res = await handleEventPhotosFolder('bad!', new Request('https://api.test/'), env, ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('returns the photo list for a valid folder', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ files: [{ id: 'IMG1234567', name: 'a.jpg' }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await handleEventPhotosFolder('FOLDER1234567', new Request('https://api.test/'), env, ctx);
+    const body = (await res.json()) as { photos: Array<{ thumbUrl: string }> };
+    expect(body.photos[0].thumbUrl).toBe('https://drive.google.com/thumbnail?id=IMG1234567&sz=w800');
+  });
+});
+
+describe('handleEventPhotoImage', () => {
+  it('rejects an invalid file id with 400', async () => {
+    const res = await handleEventPhotoImage('x', new Request('https://api.test/'), env, ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('proxies image bytes with the upstream content-type', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('binary-bytes', { status: 200, headers: { 'Content-Type': 'image/png' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await handleEventPhotoImage('FILE1234567', new Request('https://api.test/'), env, ctx);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('Content-Type')).toBe('image/png');
+    expect(await res.text()).toBe('binary-bytes');
   });
 });
