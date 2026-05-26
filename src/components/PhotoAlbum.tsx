@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
-import { sharePhotoFile, canNativeShare, copyLink } from '../lib/share';
+import { sharePhotoFile, canNativeShare, canShareUrl, shareUrlLink, copyLink } from '../lib/share';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
 
 interface Photo {
   id: string;
   name: string;
+  kind: 'image' | 'video';
   thumbUrl: string;
   viewUrl: string;
   downloadUrl: string;
+  previewUrl?: string;
 }
 
 interface Props {
@@ -52,7 +54,8 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
   }
 
   async function onShare(photo: Photo) {
-    const shared = await sharePhotoFile(photo);
+    const shared =
+      photo.kind === 'video' ? await shareUrlLink(photo.viewUrl) : await sharePhotoFile(photo);
     if (!shared) flashCopied(await copyLink(photo.viewUrl));
   }
 
@@ -84,9 +87,16 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
             <button
               key={p.id}
               onClick={() => setLightbox(p)}
-              className="aspect-square overflow-hidden rounded-xl bg-black/5"
+              className="relative aspect-square overflow-hidden rounded-xl bg-black/5"
             >
               <img src={p.thumbUrl} alt={p.name} loading="lazy" className="w-full h-full object-cover" />
+              {p.kind === 'video' && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <span className="flex items-center justify-center w-12 h-12 rounded-full bg-black/55 text-white text-xl">
+                    ▶
+                  </span>
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -97,14 +107,25 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
           className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
-          <img
-            src={lightbox.thumbUrl}
-            alt={lightbox.name}
-            className="max-h-[75vh] max-w-full rounded-lg"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {lightbox.kind === 'video' ? (
+            <iframe
+              src={lightbox.previewUrl}
+              title={lightbox.name}
+              allow="autoplay; fullscreen"
+              allowFullScreen
+              className="w-[90vw] max-w-[900px] aspect-video rounded-lg bg-black"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <img
+              src={lightbox.thumbUrl}
+              alt={lightbox.name}
+              className="max-h-[75vh] max-w-full rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
           <div className="flex flex-wrap gap-3 mt-4 justify-center" onClick={(e) => e.stopPropagation()}>
-            {canNativeShare() && (
+            {(lightbox.kind === 'video' ? canShareUrl() : canNativeShare()) && (
               <button onClick={() => onShare(lightbox)} className="btn btn-primary">
                 Share
               </button>
