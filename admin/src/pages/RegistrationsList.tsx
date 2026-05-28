@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, ChevronDown } from 'lucide-react';
+import { Plus, ChevronDown, MoreVertical } from 'lucide-react';
 import DataTable, { Column } from '@/components/DataTable';
 import MobileCardList, { CardField } from '@/components/MobileCardList';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -36,6 +36,7 @@ export default function RegistrationsList() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionTarget, setActionTarget] = useState<Registration | null>(null);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [viewsVersion, setViewsVersion] = useState(0);
@@ -177,23 +178,26 @@ export default function RegistrationsList() {
     refresh();
   }
 
-  function bulkExportCsv() {
-    if (selectedIds.length === 0) return;
-    window.location.href = `${API_BASE}/api/admin/registrations/export?ids=${encodeURIComponent(selectedIds.join(','))}`;
+  function exportCsvForIds(ids: string[]) {
+    if (ids.length === 0) return;
+    window.location.href = `${API_BASE}/api/admin/registrations/export?ids=${encodeURIComponent(ids.join(','))}`;
   }
 
-  async function bulkWhatsappBroadcast() {
-    if (selectedRows.length === 0) return;
-    const phones = selectedRows.map((r) => r.phone).join(', ');
+  async function whatsappBroadcastFor(rows: Registration[]) {
+    if (rows.length === 0) return;
+    const phones = rows.map((r) => r.phone).join(', ');
     const message = 'Hi! This is a reminder from Board Game Company about your upcoming event registration.';
     const payload = `${phones}\n\n${message}`;
     try {
       await navigator.clipboard.writeText(payload);
-      toast.success(`Copied ${selectedRows.length} phones + message to clipboard`);
+      toast.success(`Copied ${rows.length} phones + message to clipboard`);
     } catch {
       toast.error('Could not copy to clipboard');
     }
   }
+
+  const bulkExportCsv = () => exportCsvForIds(selectedIds);
+  const bulkWhatsappBroadcast = () => whatsappBroadcastFor(selectedRows);
 
   const bulkActions: BulkAction[] = [
     { label: 'Mark confirmed', onClick: () => bulkSetStatus('confirmed') },
@@ -201,6 +205,19 @@ export default function RegistrationsList() {
     // Export hits an admin-only worker endpoint (403 for guests), so hide it for them.
     ...(isGuest ? [] : [{ label: 'Export CSV', onClick: bulkExportCsv }]),
     { label: 'WhatsApp broadcast', onClick: bulkWhatsappBroadcast },
+  ];
+
+  const shareSheetActions: ActionItem[] = [
+    ...(isGuest ? [] : [{
+      label: `Export CSV (${filteredRegs.length})`,
+      onClick: () => exportCsvForIds(filteredRegs.map((r) => r.id)),
+      disabled: filteredRegs.length === 0,
+    }]),
+    {
+      label: `WhatsApp broadcast (${filteredRegs.length})`,
+      onClick: () => whatsappBroadcastFor(filteredRegs),
+      disabled: filteredRegs.length === 0,
+    },
   ];
 
   // ---- Inline status edit (desktop) ----
@@ -303,9 +320,20 @@ export default function RegistrationsList() {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">Registrations</h1>
-        <Button asChild className="hidden md:inline-flex">
-          <Link to="/registrations/new">New manual registration</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setShareSheetOpen(true)}
+            aria-label="Export or share"
+          >
+            <MoreVertical className="h-5 w-5" />
+          </Button>
+          <Button asChild className="hidden md:inline-flex">
+            <Link to="/registrations/new">New manual registration</Link>
+          </Button>
+        </div>
       </div>
       <div className="flex gap-2 mb-3 flex-wrap">
         {isGuest ? (
@@ -431,6 +459,13 @@ export default function RegistrationsList() {
         title={actionTarget ? `${actionTarget.name} · ${eventNameById[actionTarget.event_id] || ''}` : ''}
         actions={actionTarget ? actionItems(actionTarget) : []}
         onClose={() => setActionTarget(null)}
+      />
+
+      <ActionSheet
+        open={shareSheetOpen}
+        title="Export / share"
+        actions={shareSheetActions}
+        onClose={() => setShareSheetOpen(false)}
       />
 
       <BulkConfirmDialog
