@@ -13,11 +13,14 @@ interface Lead {
   id: string;
   phone: string;
   name: string | null;
+  email: string | null;
+  seats: number | null;
   event_id: string;
   last_step: 'phone_entered' | 'name_entered' | 'details_entered';
   source: Record<string, unknown> | null;
   converted_at: string | null;
   junk_at: string | null;
+  waitlist_at: string | null;
   created_at: string;
   events: { name: string; date: string } | null;
 }
@@ -53,11 +56,13 @@ export default function Leads() {
   const [includeConverted, setIncludeConverted] = useState(false);
   const [includeJunk, setIncludeJunk] = useState(false);
   const [sinceDays, setSinceDays] = useState<string>('30');
+  const [waitlist, setWaitlist] = useState<'any' | 'only' | 'exclude'>('any');
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     if (eventId !== 'all') p.set('event_id', eventId);
     if (hasName !== 'any') p.set('has_name', hasName);
+    if (waitlist !== 'any') p.set('waitlist', waitlist);
     if (includeConverted) p.set('include_converted', '1');
     if (includeJunk) p.set('include_junk', '1');
     if (sinceDays) {
@@ -68,7 +73,7 @@ export default function Leads() {
       }
     }
     return p.toString();
-  }, [eventId, hasName, includeConverted, includeJunk, sinceDays]);
+  }, [eventId, hasName, includeConverted, includeJunk, sinceDays, waitlist]);
 
   async function load() {
     setLoading(true);
@@ -139,6 +144,17 @@ export default function Leads() {
           </Select>
         </div>
         <div className="flex flex-col gap-1">
+          <Label>Waitlist</Label>
+          <Select value={waitlist} onValueChange={(v) => setWaitlist(v as 'any' | 'only' | 'exclude')}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any</SelectItem>
+              <SelectItem value="only">Waitlist only</SelectItem>
+              <SelectItem value="exclude">Hide waitlist</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1">
           <Label>Last N days</Label>
           <Input className="w-24" inputMode="numeric" value={sinceDays} onChange={(e) => setSinceDays(e.target.value)} />
         </div>
@@ -183,7 +199,13 @@ export default function Leads() {
                   </td>
                   <td className="p-2">{l.name ?? '—'}</td>
                   <td className="p-2">{l.events?.name ?? '—'}</td>
-                  <td className="p-2"><Badge variant="secondary">{l.last_step.replace('_entered', '')}</Badge></td>
+                  <td className="p-2">
+                    {l.waitlist_at ? (
+                      <Badge>🎟️ Waitlist{l.seats ? ` · ${l.seats}` : ''}</Badge>
+                    ) : (
+                      <Badge variant="secondary">{l.last_step.replace('_entered', '')}</Badge>
+                    )}
+                  </td>
                   <td className="p-2 text-right whitespace-nowrap">
                     <a
                       href={whatsappUrl(l.phone, l.events?.name ?? null)}
