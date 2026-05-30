@@ -87,7 +87,13 @@ export async function handleExportLeads(request: Request, env: Env): Promise<Res
     .select('id, phone, name, email, seats, event_id, last_step, source, converted_at, junk_at, waitlist_at, created_at, events(name)');
 
   query = applyListFilters(query, url);
-  const { data, error } = await query.order('created_at', { ascending: false }).limit(LIST_LIMIT);
+  // Match the list view: waitlist-only exports are FIFO by join time so a
+  // co-organiser working the CSV honours the same order admins see on screen.
+  const waitlistParam = url.searchParams.get('waitlist');
+  const sorted = waitlistParam === 'only'
+    ? query.order('waitlist_at', { ascending: true })
+    : query.order('created_at', { ascending: false });
+  const { data, error } = await sorted.limit(LIST_LIMIT);
   if (error) return new Response('Failed', { status: 500 });
 
   const header = ['created_at', 'phone', 'name', 'email', 'seats', 'event', 'last_step', 'waitlist_at', 'source', 'converted_at', 'junk_at'];

@@ -305,16 +305,11 @@ export default function RegistrationForm() {
       });
       const data = await res.json();
       if (data.available) {
-        // A spot opened up between page load and submit — re-fetch spots so the
-        // normal registration form returns.
-        try {
-          const spotsRes = await fetch(`${WORKER_URL}/api/event-spots/${eventId}`);
-          if (spotsRes.ok) setSpots(await spotsRes.json());
-        } catch {
-          // leave spots as-is
-        }
-        setError('Good news — a spot just opened up! You can register now.');
-        setWaitlistSubmitting(false);
+        // A spot opened up between page load and submit. Reload so the page
+        // re-resolves capacity and shows the normal registration form — a plain
+        // setSpots could leave the user stranded on the waitlist form if the
+        // spots re-fetch failed (stale soldOut, no registration path visible).
+        window.location.reload();
         return;
       }
       if (!res.ok || !data.success) {
