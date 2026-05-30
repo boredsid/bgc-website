@@ -19,6 +19,10 @@ function applyListFilters(query: any, url: URL) {
   if (hasName === 'yes') query = query.not('name', 'is', null);
   if (hasName === 'no') query = query.is('name', null);
 
+  const waitlist = url.searchParams.get('waitlist');
+  if (waitlist === 'only') query = query.not('waitlist_at', 'is', null);
+  else if (waitlist === 'exclude') query = query.is('waitlist_at', null);
+
   const since = sinceParam
     ? new Date(sinceParam)
     : new Date(Date.now() - DEFAULT_WINDOW_DAYS * 24 * 60 * 60 * 1000);
@@ -33,11 +37,15 @@ export async function handleListLeads(request: Request, env: Env): Promise<Respo
 
   let query = supabase
     .from('leads')
-    .select('id, phone, name, event_id, last_step, source, user_agent, converted_at, registration_id, junk_at, created_at, updated_at, events(name, date)');
+    .select('id, phone, name, email, seats, event_id, last_step, source, user_agent, converted_at, registration_id, junk_at, waitlist_at, created_at, updated_at, events(name, date)');
 
   query = applyListFilters(query, url);
 
-  const { data, error } = await query.order('created_at', { ascending: false }).limit(LIST_LIMIT);
+  const waitlistParam = url.searchParams.get('waitlist');
+  const sorted = waitlistParam === 'only'
+    ? query.order('waitlist_at', { ascending: true })
+    : query.order('created_at', { ascending: false });
+  const { data, error } = await sorted.limit(LIST_LIMIT);
   if (error) return jsonResponse({ error: 'Failed to load leads' }, 500);
   return jsonResponse({ leads: data || [] });
 }
@@ -76,16 +84,22 @@ export async function handleExportLeads(request: Request, env: Env): Promise<Res
 
   let query = supabase
     .from('leads')
-    .select('id, phone, name, event_id, last_step, source, converted_at, junk_at, created_at, events(name)');
+    .select('id, phone, name, email, seats, event_id, last_step, source, converted_at, junk_at, waitlist_at, created_at, events(name)');
 
   query = applyListFilters(query, url);
-  const { data, error } = await query.order('created_at', { ascending: false }).limit(LIST_LIMIT);
+  // Match the list view: waitlist-only exports are FIFO by join time so a
+  // co-organiser working the CSV honours the same order admins see on screen.
+  const waitlistParam = url.searchParams.get('waitlist');
+  const sorted = waitlistParam === 'only'
+    ? query.order('waitlist_at', { ascending: true })
+    : query.order('created_at', { ascending: false });
+  const { data, error } = await sorted.limit(LIST_LIMIT);
   if (error) return new Response('Failed', { status: 500 });
 
-  const header = ['created_at', 'phone', 'name', 'event', 'last_step', 'source', 'converted_at', 'junk_at'];
+  const header = ['created_at', 'phone', 'name', 'email', 'seats', 'event', 'last_step', 'waitlist_at', 'source', 'converted_at', 'junk_at'];
   const rows = (data || []).map((r: any) => [
-    r.created_at, r.phone, r.name, r.events?.name ?? '',
-    r.last_step, r.source, r.converted_at, r.junk_at,
+    r.created_at, r.phone, r.name, r.email, r.seats, r.events?.name ?? '',
+    r.last_step, r.waitlist_at, r.source, r.converted_at, r.junk_at,
   ].map(csvEscape).join(','));
 
   const csv = [header.join(','), ...rows].join('\n');

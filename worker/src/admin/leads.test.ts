@@ -66,6 +66,22 @@ describe('handleListLeads', () => {
     await handleListLeads(req, mockEnv());
     expect(capture.filters).toContainEqual({ op: 'not.is', col: 'name', val: null });
   });
+
+  it('waitlist=only filters to rows with waitlist_at set', async () => {
+    const capture: QueryCapture = { filters: [] };
+    (getSupabase as any).mockReturnValue(buildListMock([], capture));
+    const req = new Request('http://localhost/api/admin/leads?waitlist=only');
+    await handleListLeads(req, mockEnv());
+    expect(capture.filters).toContainEqual({ op: 'not.is', col: 'waitlist_at', val: null });
+  });
+
+  it('waitlist=exclude filters to rows with no waitlist_at', async () => {
+    const capture: QueryCapture = { filters: [] };
+    (getSupabase as any).mockReturnValue(buildListMock([], capture));
+    const req = new Request('http://localhost/api/admin/leads?waitlist=exclude');
+    await handleListLeads(req, mockEnv());
+    expect(capture.filters).toContainEqual({ op: 'is', col: 'waitlist_at', val: null });
+  });
 });
 
 describe('handleUpdateLead', () => {
