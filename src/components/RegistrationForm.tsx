@@ -30,6 +30,8 @@ export default function RegistrationForm() {
   const [phoneLookedUp, setPhoneLookedUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
+  const [waitlistSubmitting, setWaitlistSubmitting] = useState(false);
   const [, setRegistrationId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -283,6 +285,50 @@ export default function RegistrationForm() {
     setSubmitting(false);
   }
 
+  async function joinWaitlist(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setWaitlistSubmitting(true);
+    try {
+      const res = await fetch(`${WORKER_URL}/api/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: eventId,
+          name,
+          phone,
+          email,
+          seats,
+          source: getSource(),
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        }),
+      });
+      const data = await res.json();
+      if (data.available) {
+        // A spot opened up between page load and submit — re-fetch spots so the
+        // normal registration form returns.
+        try {
+          const spotsRes = await fetch(`${WORKER_URL}/api/event-spots/${eventId}`);
+          if (spotsRes.ok) setSpots(await spotsRes.json());
+        } catch {
+          // leave spots as-is
+        }
+        setError('Good news — a spot just opened up! You can register now.');
+        setWaitlistSubmitting(false);
+        return;
+      }
+      if (!res.ok || !data.success) {
+        setError(data.error || 'Could not join the waitlist. Please try again.');
+        setWaitlistSubmitting(false);
+        return;
+      }
+      setWaitlistJoined(true);
+    } catch {
+      setError('Something went wrong. Please try again.');
+    }
+    setWaitlistSubmitting(false);
+  }
+
   if (step === 'success') {
     return (
       <div className="card-brutal p-8 text-center" style={{ background: '#A8E6CF' }}>
@@ -376,10 +422,94 @@ export default function RegistrationForm() {
       </div>
 
       {soldOut ? (
-        <div className="text-center py-8">
-          <p className="font-heading font-bold text-xl text-[#1A1A1A]/60">Sold Out</p>
-          <p className="text-sm text-[#1A1A1A]/60 mt-2">This event is fully booked.</p>
-        </div>
+        waitlistJoined ? (
+          <div className="card-brutal p-8 text-center" style={{ background: '#A8E6CF' }}>
+            <div className="text-5xl mb-3">🎟️</div>
+            <h2 className="font-heading text-2xl font-bold mb-2">You're on the waitlist!</h2>
+            <p className="text-[#1A1A1A]/85">
+              We'll WhatsApp or email you at <strong>{email}</strong> if a spot opens up for{' '}
+              <strong>{event.name}</strong>.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <div className="card-brutal p-4 mb-5 text-center" style={{ background: '#FFD166' }}>
+              <p className="font-heading font-bold">This event is full</p>
+              <p className="text-sm text-[#1A1A1A]/75 mt-1">
+                Join the waitlist and we'll reach out if a spot frees up.
+              </p>
+            </div>
+            <form onSubmit={joinWaitlist}>
+              <div className="mb-5">
+                <label className="label-brutal">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="10-digit mobile number"
+                  required
+                  className="input-brutal"
+                />
+              </div>
+              <div className="mb-5">
+                <label className="label-brutal">Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                  required
+                  className="input-brutal"
+                />
+              </div>
+              <div className="mb-5">
+                <label className="label-brutal">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                  className="input-brutal"
+                />
+              </div>
+              <div className="mb-5">
+                <label className="label-brutal">Number of Seats</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSeats(Math.max(1, seats - 1))}
+                    className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
+                    style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
+                  >
+                    −
+                  </button>
+                  <span className="font-heading font-bold text-xl w-8 text-center">{seats}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSeats(Math.min(10, seats + 1))}
+                    className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
+                    style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              {error && (
+                <div className="card-brutal p-4 mb-4" style={{ background: '#FF6B6B' }}>
+                  <p className="font-heading font-semibold">{error}</p>
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={waitlistSubmitting}
+                className="btn btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {waitlistSubmitting ? 'Joining...' : 'Join the waitlist'}
+              </button>
+            </form>
+          </div>
+        )
       ) : (
         <form onSubmit={handleSubmit}>
           <div className="mb-5">
