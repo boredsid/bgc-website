@@ -37,6 +37,18 @@ export interface GuildPurchaseEmailPayload {
   payment_url: string;
 }
 
+export interface WaitlistEmailPayload {
+  to: string;
+  name: string;
+  seats: number;
+  event: {
+    name: string;
+    date: string;
+    venue_name: string;
+    venue_area: string | null;
+  };
+}
+
 async function postToAppsScript(
   body: Record<string, unknown>,
   env: Env
@@ -77,4 +89,11 @@ export async function sendGuildPurchaseEmail(
   env: Env
 ): Promise<void> {
   await postToAppsScript({ type: 'guild_purchase', ...payload }, env);
+}
+
+export async function sendWaitlistEmail(
+  payload: WaitlistEmailPayload,
+  env: Env
+): Promise<void> {
+  await postToAppsScript({ type: 'event_waitlist', ...payload }, env);
 }
