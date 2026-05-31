@@ -9,11 +9,12 @@ export async function handleListUsers(url: URL, env: Env): Promise<Response> {
   const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10)));
   const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10));
 
+  // Fetch one extra row to detect whether more pages exist.
   let query = supabase
     .from('users')
     .select('*')
     .order('last_registered_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(offset, offset + limit);
 
   if (q) {
     const escaped = q.replace(/[%_\\]/g, (m) => '\\' + m);
@@ -21,10 +22,12 @@ export async function handleListUsers(url: URL, env: Env): Promise<Response> {
     query = query.or(`phone.ilike.${like},name.ilike.${like},email.ilike.${like}`);
   }
 
-  const { data: users, error } = await query;
+  const { data: fetched, error } = await query;
   if (error) return jsonResponse({ error: 'Failed to load users' }, 500);
 
-  const ids = (users || []).map((u: { id: string }) => u.id);
+  const hasMore = (fetched || []).length > limit;
+  const users = (fetched || []).slice(0, limit);
+  const ids = users.map((u: { id: string }) => u.id);
   const balances = new Map<string, number>();
   if (ids.length > 0) {
     const { data: rows } = await supabase
@@ -36,8 +39,8 @@ export async function handleListUsers(url: URL, env: Env): Promise<Response> {
     }
   }
 
-  const out = (users || []).map((u: any) => ({ ...u, credit_balance: balances.get(u.id) || 0 }));
-  return jsonResponse({ users: out });
+  const out = users.map((u: any) => ({ ...u, credit_balance: balances.get(u.id) || 0 }));
+  return jsonResponse({ users: out, hasMore });
 }
 
 export async function handleGetUser(id: string, env: Env): Promise<Response> {

@@ -16,7 +16,7 @@ Board Game Company — Bangalore's board gaming community. Public site + admin t
 | Path | What | Deploy |
 |---|---|---|
 | `./` | Public Astro site → `boardgamecompany.in` | Push to GitHub |
-| `./admin/` | Vite + React + shadcn admin tool → `admin.boardgamecompany.in` | `cd admin && npm run build` then push (Pages) |
+| `./admin/` | Vite + React + shadcn admin tool → `admin.boardgamecompany.in` | Push to GitHub (Pages builds it) |
 | `./worker/` | Cloudflare Worker API → `api.boardgamecompany.in` | `cd worker && npx wrangler deploy` |
 
 Browser reads public `games` / `events` directly from Supabase via anon key + RLS. Anything sensitive (lookup, register, credits, admin) goes through the worker which holds the service-role key.
@@ -29,6 +29,7 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 - `worker/src/` — root handlers + `worker/src/admin/` (admin endpoints) + `*.test.ts` (Vitest)
 - `admin/src/` — admin SPA, separate package, shadcn-based
 - `supabase/migrations/` — `001`–`013` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits, leads, llm_notes, user_promos, guild_path_exclusive)
+  - **New-table grants (from migration `014`+):** Supabase stops auto-exposing `public` tables to the Data API for this project on **2026-10-30**. After that, any new `public` table is invisible to PostgREST until granted — this hits the **worker (`service_role`) too**, not just public `anon` reads. So every new-table migration must include: `grant all on public.<table> to authenticated, service_role;` plus `grant select on public.<table> to anon;` only if the browser reads it directly (pair with RLS). Existing tables keep their grants; no backfill needed.
 - `docs/superpowers/specs/` — design specs + implementation plans
 
 ## Supabase tables
@@ -76,8 +77,8 @@ cd admin && npm test
 
 ## Deployment
 
-- **Site / admin:** push to `main` → Cloudflare Pages auto-deploys (separate Pages projects)
-- **Worker:** `cd worker && npx wrangler deploy`
+- **Site / admin:** push to `main` → Cloudflare Pages auto-deploys (separate Pages projects). Pages runs the build itself; `admin/dist` is gitignored and never committed. `cd admin && npm run build` is only a local pre-flight check that it compiles.
+- **Worker:** `cd worker && npx wrangler deploy` (manual — does NOT auto-deploy on push)
 - After changing Pages env vars, retry/redeploy from the dashboard for them to take effect
 
 ## Design

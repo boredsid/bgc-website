@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import DataTable, { Column } from '@/components/DataTable';
 import MobileCardList, { CardField } from '@/components/MobileCardList';
 import { PhoneCell } from '@/components/PhoneCell';
@@ -9,19 +10,41 @@ import { fetchAdmin, showApiError } from '@/lib/api';
 import { useRevalidate } from '@/lib/revalidate';
 import type { UserListItem } from '@/lib/types';
 
+const PAGE_SIZE = 50;
+
 export default function UsersList() {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const navigate = useNavigate();
 
   const refresh = useCallback(() => {
     setLoading(true);
-    fetchAdmin<{ users: UserListItem[] }>(`/api/admin/users?q=${encodeURIComponent(q)}`)
-      .then((r) => setUsers(r.users))
+    fetchAdmin<{ users: UserListItem[]; hasMore?: boolean }>(
+      `/api/admin/users?q=${encodeURIComponent(q)}&limit=${PAGE_SIZE}&offset=0`,
+    )
+      .then((r) => {
+        setUsers(r.users);
+        setHasMore(Boolean(r.hasMore));
+      })
       .catch(showApiError)
       .finally(() => setLoading(false));
   }, [q]);
+
+  const loadMore = useCallback(() => {
+    setLoadingMore(true);
+    fetchAdmin<{ users: UserListItem[]; hasMore?: boolean }>(
+      `/api/admin/users?q=${encodeURIComponent(q)}&limit=${PAGE_SIZE}&offset=${users.length}`,
+    )
+      .then((r) => {
+        setUsers((prev) => [...prev, ...r.users]);
+        setHasMore(Boolean(r.hasMore));
+      })
+      .catch(showApiError)
+      .finally(() => setLoadingMore(false));
+  }, [q, users.length]);
 
   useEffect(() => {
     const t = setTimeout(refresh, 200);
@@ -79,6 +102,13 @@ export default function UsersList() {
               emptyMessage="No users match."
             />
           </div>
+          {hasMore && (
+            <div className="mt-4 flex justify-center">
+              <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>
