@@ -19,6 +19,11 @@ vi.mock('../admin/register-manual', () => ({ handleManualRegister: vi.fn(async (
 vi.mock('../cancel', () => ({ handleCancelRegistration: vi.fn(async () => new Response('{}', { status: 200 })) }));
 vi.mock('../admin/events', () => ({ handleGetEvent: vi.fn(async () => new Response('{}', { status: 200 })) }));
 vi.mock('../admin/log', () => ({ handleLog: vi.fn(async () => new Response('{}', { status: 200 })) }));
+vi.mock('../admin/leads', () => ({
+  handleListLeads: vi.fn(async (_req: Request, _env: unknown, scope?: string[]) => new Response(JSON.stringify({ scope }), { status: 200 })),
+  handleUpdateLead: vi.fn(async () => new Response('{}', { status: 200 })),
+}));
+vi.mock('./summary', () => ({ handleGuestSummary: vi.fn(async (_env: unknown, ids: string[]) => new Response(JSON.stringify({ ids }), { status: 200 })) }));
 vi.mock('./lookup-phone', () => ({ handleGuestLookupPhone: vi.fn(async () => new Response('{}', { status: 200 })) }));
 vi.mock('../supabase', () => ({ getSupabase: vi.fn() }));
 
@@ -86,6 +91,46 @@ describe('handleGuestRequest', () => {
     mockRegLookup('other');
     const url = new URL('http://localhost/api/admin/cancel-registration');
     const res = await handleGuestRequest(url, r('POST', '/api/admin/cancel-registration', { registration_id: 'reg1' }), mockEnv(), ctx, guest);
+    expect(res.status).toBe(403);
+  });
+
+  it('summary is scoped to the guest event ids', async () => {
+    const url = new URL('http://localhost/api/admin/summary');
+    const res = await handleGuestRequest(url, r('GET', '/api/admin/summary'), mockEnv(), ctx, guest);
+    const body = await res.json() as any;
+    expect(body.ids).toEqual(['e1']);
+  });
+
+  it('leads list passes the guest event scope through', async () => {
+    const url = new URL('http://localhost/api/admin/leads');
+    const res = await handleGuestRequest(url, r('GET', '/api/admin/leads'), mockEnv(), ctx, guest);
+    const body = await res.json() as any;
+    expect(body.scope).toEqual(['e1']);
+  });
+
+  it('leads list with a foreign event_id is 403', async () => {
+    const url = new URL('http://localhost/api/admin/leads?event_id=other');
+    const res = await handleGuestRequest(url, r('GET', '/api/admin/leads?event_id=other'), mockEnv(), ctx, guest);
+    expect(res.status).toBe(403);
+  });
+
+  it('PATCH lead belonging to an allowed event passes through', async () => {
+    mockRegLookup('e1');
+    const url = new URL('http://localhost/api/admin/leads/lead1');
+    const res = await handleGuestRequest(url, r('PATCH', '/api/admin/leads/lead1', { junk: true }), mockEnv(), ctx, guest);
+    expect(res.status).toBe(200);
+  });
+
+  it('PATCH lead belonging to a foreign event is 403', async () => {
+    mockRegLookup('other');
+    const url = new URL('http://localhost/api/admin/leads/lead1');
+    const res = await handleGuestRequest(url, r('PATCH', '/api/admin/leads/lead1', { junk: true }), mockEnv(), ctx, guest);
+    expect(res.status).toBe(403);
+  });
+
+  it('leads export is not exposed to guests (403)', async () => {
+    const url = new URL('http://localhost/api/admin/leads/export');
+    const res = await handleGuestRequest(url, r('GET', '/api/admin/leads/export'), mockEnv(), ctx, guest);
     expect(res.status).toBe(403);
   });
 

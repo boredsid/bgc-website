@@ -31,7 +31,10 @@ function applyListFilters(query: any, url: URL) {
   return query;
 }
 
-export async function handleListLeads(request: Request, env: Env): Promise<Response> {
+// `eventScope`, when passed, hard-limits the result to those event ids on top
+// of any user-supplied filters — used by guest access so a co-organiser only
+// ever sees leads for events they're authorised for.
+export async function handleListLeads(request: Request, env: Env, eventScope?: string[]): Promise<Response> {
   const supabase = getSupabase(env);
   const url = new URL(request.url);
 
@@ -40,6 +43,7 @@ export async function handleListLeads(request: Request, env: Env): Promise<Respo
     .select('id, phone, name, email, seats, event_id, last_step, source, user_agent, converted_at, registration_id, junk_at, waitlist_at, created_at, updated_at, events(name, date)');
 
   query = applyListFilters(query, url);
+  if (eventScope) query = query.in('event_id', eventScope);
 
   const waitlistParam = url.searchParams.get('waitlist');
   const sorted = waitlistParam === 'only'

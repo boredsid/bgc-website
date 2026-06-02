@@ -6,6 +6,8 @@ import { handleManualRegister } from '../admin/register-manual';
 import { handleCancelRegistration } from '../cancel';
 import { handleGetEvent } from '../admin/events';
 import { handleLog } from '../admin/log';
+import { handleListLeads, handleUpdateLead } from '../admin/leads';
+import { handleGuestSummary } from './summary';
 import { handleGuestLookupPhone } from './lookup-phone';
 
 export interface GuestCtx {
@@ -16,6 +18,12 @@ export interface GuestCtx {
 async function registrationEventId(id: string, env: Env): Promise<string | null> {
   const supabase = getSupabase(env);
   const { data } = await supabase.from('registrations').select('event_id').eq('id', id).maybeSingle();
+  return (data as { event_id: string } | null)?.event_id ?? null;
+}
+
+async function leadEventId(id: string, env: Env): Promise<string | null> {
+  const supabase = getSupabase(env);
+  const { data } = await supabase.from('leads').select('event_id').eq('id', id).maybeSingle();
   return (data as { event_id: string } | null)?.event_id ?? null;
 }
 
@@ -45,6 +53,26 @@ export async function handleGuestRequest(
 
   if (p === '/api/admin/lookup-phone' && request.method === 'POST') {
     return handleGuestLookupPhone(request, env, allowed);
+  }
+
+  if (p === '/api/admin/summary' && request.method === 'GET') {
+    return handleGuestSummary(env, guest.eventIds);
+  }
+
+  if (p === '/api/admin/leads' && request.method === 'GET') {
+    const ev = url.searchParams.get('event_id');
+    if (ev && !allowed.has(ev)) return jsonResponse({ error: 'Forbidden' }, 403);
+    // Scope to the guest's events even when no event_id is supplied.
+    return handleListLeads(request, env, guest.eventIds);
+  }
+
+  const leadMatch = p.match(/^\/api\/admin\/leads\/([^/]+)$/);
+  if (leadMatch && leadMatch[1] !== 'export') {
+    const id = leadMatch[1];
+    const evId = await leadEventId(id, env);
+    if (!evId || !allowed.has(evId)) return jsonResponse({ error: 'Forbidden' }, 403);
+    if (request.method === 'PATCH') return handleUpdateLead(id, request, env);
+    return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
   if (p === '/api/admin/registrations' && request.method === 'GET') {

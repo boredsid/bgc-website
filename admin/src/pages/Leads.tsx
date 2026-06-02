@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useWhoAmI } from '@/lib/whoami';
 
 interface Lead {
   id: string;
@@ -46,6 +47,9 @@ function whatsappUrl(phone: string, eventName: string | null): string {
 }
 
 export default function Leads() {
+  const who = useWhoAmI();
+  const isGuest = who?.role === 'guest';
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,10 +95,15 @@ export default function Leads() {
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [queryString]);
 
   useEffect(() => {
+    // Guests can't call the admin-only events endpoint; use their scoped list from whoami.
+    if (who?.role === 'guest') {
+      setEvents((who.events ?? []).map((e) => ({ id: e.id, name: e.name })));
+      return;
+    }
     fetchAdmin<{ events: Array<{ id: string; name: string }> }>('/api/admin/events')
       .then((d) => setEvents(d.events))
       .catch(() => undefined);
-  }, []);
+  }, [who]);
 
   async function markJunk(id: string) {
     try {
@@ -113,10 +122,13 @@ export default function Leads() {
     <div className="p-4 space-y-4">
       <div className="flex flex-wrap items-end gap-3">
         <h1 className="text-2xl font-heading font-semibold">Leads</h1>
-        <a
-          className="ml-auto text-sm underline"
-          href={`${import.meta.env.VITE_API_BASE ?? ''}/api/admin/leads/export?${queryString}`}
-        >Export CSV</a>
+        {/* Export hits an admin-only worker endpoint (403 for guests), so hide it for them. */}
+        {!isGuest && (
+          <a
+            className="ml-auto text-sm underline"
+            href={`${import.meta.env.VITE_API_BASE ?? ''}/api/admin/leads/export?${queryString}`}
+          >Export CSV</a>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3 items-end">
