@@ -170,4 +170,63 @@ describe('handleManualRegister', () => {
     expect(inserted.source).toBe('admin');
     expect(inserted.payment_status).toBe('confirmed');
   });
+
+  it('marks a matching open lead converted after a manual registration', async () => {
+    let leadUpdate: any = null;
+    const leadFilters: Record<string, unknown> = {};
+    (getSupabase as any).mockReturnValue({
+      from: (table: string) => {
+        if (table === 'events') {
+          return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 'e1', name: 'T', date: '2026-06-01T00:00:00Z', price: 0, capacity: 10, custom_questions: null, is_published: true, venue_name: 'X', venue_area: null, price_includes: null }, error: null }) }) }) };
+        }
+        if (table === 'registrations') {
+          return {
+            select: () => ({ eq: () => ({ neq: async () => ({ data: [], error: null }) }) }),
+            insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'reg-99' }, error: null }) }) }),
+          };
+        }
+        if (table === 'users') {
+          return {
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 'u1' }, error: null }) }) }),
+            update: () => ({ eq: async () => ({ error: null }) }),
+          };
+        }
+        if (table === 'guild_path_members') {
+          return noMember();
+        }
+        if (table === 'leads') {
+          return {
+            update: (row: any) => {
+              leadUpdate = row;
+              return {
+                eq: (col: string, val: unknown) => { leadFilters[col] = val; return {
+                  eq: (col2: string, val2: unknown) => { leadFilters[col2] = val2; return {
+                    is: (col3: string, val3: unknown) => { leadFilters[col3] = val3; return {
+                      is: async (col4: string, val4: unknown) => { leadFilters[col4] = val4; return { error: null }; },
+                    }; },
+                  }; },
+                }; },
+              };
+            },
+          };
+        }
+        return null;
+      },
+    });
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({ event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com', seats: 1, payment_status: 'pending', custom_answers: {} }),
+    });
+    const ctx = { waitUntil: () => {} } as any;
+    const res = await handleManualRegister(req, mockEnv(), ctx);
+    expect(res.status).toBe(200);
+    expect(leadUpdate).toMatchObject({ registration_id: 'reg-99' });
+    expect(leadUpdate.converted_at).toBeTruthy();
+    expect(leadFilters).toMatchObject({
+      phone: '9999999999',
+      event_id: 'e1',
+      converted_at: null,
+      junk_at: null,
+    });
+  });
 });
