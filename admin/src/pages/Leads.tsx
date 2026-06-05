@@ -83,6 +83,7 @@ export default function Leads() {
     setConvEmail(lead.email ?? '');
     setConvSeats(String(lead.seats ?? 1));
     setConvPayment('pending');
+    setConvSubmitting(false);
     setConvError(null);
   }
 
@@ -91,7 +92,7 @@ export default function Leads() {
     const name = convName.trim();
     if (!name) { setConvError('Name is required'); return; }
     const seats = parseInt(convSeats, 10);
-    if (Number.isNaN(seats) || seats < 1) { setConvError('Enter a valid seat count'); return; }
+    if (Number.isNaN(seats) || seats < 1 || seats > 20) { setConvError('Enter a seat count between 1 and 20'); return; }
     setConvSubmitting(true);
     setConvError(null);
     try {
