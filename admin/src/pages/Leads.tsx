@@ -9,6 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useWhoAmI } from '@/lib/whoami';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface Lead {
   id: string;
@@ -61,6 +68,56 @@ export default function Leads() {
   const [includeJunk, setIncludeJunk] = useState(false);
   const [sinceDays, setSinceDays] = useState<string>('30');
   const [waitlist, setWaitlist] = useState<'any' | 'only' | 'exclude'>('any');
+
+  const [convertLead, setConvertLead] = useState<Lead | null>(null);
+  const [convName, setConvName] = useState('');
+  const [convEmail, setConvEmail] = useState('');
+  const [convSeats, setConvSeats] = useState('1');
+  const [convPayment, setConvPayment] = useState<'pending' | 'confirmed'>('pending');
+  const [convSubmitting, setConvSubmitting] = useState(false);
+  const [convError, setConvError] = useState<string | null>(null);
+
+  function openConvert(lead: Lead) {
+    setConvertLead(lead);
+    setConvName(lead.name ?? '');
+    setConvEmail(lead.email ?? '');
+    setConvSeats(String(lead.seats ?? 1));
+    setConvPayment('pending');
+    setConvSubmitting(false);
+    setConvError(null);
+  }
+
+  async function submitConvert() {
+    if (!convertLead) return;
+    const name = convName.trim();
+    if (!name) { setConvError('Name is required'); return; }
+    const seats = parseInt(convSeats, 10);
+    if (Number.isNaN(seats) || seats < 1 || seats > 20) { setConvError('Enter a seat count between 1 and 20'); return; }
+    setConvSubmitting(true);
+    setConvError(null);
+    try {
+      await fetchAdmin('/api/admin/registrations/manual', {
+        method: 'POST',
+        body: JSON.stringify({
+          event_id: convertLead.event_id,
+          name,
+          phone: convertLead.phone,
+          email: convEmail.trim() || undefined,
+          seats,
+          payment_status: convPayment,
+          custom_answers: {},
+        }),
+      });
+      const convertedId = convertLead.id;
+      setLeads((cur) => cur.filter((l) => l.id !== convertedId));
+      setConvertLead(null);
+      toast.success('Registered');
+    } catch (e) {
+      setConvError(e instanceof ApiError ? e.message : 'Failed to register');
+    } finally {
+      setConvSubmitting(false);
+    }
+  }
 
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
@@ -219,6 +276,14 @@ export default function Leads() {
                     )}
                   </td>
                   <td className="p-2 text-right whitespace-nowrap">
+                    {l.waitlist_at && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mr-2"
+                        onClick={() => openConvert(l)}
+                      >Register</Button>
+                    )}
                     <a
                       href={whatsappUrl(l.phone, l.events?.name ?? null)}
                       target="_blank"
@@ -233,6 +298,47 @@ export default function Leads() {
           </table>
         </div>
       )}
+      <Dialog open={!!convertLead} onOpenChange={(o) => { if (!o) setConvertLead(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Register from waitlist</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {convertLead?.phone} · {convertLead?.events?.name ?? 'event'}
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="conv-name">Name</Label>
+              <Input id="conv-name" value={convName} onChange={(e) => setConvName(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="conv-email">Email</Label>
+              <Input id="conv-email" value={convEmail} onChange={(e) => setConvEmail(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="conv-seats">Seats</Label>
+              <Input id="conv-seats" inputMode="numeric" value={convSeats} onChange={(e) => setConvSeats(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label>Payment</Label>
+              <Select value={convPayment} onValueChange={(v) => setConvPayment(v as 'pending' | 'confirmed')}>
+                <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {convError && <div className="text-sm text-destructive">{convError}</div>}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConvertLead(null)} disabled={convSubmitting}>Cancel</Button>
+            <Button onClick={submitConvert} disabled={convSubmitting}>
+              {convSubmitting ? 'Registering…' : 'Register'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
