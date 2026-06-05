@@ -76,6 +76,7 @@ export default function Leads() {
   const [convPayment, setConvPayment] = useState<'pending' | 'confirmed'>('pending');
   const [convSubmitting, setConvSubmitting] = useState(false);
   const [convError, setConvError] = useState<string | null>(null);
+  const [convCapacityWarning, setConvCapacityWarning] = useState<string | null>(null);
 
   function openConvert(lead: Lead) {
     setConvertLead(lead);
@@ -85,9 +86,10 @@ export default function Leads() {
     setConvPayment('pending');
     setConvSubmitting(false);
     setConvError(null);
+    setConvCapacityWarning(null);
   }
 
-  async function submitConvert() {
+  async function submitConvert(allowOverbook = false) {
     if (!convertLead) return;
     const name = convName.trim();
     if (!name) { setConvError('Name is required'); return; }
@@ -106,14 +108,20 @@ export default function Leads() {
           seats,
           payment_status: convPayment,
           custom_answers: {},
+          allow_overbook: allowOverbook,
         }),
       });
       const convertedId = convertLead.id;
       setLeads((cur) => cur.filter((l) => l.id !== convertedId));
       setConvertLead(null);
+      setConvCapacityWarning(null);
       toast.success('Registered');
     } catch (e) {
-      setConvError(e instanceof ApiError ? e.message : 'Failed to register');
+      if (e instanceof ApiError && e.status === 409 && (e.data as { capacity_exceeded?: boolean } | null)?.capacity_exceeded) {
+        setConvCapacityWarning(e.message);
+      } else {
+        setConvError(e instanceof ApiError ? e.message : 'Failed to register');
+      }
     } finally {
       setConvSubmitting(false);
     }
@@ -317,7 +325,7 @@ export default function Leads() {
             </div>
             <div className="flex flex-col gap-1">
               <Label htmlFor="conv-seats">Seats</Label>
-              <Input id="conv-seats" inputMode="numeric" value={convSeats} onChange={(e) => setConvSeats(e.target.value)} />
+              <Input id="conv-seats" inputMode="numeric" value={convSeats} onChange={(e) => { setConvSeats(e.target.value); setConvCapacityWarning(null); }} />
             </div>
             <div className="flex flex-col gap-1">
               <Label>Payment</Label>
@@ -330,12 +338,23 @@ export default function Leads() {
               </Select>
             </div>
             {convError && <div className="text-sm text-destructive">{convError}</div>}
+            {convCapacityWarning && (
+              <div className="text-sm rounded-md bg-yellow-50 text-yellow-900 border border-yellow-200 p-2">
+                ⚠️ {convCapacityWarning} You can still register them over capacity.
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConvertLead(null)} disabled={convSubmitting}>Cancel</Button>
-            <Button onClick={submitConvert} disabled={convSubmitting}>
-              {convSubmitting ? 'Registering…' : 'Register'}
-            </Button>
+            {convCapacityWarning ? (
+              <Button onClick={() => submitConvert(true)} disabled={convSubmitting}>
+                {convSubmitting ? 'Registering…' : 'Register anyway'}
+              </Button>
+            ) : (
+              <Button onClick={() => submitConvert(false)} disabled={convSubmitting}>
+                {convSubmitting ? 'Registering…' : 'Register'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormDrawer } from '@/components/FormDrawer';
 import { NumberInput } from '@/components/NumberInput';
-import { fetchAdmin, showApiError } from '@/lib/api';
+import { fetchAdmin, showApiError, ApiError } from '@/lib/api';
 import { validateManualRegistration, type ValidationErrors } from '@/lib/validation';
 import { toast } from 'sonner';
 import type { Event, CustomQuestion } from '@/lib/types';
@@ -36,6 +38,7 @@ export default function ManualRegistrationDrawer() {
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [capacityWarning, setCapacityWarning] = useState<string | null>(null);
   const [initial, setInitial] = useState<{
     eventId: string;
     name: string;
@@ -128,7 +131,7 @@ export default function ManualRegistrationDrawer() {
     navigate('/registrations');
   }
 
-  async function save() {
+  function save() {
     setShowErrors(true);
     if (errorCount > 0) {
       const first = Object.keys(errors)[0];
@@ -137,6 +140,10 @@ export default function ManualRegistrationDrawer() {
       el?.focus();
       return;
     }
+    submit(false);
+  }
+
+  async function submit(allowOverbook: boolean) {
     setSaving(true);
     setServerError(null);
     try {
@@ -150,11 +157,17 @@ export default function ManualRegistrationDrawer() {
           seats: seats ?? 1,
           payment_status: paymentStatus,
           custom_answers: customAnswers,
+          allow_overbook: allowOverbook,
         }),
       });
+      setCapacityWarning(null);
       toast.success('Registration created');
       navigate('/registrations');
     } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && (err.data as { capacity_exceeded?: boolean } | null)?.capacity_exceeded) {
+        setCapacityWarning(err.message);
+        return;
+      }
       setServerError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setSaving(false);
@@ -283,6 +296,23 @@ export default function ManualRegistrationDrawer() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!capacityWarning} onOpenChange={(o) => { if (!o) setCapacityWarning(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Event is full</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            {capacityWarning} You can still register them over capacity.
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCapacityWarning(null)} disabled={saving}>Cancel</Button>
+            <Button onClick={() => submit(true)} disabled={saving}>
+              {saving ? 'Registering…' : 'Register anyway'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </FormDrawer>
   );
 }

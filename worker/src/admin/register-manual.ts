@@ -14,6 +14,7 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     seats: number;
     custom_answers?: Record<string, string | boolean>;
     payment_status: 'pending' | 'confirmed';
+    allow_overbook?: boolean;
   }>().catch(() => null);
 
   if (!body) return jsonResponse({ error: 'Invalid request body' }, 400);
@@ -40,15 +41,26 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     .maybeSingle();
   if (!event) return jsonResponse({ error: 'Event not found' }, 404);
 
-  // Capacity check (excludes cancelled).
+  // Capacity check (excludes cancelled). Over-capacity is allowed but must be
+  // explicitly confirmed by the admin: the first attempt returns a structured
+  // warning so the UI can prompt, then resubmits with allow_overbook.
   const { data: regs } = await supabase
     .from('registrations')
     .select('seats')
     .eq('event_id', body.event_id)
     .neq('payment_status', 'cancelled');
   const taken = (regs || []).reduce((sum: number, r: any) => sum + r.seats, 0);
-  if (taken + seats > event.capacity) {
-    return jsonResponse({ error: `Only ${event.capacity - taken} spots remaining` }, 400);
+  if (taken + seats > event.capacity && !body.allow_overbook) {
+    return jsonResponse(
+      {
+        error: `This event is full (${taken}/${event.capacity}). Registering ${seats} more would put it at ${taken + seats}/${event.capacity}.`,
+        capacity_exceeded: true,
+        capacity: event.capacity,
+        taken,
+        requested: seats,
+      },
+      409,
+    );
   }
 
   // Upsert user

@@ -66,13 +66,19 @@ function buildSupabaseMock(eventRow: any, regs: any[]) {
       if (table === 'guild_path_members') {
         return noMember();
       }
+      if (table === 'user_credits') {
+        return {
+          select: () => ({ eq: async () => ({ data: [], error: null }) }),
+          insert: async () => ({ error: null }),
+        };
+      }
       return null;
     },
   };
 }
 
 describe('handleManualRegister', () => {
-  it('rejects when seats exceed remaining capacity', async () => {
+  it('warns (409) when seats exceed remaining capacity and overbook not confirmed', async () => {
     (getSupabase as any).mockReturnValue(buildSupabaseMock(
       { id: 'e1', name: 'Test', date: '2026-06-01T00:00:00Z', price: 500, capacity: 10, custom_questions: null, is_published: true, venue_name: 'X', venue_area: null, price_includes: null },
       [{ seats: 9, payment_status: 'confirmed' }],
@@ -83,7 +89,24 @@ describe('handleManualRegister', () => {
     });
     const ctx = { waitUntil: () => {} } as any;
     const res = await handleManualRegister(req, mockEnv(), ctx);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
+    const body = await res.json<any>();
+    expect(body.capacity_exceeded).toBe(true);
+    expect(body).toMatchObject({ capacity: 10, taken: 9, requested: 5 });
+  });
+
+  it('allows overbooking when allow_overbook is true', async () => {
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(
+      { id: 'e1', name: 'Test', date: '2026-06-01T00:00:00Z', price: 500, capacity: 10, custom_questions: null, is_published: true, venue_name: 'X', venue_area: null, price_includes: null },
+      [{ seats: 9, payment_status: 'confirmed' }],
+    ));
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({ event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com', seats: 5, payment_status: 'confirmed', custom_answers: {}, allow_overbook: true }),
+    });
+    const ctx = { waitUntil: () => {} } as any;
+    const res = await handleManualRegister(req, mockEnv(), ctx);
+    expect(res.status).toBe(200);
   });
 
   it('applies user credits against the total and records a registration_use ledger row', async () => {

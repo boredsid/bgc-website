@@ -4,9 +4,11 @@ const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  data: unknown;
+  constructor(status: number, message: string, data?: unknown) {
     super(message);
     this.status = status;
+    this.data = data;
     this.name = 'ApiError';
   }
 }
@@ -46,7 +48,7 @@ export async function fetchAdmin<T>(path: string, init?: RequestInit): Promise<T
       body && typeof body === 'object' && 'error' in body && typeof (body as Record<string, unknown>).error === 'string'
         ? ((body as Record<string, string>).error)
         : `Request failed (${res.status})`;
-    throw new ApiError(res.status, msg);
+    throw new ApiError(res.status, msg, body);
   }
 
   if (init?.method && init.method !== 'GET') emitRevalidate();
