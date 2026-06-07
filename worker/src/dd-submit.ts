@@ -78,6 +78,9 @@ export async function handleDdSubmit(
     .single();
 
   if (error || !data) {
+    // Allow an immediate retry after a failed save — don't let the rate-limit
+    // entry we set above mask the failure as a success on the next attempt.
+    lastSeen.delete(phone);
     return jsonResponse({ error: 'Could not save your submission. Please try again.' }, 500);
   }
 

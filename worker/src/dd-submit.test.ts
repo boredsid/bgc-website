@@ -156,4 +156,20 @@ describe('handleDdSubmit', () => {
     expect(res2.status).toBe(200);
     expect(capture.insertArg).toBeNull();
   });
+
+  it('allows an immediate retry after a failed insert (does not mask failure as success)', async () => {
+    const capture = { insertArg: null as any };
+    // First call: insert fails -> 500.
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(capture, { insertError: true }));
+    const res1 = await handleDdSubmit(req(VALID), mockEnv(), ctx);
+    expect(res1.status).toBe(500);
+
+    // Immediate retry (within the rate-limit window) must attempt the insert
+    // again rather than returning a false { ok: true }.
+    capture.insertArg = null;
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(capture));
+    const res2 = await handleDdSubmit(req(VALID), mockEnv(), ctx);
+    expect(res2.status).toBe(200);
+    expect(capture.insertArg).not.toBeNull();
+  });
 });
