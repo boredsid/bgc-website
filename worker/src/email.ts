@@ -97,3 +97,19 @@ export async function sendWaitlistEmail(
 ): Promise<void> {
   await postToAppsScript({ type: 'event_waitlist', ...payload }, env);
 }
+
+export interface DdSubmissionEmailPayload {
+  to: string[];
+  name: string;
+  phone: string;
+  email: string;
+  script_json: unknown;
+  submission_id: string;
+}
+
+export async function sendDdSubmissionEmail(
+  payload: DdSubmissionEmailPayload,
+  env: Env
+): Promise<void> {
+  await postToAppsScript({ type: 'dd_submission', ...payload }, env);
+}
