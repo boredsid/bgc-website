@@ -21,7 +21,7 @@ CF_ACCESS_TEAM_DOMAIN = "boardgamecompany.cloudflareaccess.com"
 CF_ACCESS_AUD = "01dff74c40a2bbed21dda3d555f4c8f6072e5bf162a0f94cf30fcf6ed5f68c45"
 ENVIRONMENT = "production"
 EVENT_PHOTOS_FOLDER_ID = "11e-Aibjt3IztaW-Qd1BU24T-V1ECPXn-"
-DD_SUBMISSION_EMAILS = "boardgamecompany2024@gmail.com"
+DD_SUBMISSION_EMAILS = "boardgamecompany2024@gmail.com,saxenasrijan130@gmail.com"
 
 # Set secrets via: wrangler secret put SUPABASE_SERVICE_KEY
 # Google Drive API key (event photos): wrangler secret put DRIVE_API_KEY
