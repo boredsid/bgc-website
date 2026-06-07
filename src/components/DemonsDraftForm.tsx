@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
 
@@ -113,7 +113,7 @@ export default function DemonsDraftForm() {
         <div>
           <label style={labelStyle} htmlFor="dd-phone">Phone</label>
           <input id="dd-phone" style={fieldStyle} value={phone} onChange={(e) => setPhone(e.target.value)}
-            placeholder="10-digit number" inputMode="tel" autoComplete="tel" />
+            placeholder="10-digit mobile number" inputMode="tel" autoComplete="tel" />
         </div>
         <div>
           <label style={labelStyle} htmlFor="dd-email">Email</label>
