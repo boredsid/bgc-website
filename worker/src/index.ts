@@ -3,6 +3,7 @@ import { handleRegister } from './register';
 import { handleEventSpots } from './event-spots';
 import { handleGuildPurchase } from './guild-purchase';
 import { handleLead } from './lead';
+import { handleDdSubmit } from './dd-submit';
 import { handleWaitlist } from './waitlist';
 import { handleGuildStatus } from './guild-status';
 import { handleEventPhotos, handleEventPhotosFolder, handleEventPhotoImage } from './event-photos';
@@ -129,6 +130,8 @@ export default {
         response = await handleGuildPurchase(request, env, ctx);
       } else if (url.pathname === '/api/lead' && request.method === 'POST') {
         response = await handleLead(request, env);
+      } else if (url.pathname === '/api/dd-submit' && request.method === 'POST') {
+        response = await handleDdSubmit(request, env, ctx);
       } else if (url.pathname === '/api/waitlist' && request.method === 'POST') {
         response = await handleWaitlist(request, env, ctx);
       } else if (url.pathname === '/api/guild-status' && request.method === 'POST') {
