@@ -55,6 +55,7 @@ export interface Env {
   CF_ACCESS_GROUP_ID?: string;
   DRIVE_API_KEY: string;
   EVENT_PHOTOS_FOLDER_ID: string;
+  DD_SUBMISSION_EMAILS?: string;
 }
 
 export type AdminContext =
