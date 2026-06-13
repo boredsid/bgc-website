@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Tabletop Tour · Leaderboard</title>
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      /* LIGHT MODE (default) — solid white page bg, black heading */
+      --bg: #ffffff;
+      --panel: #ffffff;
+      --header: #f3f4f6;
+      --line: #e5e7eb;
+      --muted: #6b7280;
+      --text: #111111;
+      --accent: #f4d03f;
+      --accent-2: #ffe680;
+      --ring: rgba(244,208,63,.35);
+      --ok: #16a34a;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --radius: 18px;
+      --shadow: 0 10px 30px rgba(0,0,0,.12);
+      --hover: rgba(0,0,0,.03);
+      --heading: #000000; /* <— black in light mode */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        /* DARK MODE — solid black page bg, white heading */
+        --bg: #000000;
+        --panel: #17181b;
+        --header: #1f2025;
+        --line: #2a2b30;
+        --muted: #a1a1aa;
+        --text: #f5f5f6;
+        --accent: #f4d03f;
+        --accent-2: #ffe680;
+        --ring: rgba(244, 208, 63, .35);
+        --ok: #65d46e;
+        --warn: #f7b731;
+        --danger: #ff6b6b;
+        --shadow: 0 10px 30px rgba(0,0,0,.45);
+        --hover: rgba(255, 212, 59, .04);
+        --heading: #ffffff; /* <— white in dark mode */
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--text);
+      background: var(--bg); /* <— solid bg (no gradient) */
+      letter-spacing: .2px;
+    }
+
+    .wrap { max-width: 1100px; margin: 24px auto 80px auto; padding: 0 16px; }
+
+    /* Header */
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    h1 { font-size: 20px; margin: 0; letter-spacing: .6px; color: var(--heading); }
+    .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    /* Controls */
+    .controls { display: grid; grid-template-columns: 1fr auto; gap: 12px; margin: 10px 0 18px 0; }
+    .search {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      box-shadow: var(--shadow);
+    }
+    .search input { all: unset; flex: 1; font-size: 14px; color: var(--text); }
+
+    .btn {
+      appearance: none; border: none; cursor: pointer;
+      font-family: inherit; font-weight: 700; letter-spacing: .3px;
+      font-size: 13px; padding: 10px 14px; border-radius: 999px;
+      background: linear-gradient(140deg, var(--accent), #ffd43b);
+      color: #111; box-shadow: 0 6px 16px var(--ring);
+      transition: transform .04s ease, box-shadow .2s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.secondary { background: transparent; color: var(--text); border: 1px dashed var(--line); }
+
+    /* Panels */
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: clip; }
+
+    /* Leaderboard table */
+    .table { width: 100%; border-collapse: collapse; }
+    .table thead { background: var(--header); }
+    .table th, .table td { padding: 12px 14px; text-align: left; font-size: 14px; border-bottom: 1px solid var(--line); }
+    .table th { color: var(--text); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+    .table tr:hover td { background: var(--hover); }
+    .rank-pill {
+      display: inline-grid; place-items: center;
+      width: 28px; height: 28px; border-radius: 999px;
+      background: var(--header); border: 1px solid var(--line); color: var(--accent);
+      font-weight: 700; font-size: 12px;
+    }
+    .name-link { cursor: pointer; color: var(--text); text-decoration: none; }
+    .name-link:hover { text-decoration: underline; }
+
+    /* Personal card */
+    .grid { display: grid; gap: 14px; padding: 16px; }
+    @media (min-width: 800px) { .grid { grid-template-columns: 1.1fr .9fr; } }
+
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .card h3 { margin: 0; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--header); font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+    .card .body { padding: 16px; }
+    .kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 14px; }
+    .kv .k { color: var(--muted); }
+
+    .rounds { display: grid; gap: 10px; }
+    .round {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 8px 12px; align-items: center;
+      background: var(--header); border: 1px solid var(--line); padding: 10px 12px; border-radius: 12px;
+    }
+    .tag { font-size: 11px; font-weight: 700; color: #111; background: var(--accent-2); padding: 4px 8px; border-radius: 999px; }
+    .mono { font-variant-numeric: tabular-nums; }
+
+    /* Helper */
+    .hidden { display: none !important; }
+    .empty { color: var(--muted); padding: 24px; text-align: center; }
+    .footer-note { color: var(--muted); font-size: 11px; margin-top: 14px; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="brand">
+        <div>
+          <h1>TABLETOP TOUR LEADERBOARD</h1>
+          <div class="sub">Search your name to see your tables & games by round</div>
+        </div>
+      </div>
+      <div>
+        <button id="toggleView" class="btn secondary hidden">← Back to Leaderboard</button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M21 21l-3.8-3.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/></svg>
+        <input id="searchInput" list="nameList" placeholder="Find your name… (press Enter)" />
+        <datalist id="nameList"></datalist>
+      </div>
+      <button id="refreshBtn" class="btn" title="Refetch data">↻ Refresh</button>
+    </div>
+
+    <!-- Leaderboard View -->
+    <div id="leaderboardView" class="panel">
+      <table class="table" id="leaderTable">
+        <thead>
+          <tr>
+            <th style="width:80px">Rank</th>
+            <th>Name</th>
+            <th style="width:140px" class="mono">Total Points</th>
+          </tr>
+        </thead>
+        <tbody id="leaderBody">
+          <tr><td colspan="3" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Personal View -->
+    <div id="personalView" class="hidden">
+      <div class="grid">
+        <div class="card">
+          <h3>Player Summary</h3>
+          <div class="body">
+            <div class="kv">
+              <div class="k">Name</div><div id="pvName"></div>
+              <div class="k">Rank</div><div id="pvRank" class="mono"></div>
+              <div class="k">Total Points</div><div id="pvPoints" class="mono"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Rounds</h3>
+          <div class="body">
+            <div id="pvRounds" class="rounds"></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-note">Tip: Use the back button above to return to the full leaderboard.</div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * CONFIG
+     */
+    const SPREADSHEET_ID = '1lV0fsrH6Brk8ti3GP8XvWFyKc_bFaHYuDSLNWIcH3SE';
+    const SHEET_LEADER = 'LEADERBOARD';
+
+    // --- Helpers to fetch & parse Google Sheets (GViz JSON) ---
+    async function fetchSheet(sheetName) {
+      const base = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?`;
+      const url = `${base}sheet=${encodeURIComponent(sheetName)}&tqx=out:json`;
+      const res = await fetch(url, { cache: 'no-store' });
+      const text = await res.text();
+      return parseGViz(text);
+    }
+
+    function parseGViz(text) {
+      // Strips JS wrapper: google.visualization.Query.setResponse({...});
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      const json = JSON.parse(text.slice(start, end + 1));
+      const table = json.table;
+      const labels = table.cols.map(c => (c.label || '').trim());
+      const rows = (table.rows || []).map(r => (r.c || []).map(c => (c ? (c.f ?? c.v ?? '') : '')));
+      return rows.map(arr => {
+        const obj = {};
+        labels.forEach((key, i) => obj[key || `col_${i}`] = (arr[i] ?? '').toString().trim());
+        return obj;
+      });
+    }
+
+    // Data caches
+    let leader = [];
+    let roundHeaders = [];
+
+    // NEW: Track the currently opened player's name
+    let selectedPlayerName = '';
+
+    function normalizeName(s) { return (s || '').trim().toLowerCase(); }
+
+    // Extract a numeric table id from strings like "Table 3", "3", "T3"
+    function tableNumberFrom(val) {
+      const m = String(val || '').match(/\d+/);
+      return m ? parseInt(m[0], 10) : null;
+    }
+
+    function detectRoundHeaders(obj) {
+      return Object.keys(obj)
+        .filter(k => /^round\s*\d+/i.test(k))
+        .sort((a, b) => {
+          const na = parseInt(a.match(/\d+/));
+          const nb = parseInt(b.match(/\d+/));
+          return na - nb;
+        });
+    }
+
+    // Case-insensitive getter for a column header
+    function getCell(row, headerName) {
+      const key = Object.keys(row).find(k => k.trim().toLowerCase() === String(headerName).trim().toLowerCase());
+      return key ? row[key] : '';
+    }
+
+    function renderLeaderboard(filter = '') {
+      const body = document.getElementById('leaderBody');
+      body.innerHTML = '';
+      const query = normalizeName(filter);
+
+      const rows = leader
+        .map((p, idx) => ({ ...p, __rank: idx + 1 }))
+        .filter(p => !query || normalizeName(p['Name']).includes(query));
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="3" class="empty">No players found.</td></tr>`;
+        return;
+      }
+
+      for (const p of rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="rank-pill">${p.__rank}</span></td>
+          <td><a class="name-link" data-name="${encodeURIComponent(p['Name'])}">${p['Name']}</a></td>
+          <td class="mono">${p['Total Points'] || '0'}</td>
+        `;
+        tr.querySelector('.name-link').addEventListener('click', () => openPersonalView(p['Name']));
+        body.appendChild(tr);
+      }
+    }
+
+    function buildNameDatalist() {
+      const dl = document.getElementById('nameList');
+      dl.innerHTML = '';
+      leader.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p['Name'];
+        dl.appendChild(opt);
+      });
+    }
+
+    function openPersonalView(name) {
+      const idx = leader.findIndex(p => normalizeName(p['Name']) === normalizeName(name));
+      if (idx === -1) return;
+      const player = leader[idx];
+      const rank = idx + 1;
+
+      // NEW: remember selection
+      selectedPlayerName = player['Name'];
+
+      document.getElementById('pvName').textContent = player['Name'];
+      document.getElementById('pvRank').textContent = `#${rank}`;
+      document.getElementById('pvPoints').textContent = player['Total Points'] || '0';
+
+      const roundsEl = document.getElementById('pvRounds');
+      roundsEl.innerHTML = '';
+
+      for (const roundKey of roundHeaders) {
+        const tableStr = player[roundKey] || '';
+        const tableMatch = tableStr.match(/table\s*\d+/i);
+        const tableNorm = tableMatch ? tableMatch[0].replace(/\s+/g,' ').trim() : tableStr.trim();
+
+        // Read game name from "Game N" columns on LEADERBOARD
+        const roundNum = roundKey.match(/\d+/)?.[0] || '';
+        const game = getCell(player, `Game ${roundNum}`) || '—';
+
+        const div = document.createElement('div');
+        div.className = 'round';
+        div.innerHTML = `
+          <div><span class="tag">Round ${roundNum}</span></div>
+          <div>
+            <div><strong>Game:</strong> ${game}</div>
+            <div class="mono" style="margin-top:4px;"><strong>Table:</strong> ${tableNorm || '—'}</div>
+          </div>
+        `;
+        roundsEl.appendChild(div);
+      }
+
+      document.getElementById('leaderboardView').classList.add('hidden');
+      document.getElementById('personalView').classList.remove('hidden');
+      document.getElementById('toggleView').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function backToLeaderboard() {
+      document.getElementById('personalView').classList.add('hidden');
+      document.getElementById('leaderboardView').classList.remove('hidden');
+      document.getElementById('toggleView').classList.add('hidden');
+      document.getElementById('searchInput').focus();
+      // keep selectedPlayerName as-is (so Refresh can reopen if desired)
+    }
+
+    async function loadAll() {
+      try {
+        document.getElementById('leaderBody').innerHTML = `<tr><td colspan="3" class="empty">Loading…</td></tr>`;
+        leader = await fetchSheet(SHEET_LEADER);
+
+        // Clean empty rows
+        leader = leader.filter(r => (r['Name'] || '').trim() !== '');
+
+        // Detect round headers dynamically (e.g., "Round 1".."Round 5")
+        roundHeaders = leader.length ? detectRoundHeaders(leader[0]) : [];
+
+        renderLeaderboard('');
+        buildNameDatalist();
+
+        // NEW: If personal view is open, re-open the same player with fresh data
+        const pvVisible = !document.getElementById('personalView').classList.contains('hidden');
+        if (pvVisible && selectedPlayerName) {
+          const exists = leader.some(p => normalizeName(p['Name']) === normalizeName(selectedPlayerName));
+          if (exists) {
+            openPersonalView(selectedPlayerName);
+          } else {
+            // If player disappeared from data, go back to leaderboard
+            backToLeaderboard();
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('leaderBody').innerHTML = `<tr><td colspan="3" class="empty">Failed to load data. Check sheet permissions & ID.</td></tr>`;
+      }
+    }
+
+    // --- Wire up UI ---
+    document.getElementById('toggleView').addEventListener('click', backToLeaderboard);
+    document.getElementById('refreshBtn').addEventListener('click', loadAll);
+
+    const input = document.getElementById('searchInput');
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        openPersonalView(input.value);
+      }
+    });
+    input.addEventListener('input', (e) => renderLeaderboard(e.target.value));
+
+    // Kick off
+    loadAll();
+  </script>
+</body>
+</html>
