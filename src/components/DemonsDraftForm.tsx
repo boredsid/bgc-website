@@ -7,6 +7,10 @@ type Status = 'idle' | 'submitting' | 'success' | 'error';
 const RED = '#C1272D';
 const PARCHMENT = '#E8E0D0';
 
+// Submissions close at midnight IST at the end of 15 Jun 2026 (i.e. 16 Jun 00:00 IST).
+// Frontend-only soft close — the worker still accepts late posts.
+const DEADLINE_MS = new Date('2026-06-16T00:00:00+05:30').getTime();
+
 const fieldStyle: React.CSSProperties = {
   width: '100%',
   background: 'rgba(0,0,0,0.35)',
@@ -35,6 +39,8 @@ export default function DemonsDraftForm() {
   const [scriptJson, setScriptJson] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
+
+  const closed = Date.now() >= DEADLINE_MS;
 
   // null = empty, true = valid array, false = present but not a valid array
   const jsonValid: boolean | null = (() => {
@@ -76,6 +82,30 @@ export default function DemonsDraftForm() {
       setError('Network error. Please check your connection and try again.');
       setStatus('error');
     }
+  }
+
+  if (closed) {
+    return (
+      <div
+        style={{
+          background: 'rgba(193,39,45,0.12)',
+          border: `1px solid ${RED}`,
+          borderRadius: 12,
+          padding: '2rem',
+          textAlign: 'center',
+          color: PARCHMENT,
+        }}
+      >
+        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🕯️</div>
+        <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", color: '#FFD166', fontSize: '1.4rem', margin: 0 }}>
+          Submissions are closed.
+        </h3>
+        <p style={{ marginTop: '0.75rem', opacity: 0.85 }}>
+          The deadline has passed. The hosts are now assigning code names and passing the
+          scripts to the judges. Thanks to everyone who entered the draft.
+        </p>
+      </div>
+    );
   }
 
   if (status === 'success') {
