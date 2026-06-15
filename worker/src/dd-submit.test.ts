@@ -7,6 +7,7 @@ function mockEnv() {
     UPI_ID: 'x', APPS_SCRIPT_URL: '', APPS_SCRIPT_SECRET: '', BGC_SITE_URL: '',
     CF_ACCESS_TEAM_DOMAIN: 'x', CF_ACCESS_AUD: 'x', ADMIN_EMAILS: '', ENVIRONMENT: 'production',
     DD_SUBMISSION_EMAILS: 'a@example.com, b@example.com',
+    DD_DEADLINE: '2099-01-01T00:00:00+05:30',
   } as any;
 }
 
@@ -144,6 +145,15 @@ describe('handleDdSubmit', () => {
     (getSupabase as any).mockReturnValue(buildSupabaseMock({ insertArg: null }, { insertError: true }));
     const res = await handleDdSubmit(req(VALID), mockEnv(), ctx);
     expect(res.status).toBe(500);
+  });
+
+  it('rejects with 403 once the deadline has passed (no insert)', async () => {
+    const capture = { insertArg: null as any };
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(capture));
+    const env = { ...mockEnv(), DD_DEADLINE: '2000-01-01T00:00:00+05:30' };
+    const res = await handleDdSubmit(req(VALID), env, ctx);
+    expect(res.status).toBe(403);
+    expect(capture.insertArg).toBeNull();
   });
 
   it('rate-limits a duplicate within the window without a second insert', async () => {

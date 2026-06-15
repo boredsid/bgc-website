@@ -6,6 +6,15 @@ import { sendDdSubmissionEmail } from './email';
 
 const MAX_JSON_BYTES = 256 * 1024;
 
+// Hard close: submissions are rejected past midnight IST at the end of
+// 15 Jun 2026 (i.e. 16 Jun 00:00 IST). Override with env.DD_DEADLINE (ISO 8601).
+const DEFAULT_DEADLINE = '2026-06-16T00:00:00+05:30';
+
+function isClosed(env: Env): boolean {
+  const ms = new Date(env.DD_DEADLINE || DEFAULT_DEADLINE).getTime();
+  return Number.isFinite(ms) && Date.now() >= ms;
+}
+
 // Best-effort, per-isolate dedup of double-clicks. Map(phone -> last ms).
 const RATE_LIMIT_MS = 2000;
 const lastSeen = new Map<string, number>();
@@ -26,6 +35,13 @@ export async function handleDdSubmit(
   env: Env,
   ctx: ExecutionContext
 ): Promise<Response> {
+  if (isClosed(env)) {
+    return jsonResponse(
+      { error: 'Submissions for Demon’s Draft are now closed. Thanks for entering.' },
+      403,
+    );
+  }
+
   let body: DdSubmitBody;
   try {
     body = (await request.json()) as DdSubmitBody;

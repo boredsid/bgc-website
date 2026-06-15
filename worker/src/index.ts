@@ -57,6 +57,7 @@ export interface Env {
   DRIVE_API_KEY: string;
   EVENT_PHOTOS_FOLDER_ID: string;
   DD_SUBMISSION_EMAILS?: string;
+  DD_DEADLINE?: string;
 }
 
 export type AdminContext =
