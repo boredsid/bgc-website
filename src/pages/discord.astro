@@ -1,0 +1,51 @@
+---
+const DISCORD_INVITE = 'https://discord.gg/7ck6U59UuJ';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Join the BGC Discord</title>
+    <meta http-equiv="refresh" content={`0;url=${DISCORD_INVITE}`} />
+    <link rel="canonical" href={DISCORD_INVITE} />
+    <meta name="robots" content="noindex" />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff8f0;
+        color: #1a1a1a;
+        font-family: 'Inter', system-ui, sans-serif;
+        text-align: center;
+        padding: 1.5rem;
+      }
+      .card a {
+        color: #f47b20;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .card a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <p>Taking you to the BGC Discord…</p>
+      <p>
+        Not redirected? <a href={DISCORD_INVITE} rel="noopener">Join here</a>.
+      </p>
+    </div>
+    <script is:inline define:vars={{ DISCORD_INVITE }}>
+      window.location.replace(DISCORD_INVITE);
+    </script>
+  </body>
+</html>

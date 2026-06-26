@@ -8,7 +8,7 @@ export default defineConfig({
   integrations: [
     react(),
     sitemap({
-      filter: (page) => !page.includes('/pay'),
+      filter: (page) => !page.includes('/pay') && !page.includes('/discord'),
     }),
   ],
   vite: {
