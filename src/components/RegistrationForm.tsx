@@ -368,8 +368,8 @@ export default function RegistrationForm() {
           href="https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block mt-6 btn btn-black no-underline text-sm"
-          style={{ background: '#25D366', color: '#1A1A1A', padding: '8px 16px' }}
+          className="inline-block mt-6 btn btn-black no-underline text-sm max-w-full"
+          style={{ background: '#25D366', color: '#1A1A1A', padding: '8px 16px', whiteSpace: 'normal' }}
         >
           Join the WhatsApp group to stay updated
         </a>
