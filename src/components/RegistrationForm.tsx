@@ -1,12 +1,34 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getSource } from '../lib/source';
-import type { Event, PhoneLookupResponse, EventSpots } from '../lib/types';
+import type { Event, PhoneLookupResponse, EventSpots, CustomQuestion as CustomQuestionType } from '../lib/types';
 import CustomQuestion from './CustomQuestion';
 import PaymentSheet from './PaymentSheet';
 import { useLeadCapture } from '../lib/use-lead-capture';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
+
+// Mirror of worker/src/pricing.ts effectiveSeatPrice. The public site is a
+// separate package and can't import from worker/, so the rule is duplicated.
+// If any selected option carries a price, the base price is ignored and the
+// effective per-seat price is the sum of selected priced options; an explicit
+// price of 0 counts as a priced selection.
+function effectiveSeatPrice(
+  questions: CustomQuestionType[],
+  answers: Record<string, string | boolean>,
+  basePrice: number,
+): number {
+  const priced: number[] = [];
+  for (const q of questions) {
+    if (q.type !== 'radio' && q.type !== 'select') continue;
+    const answer = answers[q.id];
+    if (typeof answer !== 'string' || answer === '') continue;
+    const opt = q.options?.find((o) => o.value === answer);
+    if (opt && opt.price !== undefined) priced.push(opt.price);
+  }
+  if (priced.length === 0) return basePrice;
+  return priced.reduce((sum, p) => sum + p, 0);
+}
 
 type Step = 'form' | 'payment' | 'success';
 
@@ -167,11 +189,12 @@ export default function RegistrationForm() {
   const soldOut = spots && spots.remaining <= 0;
   const maxSeats = spots ? Math.min(spots.remaining, 10) : 10;
 
-  const grossTotal = event.price * seats;
-  const promoFits = !!activePromo && event.price <= activePromo.max_event_price;
+  const seatPrice = effectiveSeatPrice(event.custom_questions || [], customAnswers, event.price);
+  const grossTotal = seatPrice * seats;
+  const promoFits = !!activePromo && seatPrice <= activePromo.max_event_price;
 
   // 1. Apply guild discount first, building a per-seat cost array.
-  let seatCosts: number[] = Array(seats).fill(event.price);
+  let seatCosts: number[] = Array(seats).fill(seatPrice);
   let total = grossTotal;
   let discountLabel = '';
   if (membership?.isMember) {
@@ -181,9 +204,9 @@ export default function RegistrationForm() {
       const secondSeats = existingSeatsForEvent + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
       const fullSeats = afterFirst - secondSeats;
       seatCosts = [
-        ...Array(fullSeats).fill(event.price),
-        ...Array(secondSeats).fill(event.price * 0.9),
-        ...Array(firstSeats).fill(event.price * 0.8),
+        ...Array(fullSeats).fill(seatPrice),
+        ...Array(secondSeats).fill(seatPrice * 0.9),
+        ...Array(firstSeats).fill(seatPrice * 0.8),
       ];
       total = Math.round(seatCosts.reduce((s, c) => s + c, 0));
       const parts: string[] = [];
@@ -197,10 +220,10 @@ export default function RegistrationForm() {
       const plusOnesUsed = Math.min(plusOneCandidates, membership.plus_ones_remaining);
       const paidSeats = plusOneCandidates - plusOnesUsed;
       seatCosts = [
-        ...Array(paidSeats).fill(event.price),
+        ...Array(paidSeats).fill(seatPrice),
         ...Array(selfSeats + plusOnesUsed).fill(0),
       ];
-      total = paidSeats * event.price;
+      total = paidSeats * seatPrice;
 
       const tierName = membership.tier === 'guildmaster' ? 'Guildmaster' : 'Adventurer';
       const remainingAfter = membership.plus_ones_remaining - plusOnesUsed;
@@ -385,7 +408,7 @@ export default function RegistrationForm() {
           · {event.venue_name}, {event.venue_area}
         </p>
         <div className="flex items-center gap-3 mt-3">
-          <span className="font-heading font-bold text-lg">₹{event.price} / person</span>
+          <span className="font-heading font-bold text-lg">₹{seatPrice} / person</span>
           {spots && (
             <span className="text-xs text-[#1A1A1A]/60">
               {spots.remaining} spot{spots.remaining !== 1 ? 's' : ''} remaining

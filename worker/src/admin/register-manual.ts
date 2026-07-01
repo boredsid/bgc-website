@@ -4,6 +4,7 @@ import { sanitizePhone, sanitizeEmail, sanitizeName, jsonResponse } from '../val
 import { sendEventRegistrationEmail } from '../email';
 import { applyCreditsToTotal, recordCreditEvent } from '../credits';
 import { consumePromoUses, getApplicablePromo } from '../promos';
+import { effectiveSeatPrice, type PricingQuestion } from '../pricing';
 
 export async function handleManualRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -40,6 +41,9 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     .eq('id', body.event_id)
     .maybeSingle();
   if (!event) return jsonResponse({ error: 'Event not found' }, 404);
+
+  const customQuestions = (event.custom_questions || []) as PricingQuestion[];
+  const seatPrice = effectiveSeatPrice(customQuestions, body.custom_answers || {}, event.price);
 
   // Capacity check (excludes cancelled). Over-capacity is allowed but must be
   // explicitly confirmed by the admin: the first attempt returns a structured
@@ -90,14 +94,14 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     .limit(1)
     .maybeSingle();
 
-  let totalAmount = event.price * seats;
+  let totalAmount = seatPrice * seats;
   let discountApplied: string | null = null;
   let plusOnesToConsume = 0;
   let membershipIdToUpdate: string | null = null;
   let membershipNewPlusOnesUsed = 0;
   let promoIdUsed: string | null = null;
   let promoSeatsConsumed = 0;
-  let seatCosts: number[] = Array(seats).fill(event.price);
+  let seatCosts: number[] = Array(seats).fill(seatPrice);
 
   if (member) {
     const { data: priorRegs } = await supabase
@@ -114,9 +118,9 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
       const secondSeats = existingSeats + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
       const fullSeats = afterFirst - secondSeats;
       seatCosts = [
-        ...Array(fullSeats).fill(event.price),
-        ...Array(secondSeats).fill(event.price * 0.9),
-        ...Array(firstSeats).fill(event.price * 0.8),
+        ...Array(fullSeats).fill(seatPrice),
+        ...Array(secondSeats).fill(seatPrice * 0.9),
+        ...Array(firstSeats).fill(seatPrice * 0.8),
       ];
       totalAmount = Math.round(seatCosts.reduce((s, c) => s + c, 0));
       discountApplied = 'initiate';
@@ -128,10 +132,10 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
       plusOnesToConsume = Math.min(plusOneCandidates, remainingCap);
       const paidSeats = plusOneCandidates - plusOnesToConsume;
       seatCosts = [
-        ...Array(paidSeats).fill(event.price),
+        ...Array(paidSeats).fill(seatPrice),
         ...Array(selfSeats + plusOnesToConsume).fill(0),
       ];
-      totalAmount = paidSeats * event.price;
+      totalAmount = paidSeats * seatPrice;
       discountApplied = member.tier;
       membershipIdToUpdate = member.id;
       membershipNewPlusOnesUsed = member.plus_ones_used + plusOnesToConsume;
@@ -139,7 +143,7 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
   }
 
   if (totalAmount > 0) {
-    const applicablePromo = await getApplicablePromo(supabase, userId, event.price);
+    const applicablePromo = await getApplicablePromo(supabase, userId, seatPrice);
     if (applicablePromo) {
       const paidSeatsRemaining = seatCosts.filter((c) => c > 0).length;
       const toConsume = Math.min(paidSeatsRemaining, applicablePromo.remaining_uses);
@@ -217,7 +221,6 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
   }
 
   if (email) {
-    const customQuestions = (event.custom_questions || []) as Array<{ id: string; label: string }>;
     const customForEmail = customQuestions
       .map((q) => ({ id: q.id, label: q.label, answer: (body.custom_answers || {})[q.id] }))
       .filter((q) => q.answer !== undefined && q.answer !== null && q.answer !== '' && q.answer !== false);

@@ -264,3 +264,69 @@ describe('handleRegister guild-path exclusive gate', () => {
     expect(userInsertCalled).toBe(false);
   });
 });
+
+describe('handleRegister differential pricing', () => {
+  function buildMock(capture: { insert: any }) {
+    return {
+      from: (table: string) => {
+        if (table === 'events') return {
+          select: () => ({ eq: () => ({ eq: () => ({ single: async () => ({ data: {
+            id: 'E1', name: 'Test', date: '2026-06-01', venue_name: 'V', venue_area: null,
+            price: 500, capacity: 10, price_includes: null, is_published: true,
+            guild_path_exclusive: false,
+            custom_questions: [
+              { id: 'table', label: 'Table', type: 'radio', required: true,
+                options: [{ value: 'Standard' }, { value: 'VIP', price: 800 }] },
+            ],
+          }, error: null }) }) }) }),
+        };
+        if (table === 'registrations') return {
+          select: () => ({ eq: () => ({ neq: async () => ({ data: [], error: null }) }) }),
+          insert: (row: any) => { capture.insert = row; return { select: () => ({ single: async () => ({ data: { id: 'R1' }, error: null }) }) }; },
+        };
+        if (table === 'users') return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+          insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'U1' }, error: null }) }) }),
+        };
+        if (table === 'guild_path_members') return {
+          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }) }),
+        };
+        if (table === 'leads') return {
+          update: () => ({ eq: () => ({ eq: () => ({ is: () => ({ is: async () => ({ error: null }) }) }) }) }),
+        };
+        return null;
+      },
+    };
+  }
+
+  it('charges the option price instead of the base price', async () => {
+    const capture = { insert: null as any };
+    (getSupabase as any).mockReturnValue(buildMock(capture));
+    const req = new Request('http://localhost/api/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'E1', name: 'Asha', phone: '9876543210', email: 'a@b.com',
+        seats: 2, custom_answers: { table: 'VIP' }, payment_status: 'pending',
+      }),
+    });
+    const ctx = { waitUntil: (p: Promise<unknown>) => p } as any;
+    const res = await handleRegister(req, mockEnv(), ctx);
+    expect(res.status).toBe(200);
+    expect(capture.insert.total_amount).toBe(1600); // 800 * 2 seats
+  });
+
+  it('falls back to base price when the unpriced option is chosen', async () => {
+    const capture = { insert: null as any };
+    (getSupabase as any).mockReturnValue(buildMock(capture));
+    const req = new Request('http://localhost/api/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'E1', name: 'Asha', phone: '9876543210', email: 'a@b.com',
+        seats: 1, custom_answers: { table: 'Standard' }, payment_status: 'pending',
+      }),
+    });
+    const ctx = { waitUntil: (p: Promise<unknown>) => p } as any;
+    await handleRegister(req, mockEnv(), ctx);
+    expect(capture.insert.total_amount).toBe(500);
+  });
+});

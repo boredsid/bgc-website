@@ -253,3 +253,78 @@ describe('handleManualRegister', () => {
     });
   });
 });
+
+describe('handleManualRegister differential pricing', () => {
+  const pricedEvent = {
+    id: 'e1', name: 'Test', date: '2026-06-01T00:00:00Z',
+    price: 500, capacity: 20, is_published: true,
+    venue_name: 'X', venue_area: null, price_includes: null,
+    custom_questions: [
+      { id: 'table', label: 'Table', type: 'radio', required: true,
+        options: [{ value: 'Standard' }, { value: 'VIP', price: 800 }] },
+    ],
+  };
+
+  function buildPricingMock(capture: { insert: any }) {
+    return {
+      from: (table: string) => {
+        if (table === 'events') {
+          return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: pricedEvent, error: null }) }) }) };
+        }
+        if (table === 'registrations') {
+          return {
+            select: () => ({ eq: () => ({ neq: async () => ({ data: [], error: null }) }) }),
+            insert: (row: any) => { capture.insert = row; return { select: () => ({ single: async () => ({ data: { id: 'reg-dp' }, error: null }) }) }; },
+          };
+        }
+        if (table === 'users') {
+          return {
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 'u1' }, error: null }) }) }),
+            update: () => ({ eq: async () => ({ error: null }) }),
+          };
+        }
+        if (table === 'guild_path_members') {
+          return noMember();
+        }
+        if (table === 'user_credits') {
+          return {
+            select: () => ({ eq: async () => ({ data: [], error: null }) }),
+            insert: async () => ({ error: null }),
+          };
+        }
+        return null;
+      },
+    };
+  }
+
+  it('charges the option price × seats when a priced option is selected', async () => {
+    const capture = { insert: null as any };
+    (getSupabase as any).mockReturnValue(buildPricingMock(capture));
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com',
+        seats: 2, payment_status: 'confirmed', custom_answers: { table: 'VIP' },
+      }),
+    });
+    const ctx = { waitUntil: () => {} } as any;
+    const res = await handleManualRegister(req, mockEnv(), ctx);
+    expect(res.status).toBe(200);
+    expect(capture.insert.total_amount).toBe(1600); // 800 * 2 seats
+  });
+
+  it('falls back to base price when the unpriced option is chosen', async () => {
+    const capture = { insert: null as any };
+    (getSupabase as any).mockReturnValue(buildPricingMock(capture));
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com',
+        seats: 1, payment_status: 'confirmed', custom_answers: { table: 'Standard' },
+      }),
+    });
+    const ctx = { waitUntil: () => {} } as any;
+    await handleManualRegister(req, mockEnv(), ctx);
+    expect(capture.insert.total_amount).toBe(500);
+  });
+});

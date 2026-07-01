@@ -1,6 +1,7 @@
 export interface CustomQuestionOption {
   value: string;
   capacity?: number;
+  price?: number;
 }
 
 export interface CustomQuestion {
