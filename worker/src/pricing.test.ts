@@ -30,7 +30,14 @@ describe('effectiveSeatPrice', () => {
   it('only counts the priced answer when mixing priced and unpriced', () => {
     expect(effectiveSeatPrice([tableQ, mealQ], { table: 'Standard', meal: 'Dinner' }, 500)).toBe(300);
   });
-  it('ignores non-option answer types and unselected questions', () => {
+  it('ignores questions with no matching answer', () => {
     expect(effectiveSeatPrice([tableQ, mealQ], { note: 'x' }, 500)).toBe(500);
+  });
+  it('ignores checkbox questions even when the option carries a price', () => {
+    const checkboxQ: PricingQuestion = {
+      id: 'addon', label: 'Add-on', type: 'checkbox', required: false,
+      options: [{ value: 'Extras', price: 200 }],
+    };
+    expect(effectiveSeatPrice([checkboxQ], { addon: true }, 500)).toBe(500);
   });
 });
