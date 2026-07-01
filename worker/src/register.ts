@@ -4,6 +4,7 @@ import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonRespons
 import { sendEventRegistrationEmail } from './email';
 import { applyCreditsToTotal, recordCreditEvent } from './credits';
 import { consumePromoUses, getApplicablePromo } from './promos';
+import { effectiveSeatPrice } from './pricing';
 
 export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -104,6 +105,8 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     }
   }
 
+  const seatPrice = effectiveSeatPrice(customQuestions, customAnswers, event.price);
+
   // Look up the user (if any) and their active guild membership BEFORE creating
   // a user row. This lets us gate guild-exclusive events without polluting the
   // users table with phantom rows for non-members who get rejected.
@@ -151,7 +154,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     userId = newUser.id;
   }
 
-  let totalAmount = event.price * seats;
+  let totalAmount = seatPrice * seats;
   let discountApplied: string | null = null;
   let plusOnesToConsume = 0;
   let membershipIdToUpdate: string | null = null;
@@ -159,7 +162,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
   let promoIdUsed: string | null = null;
   let promoSeatsConsumed = 0;
   // Per-seat cost array so the promo can cover the most-expensive seats first.
-  let seatCosts: number[] = Array(seats).fill(event.price);
+  let seatCosts: number[] = Array(seats).fill(seatPrice);
 
   if (member) {
     const { data: priorRegs } = await supabase
@@ -176,9 +179,9 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       const secondSeats = existingSeats + firstSeats < 2 ? Math.min(1, afterFirst) : 0;
       const fullSeats = afterFirst - secondSeats;
       seatCosts = [
-        ...Array(fullSeats).fill(event.price),
-        ...Array(secondSeats).fill(event.price * 0.9),
-        ...Array(firstSeats).fill(event.price * 0.8),
+        ...Array(fullSeats).fill(seatPrice),
+        ...Array(secondSeats).fill(seatPrice * 0.9),
+        ...Array(firstSeats).fill(seatPrice * 0.8),
       ];
       totalAmount = Math.round(seatCosts.reduce((s, c) => s + c, 0));
       discountApplied = 'initiate';
@@ -191,12 +194,12 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       plusOnesToConsume = Math.min(plusOneCandidates, remainingCap);
       const paidSeats = plusOneCandidates - plusOnesToConsume;
 
-      // Free seats from guild are 0, paid seats are at full event.price.
+      // Free seats from guild are 0, paid seats are at full seatPrice.
       seatCosts = [
-        ...Array(paidSeats).fill(event.price),
+        ...Array(paidSeats).fill(seatPrice),
         ...Array(selfSeats + plusOnesToConsume).fill(0),
       ];
-      totalAmount = paidSeats * event.price;
+      totalAmount = paidSeats * seatPrice;
       discountApplied = member.tier;
       membershipIdToUpdate = member.id;
       membershipNewPlusOnesUsed = member.plus_ones_used + plusOnesToConsume;
@@ -206,7 +209,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
   // Apply giveaway promo to any remaining paid seats (highest cost first).
   // If totalAmount is already 0, the promo is preserved.
   if (totalAmount > 0) {
-    const applicablePromo = await getApplicablePromo(supabase, userId, event.price);
+    const applicablePromo = await getApplicablePromo(supabase, userId, seatPrice);
     if (applicablePromo) {
       const paidSeatsRemaining = seatCosts.filter((c) => c > 0).length;
       const toConsume = Math.min(paidSeatsRemaining, applicablePromo.remaining_uses);
