@@ -160,6 +160,14 @@ function OptionsEditor({ options, onChange }: { options: CustomQuestionOption[];
             value={o.capacity ?? ''}
             onChange={(e) => update(idx, { capacity: e.target.value ? Number(e.target.value) : undefined })}
           />
+          <Input
+            type="number"
+            placeholder="Price"
+            aria-label="Option price"
+            className="w-16 sm:w-24 shrink-0"
+            value={o.price ?? ''}
+            onChange={(e) => update(idx, { price: e.target.value ? Number(e.target.value) : undefined })}
+          />
           <Button variant="ghost" size="icon" className="shrink-0" onClick={() => remove(idx)} aria-label="Remove option">
             <Trash2 className="h-4 w-4" />
           </Button>

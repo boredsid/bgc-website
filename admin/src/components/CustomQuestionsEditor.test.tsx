@@ -41,4 +41,14 @@ describe('CustomQuestionsEditor', () => {
     render(<CustomQuestionsEditor value={value} onChange={() => {}} />);
     expect(screen.getByDisplayValue('Veg')).toBeInTheDocument();
   });
+
+  it('sets a price on an option', () => {
+    const value: CustomQuestion[] = [
+      { id: 'table', label: 'Table', type: 'radio', required: false, options: [{ value: 'VIP' }] },
+    ];
+    let last: CustomQuestion[] = value;
+    render(<CustomQuestionsEditor value={value} onChange={(v) => { last = v; }} />);
+    fireEvent.change(screen.getByLabelText('Option price'), { target: { value: '800' } });
+    expect(last[0].options![0].price).toBe(800);
+  });
 });
