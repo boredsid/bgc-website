@@ -1,0 +1,116 @@
+---
+import Layout from '../layouts/Layout.astro';
+const MCP_URL = 'https://api.boardgamecompany.in/mcp';
+---
+
+<Layout
+  title="Connect your AI assistant"
+  description="Connect Claude, ChatGPT, or any MCP-enabled AI assistant to Board Game Company — browse events, check the library, and register from inside a conversation."
+>
+  <section class="py-14" style="background: #FFF8E7;">
+    <div class="max-w-[800px] mx-auto px-6 text-center">
+      <span class="section-tag">For AI assistants</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        BGC on MCP
+      </h1>
+      <p class="text-lg text-[#1A1A1A]/70 mt-4 max-w-[560px] mx-auto">
+        Plug Board Game Company into Claude, ChatGPT, or any AI assistant that speaks MCP —
+        then browse events, search our game library, and register without leaving the chat.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-12">
+    <div class="max-w-[760px] mx-auto px-6 prose-bgc">
+      <h2>The connection URL</h2>
+      <pre><code>{MCP_URL}</code></pre>
+      <p>
+        That's it — no API key, no login. Add it to your assistant and ask away.
+      </p>
+
+      <h2>What it can do</h2>
+      <ul>
+        <li><strong>Browse events</strong> — upcoming events with dates, venues, prices, and live spots remaining.</li>
+        <li><strong>Register</strong> — your assistant collects your details and books your spot. You pay via UPI as usual; nothing changes about payment.</li>
+        <li><strong>Join a waitlist</strong> — when an event is full.</li>
+        <li><strong>Search the library</strong> — 130+ games by player count, play time, or name.</li>
+        <li><strong>Guild Path</strong> — see tiers and subscribe.</li>
+        <li><strong>Check your status</strong> — your registrations, membership, and credit balance.</li>
+        <li><strong>Photos &amp; community</strong> — event photo albums, WhatsApp group, Instagram, Discord.</li>
+      </ul>
+
+      <h2>Set it up</h2>
+
+      <h3>Claude (claude.ai)</h3>
+      <p>
+        Settings → Connectors → <strong>Add custom connector</strong> → paste the URL above → Add.
+        Works on web and desktop.
+      </p>
+
+      <h3>Claude Code</h3>
+      <pre><code>claude mcp add --transport http bgc {MCP_URL}</code></pre>
+
+      <h3>ChatGPT</h3>
+      <p>
+        Enable Developer Mode (Settings → Apps &amp; Connectors → Advanced), then
+        <strong>Create connector</strong> with the URL above and "No authentication".
+      </p>
+
+      <h3>Cursor / other MCP clients</h3>
+      <pre><code>{`{
+  "mcpServers": {
+    "bgc": { "url": "${MCP_URL}" }
+  }
+}`}</code></pre>
+
+      <h2>Try asking</h2>
+      <ul>
+        <li>"What's happening at BGC this weekend?"</li>
+        <li>"Register me for Saturday's event — I'm Asha, 98xxxxxx10, asha@example.com."</li>
+        <li>"Find me a game for 6 players under an hour."</li>
+        <li>"What Guild Path tiers are there?"</li>
+        <li>"Am I registered for anything? My number is 98xxxxxx10."</li>
+      </ul>
+
+      <h2>Privacy &amp; payments</h2>
+      <ul>
+        <li>No login and no stored sessions — your phone number is only sent when you ask your assistant to act for you (registering, checking your status).</li>
+        <li>Payments never go through the assistant. Registration returns our standard UPI details and you pay exactly as you would on the website.</li>
+        <li>Cancellations aren't possible via the connector — message a BGC admin on
+          <a href="https://wa.me/919982200768">WhatsApp</a> instead.</li>
+      </ul>
+
+      <p>
+        Questions or something misbehaving? Ping us on
+        <a href="https://wa.me/919982200768">WhatsApp</a> or
+        <a href="https://instagram.com/boardgamecompany">Instagram</a>.
+      </p>
+    </div>
+  </section>
+
+  <style is:global>
+    .prose-bgc { color: #1A1A1A; line-height: 1.7; }
+    .prose-bgc h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 0.75rem; letter-spacing: -0.5px; }
+    .prose-bgc h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 1.15rem; margin-top: 1.75rem; margin-bottom: 0.5rem; letter-spacing: -0.3px; }
+    .prose-bgc p { margin: 0.75rem 0; }
+    .prose-bgc ul { margin: 0.75rem 0 0.75rem 1.25rem; padding: 0; }
+    .prose-bgc li { margin: 0.4rem 0; }
+    .prose-bgc a { color: #F47B20; text-decoration: underline; text-underline-offset: 3px; }
+    .prose-bgc a:hover { color: #1A1A1A; }
+    .prose-bgc pre {
+      background: #1A1A1A;
+      color: #FFF8E7;
+      border: 3px solid #1A1A1A;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 0.75rem 0;
+      overflow-x: auto;
+      box-shadow: 3px 3px 0 rgba(244, 123, 32, 0.4);
+    }
+    .prose-bgc pre code {
+      font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9rem;
+      white-space: pre;
+    }
+  </style>
+</Layout>
