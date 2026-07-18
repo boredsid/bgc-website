@@ -9,6 +9,8 @@ import { handleGuildStatus } from './guild-status';
 import { handleEventPhotos, handleEventPhotosFolder, handleEventPhotoImage } from './event-photos';
 import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
 import { verifyAccessJwt } from './access-auth';
+import { handleMcp } from './mcp/protocol';
+import { ALL_TOOLS } from './mcp/tools';
 import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
 import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame, handleOwnersSummary } from './admin/games';
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
@@ -69,7 +71,7 @@ function corsHeaders(origin: string | null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': origin || '*',
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Cf-Access-Jwt-Assertion',
+    'Access-Control-Allow-Headers': 'Content-Type, Cf-Access-Jwt-Assertion, Mcp-Session-Id, Mcp-Protocol-Version',
     'Access-Control-Allow-Credentials': 'true',
   };
 }
@@ -145,6 +147,8 @@ export default {
       } else if (url.pathname.startsWith('/api/event-photos/image/') && request.method === 'GET') {
         const fileId = decodeURIComponent(url.pathname.split('/api/event-photos/image/')[1] ?? '');
         response = await handleEventPhotoImage(fileId, request, env, ctx);
+      } else if (url.pathname === '/mcp') {
+        response = await handleMcp(request, env, ctx, ALL_TOOLS);
       } else if (url.pathname.startsWith('/api/admin/')) {
         const gate = await gateAdmin(request, env);
         if (!gate.ok) {
