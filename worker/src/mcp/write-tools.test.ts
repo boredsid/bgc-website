@@ -87,6 +87,20 @@ describe('register_for_event', () => {
     expect(out.message).toMatch(/nothing to pay/i);
   });
 
+  it('reports success without a false "nothing to pay" claim when the post-success amount fetch fails', async () => {
+    (handleRegister as any).mockResolvedValue(jsonRes({ success: true, registration_id: 'R1' }));
+    (getSupabase as any).mockReturnValue({
+      from: () => ({ select: () => ({ eq: () => ({ single: async () => ({
+        data: null, error: { message: 'boom' },
+      }) }) }) }),
+    });
+    const out = await tool('register_for_event').handler(args, env, ctx) as any;
+    expect(out.registered).toBe(true);
+    expect(out.amount_due_inr).toBeNull();
+    expect(out.payment).toBeNull();
+    expect(JSON.stringify(out)).not.toMatch(/nothing to pay/i);
+  });
+
   it('suggests the waitlist when the event is full', async () => {
     (handleRegister as any).mockResolvedValue(jsonRes({ error: 'Only 0 spots remaining' }, 400));
     await expect(tool('register_for_event').handler(args, env, ctx))
@@ -149,5 +163,19 @@ describe('join_guild_path', () => {
   it('relays tier validation errors', async () => {
     (handleGuildPurchase as any).mockResolvedValue(jsonRes({ error: 'Invalid tier' }, 400));
     await expect(tool('join_guild_path').handler(args, env, ctx)).rejects.toThrow('Invalid tier');
+  });
+
+  it('reports success without a false "nothing to pay" claim when the post-success amount fetch fails', async () => {
+    (handleGuildPurchase as any).mockResolvedValue(jsonRes({ success: true, purchase_id: 'P1' }));
+    (getSupabase as any).mockReturnValue({
+      from: () => ({ select: () => ({ eq: () => ({ single: async () => ({
+        data: null, error: { message: 'boom' },
+      }) }) }) }),
+    });
+    const out = await tool('join_guild_path').handler(args, env, ctx) as any;
+    expect(out.purchased).toBe(true);
+    expect(out.amount_due_inr).toBeNull();
+    expect(out.payment).toBeNull();
+    expect(JSON.stringify(out)).not.toMatch(/nothing to pay/i);
   });
 });

@@ -43,7 +43,10 @@ export async function handleMcp(
   tools: McpTool[],
 ): Promise<Response> {
   if (request.method !== 'POST') {
-    return json({ error: 'Method not allowed. POST JSON-RPC 2.0 messages to this endpoint.' }, 405);
+    return new Response(JSON.stringify({ error: 'Method not allowed. POST JSON-RPC 2.0 messages to this endpoint.' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', Allow: 'POST' },
+    });
   }
 
   let msg: RpcMessage;

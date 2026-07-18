@@ -83,20 +83,32 @@ const registerForEvent: McpTool = {
       .eq('id', body.registration_id)
       .single();
 
-    const amount = reg?.total_amount ?? 0;
-    const eventName = (reg as { events?: { name?: string } } | null)?.events?.name ?? 'BGC event';
+    if (!reg) {
+      return {
+        registered: true,
+        registration_id: body.registration_id,
+        amount_due_inr: null,
+        payment: null,
+        message:
+          "Registration confirmed, but we couldn't retrieve the amount right now — check the confirmation email for payment details, or ask a BGC admin.",
+        cancellation: CANCELLATION_NOTE,
+      };
+    }
+
+    const amount = reg.total_amount ?? 0;
+    const eventName = (reg as { events?: { name?: string } })?.events?.name ?? 'BGC event';
 
     return {
       registered: true,
       registration_id: body.registration_id,
       event: eventName,
-      seats: reg?.seats,
+      seats: reg.seats,
       amount_due_inr: amount,
-      discount_applied: reg?.discount_applied ?? null,
-      credits_applied_inr: reg?.credits_applied ?? 0,
+      discount_applied: reg.discount_applied ?? null,
+      credits_applied_inr: reg.credits_applied ?? 0,
       payment: amount > 0 ? upiPayment(env, amount, eventName) : null,
       ...(amount === 0 ? { message: 'Nothing to pay — the seat is covered by membership, promo, or credits.' } : {}),
-      confirmation: 'A confirmation email with these details has been sent.',
+      confirmation: 'A confirmation email with these details should arrive shortly.',
       cancellation: CANCELLATION_NOTE,
     };
   },
@@ -139,7 +151,7 @@ const joinWaitlist: McpTool = {
 
     return {
       waitlisted: true,
-      message: "They're on the waitlist (first come, first served). A BGC admin will reach out if a spot opens up. A confirmation email has been sent.",
+      message: "They're on the waitlist (first come, first served). A BGC admin will reach out if a spot opens up. A confirmation email should arrive shortly.",
     };
   },
 };
@@ -179,18 +191,29 @@ const joinGuildPath: McpTool = {
       .eq('id', body.purchase_id)
       .single();
 
-    const amount = purchase?.amount ?? 0;
+    if (!purchase) {
+      return {
+        purchased: true,
+        purchase_id: body.purchase_id,
+        amount_due_inr: null,
+        payment: null,
+        message:
+          "Purchase confirmed, but we couldn't retrieve the amount right now — check the confirmation email for payment details, or ask a BGC admin. Membership activates once a BGC admin confirms the payment.",
+      };
+    }
+
+    const amount = purchase.amount ?? 0;
     const tierName = String(args.tier).charAt(0).toUpperCase() + String(args.tier).slice(1);
 
     return {
       purchased: true,
-      tier: purchase?.tier ?? args.tier,
-      starts_at: purchase?.starts_at,
-      expires_at: purchase?.expires_at,
+      tier: purchase.tier ?? args.tier,
+      starts_at: purchase.starts_at,
+      expires_at: purchase.expires_at,
       amount_due_inr: amount,
       payment: amount > 0 ? upiPayment(env, amount, `${tierName} (Guild Path)`) : null,
       ...(amount === 0 ? { message: 'Nothing to pay — covered by credits.' } : {}),
-      confirmation: 'A confirmation email with these details has been sent. Membership activates once a BGC admin confirms the payment.',
+      confirmation: 'A confirmation email with these details should arrive shortly. Membership activates once a BGC admin confirms the payment.',
     };
   },
 };

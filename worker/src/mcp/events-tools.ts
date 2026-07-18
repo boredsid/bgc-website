@@ -66,13 +66,14 @@ const getEvent: McpTool = {
     const eventId = String(args.event_id ?? '');
     const supabase = getSupabase(env);
 
-    const { data: event } = await supabase
+    const { data: event, error } = await supabase
       .from('events')
       .select('id, name, description, date, venue_name, venue_area, price, price_includes, capacity, guild_path_exclusive, custom_questions, llm_notes')
       .eq('id', eventId)
       .eq('is_published', true)
       .maybeSingle();
 
+    if (error) throw new Error(error.message);
     if (!event) throw new ToolError('Could not find that event. Use list_events to see current events.');
 
     // Reuse the existing spots handler for capacity + per-option counts.
