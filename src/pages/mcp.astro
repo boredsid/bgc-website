@@ -7,7 +7,7 @@ const MCP_URL = 'https://api.boardgamecompany.in/mcp';
   title="Connect your AI assistant"
   description="Connect Claude, ChatGPT, or any MCP-enabled AI assistant to Board Game Company — browse events, check the library, and register from inside a conversation."
 >
-  <section class="py-14" style="background: #FFF8E7;">
+  <section class="pt-14 pb-10" style="background: #FFF8E7;">
     <div class="max-w-[800px] mx-auto px-6 text-center">
       <span class="section-tag">For AI assistants</span>
       <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
@@ -20,7 +20,7 @@ const MCP_URL = 'https://api.boardgamecompany.in/mcp';
     </div>
   </section>
 
-  <section class="py-12">
+  <section class="pt-6 pb-12">
     <div class="max-w-[760px] mx-auto px-6 prose-bgc">
       <h2>The connection URL</h2>
       <pre><code>{MCP_URL}</code></pre>
@@ -91,6 +91,7 @@ const MCP_URL = 'https://api.boardgamecompany.in/mcp';
   <style is:global>
     .prose-bgc { color: #1A1A1A; line-height: 1.7; }
     .prose-bgc h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 0.75rem; letter-spacing: -0.5px; }
+    .prose-bgc > h2:first-child { margin-top: 0; }
     .prose-bgc h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 1.15rem; margin-top: 1.75rem; margin-bottom: 0.5rem; letter-spacing: -0.3px; }
     .prose-bgc p { margin: 0.75rem 0; }
     .prose-bgc ul { margin: 0.75rem 0 0.75rem 1.25rem; padding: 0; }
