@@ -33,6 +33,13 @@ import {
   handleListUsers,
   handleAdjustUserCredits,
 } from './admin/users';
+import {
+  handleListCorporateEvents,
+  handleCreateCorporateEvent,
+  handleUpdateCorporateEvent,
+  handleDeleteCorporateEvent,
+  handleUploadCorporateLogo,
+} from './admin/corporate-events';
 import { handleSummary } from './admin/summary';
 import { handleSearch } from './admin/search';
 import { handleLog } from './admin/log';
@@ -70,7 +77,7 @@ export type AdminContext =
 function corsHeaders(origin: string | null): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': origin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Cf-Access-Jwt-Assertion, Mcp-Session-Id, Mcp-Protocol-Version',
     'Access-Control-Allow-Credentials': 'true',
   };
@@ -274,6 +281,22 @@ export default {
               else if (!promoId && request.method === 'POST') adminResponse = await handleCreatePromo(request, env, gate.admin.email);
               else if (promoId && request.method === 'PATCH') adminResponse = await handleUpdatePromo(promoId, request, env);
               else if (promoId && request.method === 'DELETE') adminResponse = await handleDeletePromo(promoId, env);
+              else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+            }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/corporate-events/logo' && request.method === 'POST') {
+            adminResponse = await handleUploadCorporateLogo(request, env);
+          }
+
+          if (!adminResponse) {
+            const corpMatch = url.pathname.match(/^\/api\/admin\/corporate-events(?:\/([^/]+))?$/);
+            if (corpMatch) {
+              const corpId = corpMatch[1];
+              if (!corpId && request.method === 'GET') adminResponse = await handleListCorporateEvents(env);
+              else if (!corpId && request.method === 'POST') adminResponse = await handleCreateCorporateEvent(request, env);
+              else if (corpId && request.method === 'PATCH') adminResponse = await handleUpdateCorporateEvent(corpId, request, env);
+              else if (corpId && request.method === 'DELETE') adminResponse = await handleDeleteCorporateEvent(corpId, env);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }

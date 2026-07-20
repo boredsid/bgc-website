@@ -42,6 +42,19 @@ export interface CustomQuestionOption {
   price?: number;
 }
 
+export interface CorporateEvent {
+  id: string;
+  company_name: string;
+  title: string | null;
+  event_date: string;
+  headcount: number | null;
+  description: string | null;
+  logo_url: string | null;
+  testimonial: string | null;
+  is_published: boolean;
+  created_at: string;
+}
+
 export interface EventSpots {
   capacity: number;
   registered: number;

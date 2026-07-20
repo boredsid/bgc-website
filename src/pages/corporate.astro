@@ -1,0 +1,161 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CorporateShowcase from '../components/CorporateShowcase.tsx';
+
+const WHATSAPP_URL =
+  "https://wa.me/919982200768?text=" +
+  encodeURIComponent("Hi! I'd like to plan a corporate event for my team.");
+const MAILTO_URL =
+  'mailto:hello@boardgamecompany.in?subject=' + encodeURIComponent('Corporate event enquiry');
+
+const siteUrl = Astro.site!.toString().replace(/\/$/, '');
+const serviceSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: 'Corporate board game events',
+  serviceType: 'Team building events',
+  provider: { '@id': `${siteUrl}/#organization` },
+  areaServed: { '@type': 'City', name: 'Bangalore' },
+  description:
+    'Facilitated board game events for corporate offsites, team days and office parties in Bangalore. Games, hosts and setup handled by Board Game Company.',
+};
+
+const specs = [
+  { label: 'Players', value: '10–200+' },
+  { label: 'Time', value: '2–4 hours' },
+  { label: 'Setup', value: 'We handle it' },
+  { label: 'Experience', value: 'None needed' },
+];
+
+const steps = [
+  {
+    number: '01',
+    heading: 'Tell us about your team',
+    body: 'Headcount, date, and where — your office, an offsite venue, or ask us to suggest one.',
+  },
+  {
+    number: '02',
+    heading: 'We build the game plan',
+    body: 'Games picked from our 130+ library to fit your group, plus hosts who teach every rule. No one reads a manual.',
+  },
+  {
+    number: '03',
+    heading: 'You show up and play',
+    body: 'No slides, no trust falls. Tables of colleagues out-bluffing and out-trading each other — and actually talking.',
+  },
+];
+---
+
+<Layout
+  title="Corporate & Team Events"
+  description="Board game events for corporate offsites, team days and office parties in Bangalore. We bring the games and the hosts — your team brings the competitive streak."
+  schema={serviceSchema}
+>
+  <!-- Hero: dark slab, same register as home -->
+  <section style="background: #1A1A1A;">
+    <div class="max-w-[1200px] mx-auto px-6 py-16 md:py-24">
+      <div class="font-heading font-semibold text-xs md:text-sm tracking-widest" style="color: #FFD166;">
+        ▸ CORPORATE & TEAM EVENTS
+      </div>
+      <h1
+        class="font-heading font-bold text-white mt-3"
+        style="font-size: clamp(2.4rem, 6.5vw, 4.6rem); line-height: 1.0; letter-spacing: -2px;"
+      >
+        Team building that doesn't feel like team building.
+      </h1>
+      <p class="mt-5 text-base md:text-lg text-white/70 max-w-xl">
+        Facilitated board game events for offsites, team days and office parties.
+        We bring the games and the hosts — your team brings the competitive streak.
+      </p>
+
+      <!-- Spec strip: the back of the game box -->
+      <div
+        class="mt-8 grid grid-cols-2 md:grid-cols-4 max-w-2xl"
+        style="border: 3px solid rgba(255,255,255,0.9); border-radius: var(--radius-md); overflow: hidden;"
+      >
+        {specs.map((s) => (
+          <div class="spec-cell px-4 py-3">
+            <div class="font-heading font-semibold text-[0.65rem] tracking-widest uppercase" style="color: #FFD166;">
+              {s.label}
+            </div>
+            <div class="font-heading font-bold text-white text-lg leading-tight">{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" class="btn btn-primary no-underline">
+          Plan an event on WhatsApp →
+        </a>
+        <a
+          href={MAILTO_URL}
+          class="btn no-underline"
+          style="background: transparent; color: #FFFFFF; border: 4px solid #FFFFFF;"
+        >
+          hello@boardgamecompany.in
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Logo wall (data-driven) -->
+  <CorporateShowcase client:load section="logos" />
+
+  <!-- How it works -->
+  <section class="py-14 md:py-20" style="background: #FFD166; border-top: var(--border-thick); border-bottom: var(--border-thick);">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <span class="pill pill-black">How it works</span>
+      <h2 class="font-heading font-bold mt-4" style="font-size: clamp(1.8rem, 4vw, 2.8rem); letter-spacing: -1px;">
+        You book it. We run it.
+      </h2>
+      <div class="mt-8 grid gap-6 md:grid-cols-3">
+        {steps.map((step) => (
+          <div class="card-brutal p-6">
+            <div class="font-heading font-bold text-4xl" style="color: #F47B20;">{step.number}</div>
+            <h3 class="font-heading font-bold text-xl mt-2">{step.heading}</h3>
+            <p class="mt-2 text-[#1A1A1A]/80">{step.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Past + upcoming events (data-driven) -->
+  <CorporateShowcase client:load section="events" />
+
+  <!-- CTA band -->
+  <section class="py-16 md:py-24" style="background: #F47B20; border-top: 4px solid #1A1A1A;">
+    <div class="max-w-[1200px] mx-auto px-6">
+      <h2
+        class="font-heading font-bold text-white"
+        style="font-size: clamp(2.2rem, 6vw, 4rem); line-height: 1.0; letter-spacing: -1.5px;"
+      >
+        Let's plan your game night.
+      </h2>
+      <p class="mt-4 text-base md:text-lg text-white/85 max-w-xl">
+        Tell us your headcount and a date — we'll take it from there.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-4">
+        <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" class="btn btn-black no-underline">
+          WhatsApp us
+        </a>
+        <a href={MAILTO_URL} class="btn btn-black no-underline">
+          Email us
+        </a>
+      </div>
+      <p class="mt-6 text-[#1A1A1A]/70 text-sm font-semibold">
+        Looking for our public sessions instead? <a href="/register" class="underline text-[#1A1A1A]">Register here</a>.
+      </p>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  /* Hairline dividers between spec cells, matching the outer border */
+  .spec-cell { border-left: 3px solid rgba(255, 255, 255, 0.9); }
+  .spec-cell:first-child { border-left: 0; }
+  @media (max-width: 767px) {
+    .spec-cell:nth-child(odd) { border-left: 0; }
+    .spec-cell:nth-child(n + 3) { border-top: 3px solid rgba(255, 255, 255, 0.9); }
+  }
+</style>
