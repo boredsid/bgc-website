@@ -120,6 +120,88 @@ describe('register_for_event', () => {
   });
 });
 
+describe('register_for_event duplicate guard', () => {
+  const args = {
+    event_id: 'E1', name: 'Asha', phone: '9876543210', email: 'a@b.com',
+    seats: 1, custom_answers: {},
+  };
+
+  // Table/column-aware mock: the pre-check chain (select('seats').eq().eq().neq())
+  // resolves `precheck`; the post-success by-id chain resolves `regRow`.
+  function mockRegisterSupabase(opts: { precheck?: unknown; precheckThrows?: boolean; regRow?: unknown }) {
+    (getSupabase as any).mockReturnValue({
+      from: (table: string) => ({
+        select: (cols: string) => {
+          if (table === 'registrations' && cols === 'seats') {
+            return { eq: () => ({ eq: () => ({ neq: async () => {
+              if (opts.precheckThrows) throw new Error('precheck boom');
+              return opts.precheck ?? { data: [], error: null };
+            } }) }) };
+          }
+          return { eq: () => ({ single: async () => ({ data: opts.regRow ?? null }) }) };
+        },
+      }),
+    });
+  }
+
+  const regRow = {
+    total_amount: 500, discount_applied: null, credits_applied: 0, seats: 1,
+    events: { name: 'Catan Night' },
+  };
+
+  it('asks for confirmation instead of registering when the phone already has seats', async () => {
+    mockRegisterSupabase({ precheck: { data: [{ seats: 2 }, { seats: 1 }], error: null } });
+
+    const out = await tool('register_for_event').handler(args, env, ctx) as any;
+
+    expect(out.registered).toBe(false);
+    expect(out.requires_confirmation).toBe(true);
+    expect(out.existing_seats).toBe(3);
+    expect(out.message).toMatch(/already has 3 seat/);
+    expect(out.message).toMatch(/confirm_additional/);
+    expect(handleRegister).not.toHaveBeenCalled();
+  });
+
+  it('proceeds when confirm_additional is true and does not forward the flag', async () => {
+    mockRegisterSupabase({ precheck: { data: [{ seats: 1 }], error: null }, regRow });
+    (handleRegister as any).mockResolvedValue(jsonRes({ success: true, registration_id: 'R1' }));
+
+    const out = await tool('register_for_event').handler({ ...args, confirm_additional: true }, env, ctx) as any;
+
+    expect(out.registered).toBe(true);
+    const forwarded = await ((handleRegister as any).mock.calls[0][0] as Request).json();
+    expect(forwarded).not.toHaveProperty('confirm_additional');
+    expect(forwarded.source).toBe('mcp');
+  });
+
+  it('proceeds without the flag when there is no existing registration', async () => {
+    mockRegisterSupabase({ precheck: { data: [], error: null }, regRow });
+    (handleRegister as any).mockResolvedValue(jsonRes({ success: true, registration_id: 'R1' }));
+
+    const out = await tool('register_for_event').handler(args, env, ctx) as any;
+    expect(out.registered).toBe(true);
+    expect(handleRegister).toHaveBeenCalledTimes(1);
+  });
+
+  it('proceeds when the pre-check itself fails (best-effort guard)', async () => {
+    mockRegisterSupabase({ precheckThrows: true, regRow });
+    (handleRegister as any).mockResolvedValue(jsonRes({ success: true, registration_id: 'R1' }));
+
+    const out = await tool('register_for_event').handler(args, env, ctx) as any;
+    expect(out.registered).toBe(true);
+    expect(handleRegister).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the pre-check for an invalid phone and lets the handler reject it', async () => {
+    mockRegisterSupabase({ precheck: { data: [{ seats: 1 }], error: null } });
+    (handleRegister as any).mockResolvedValue(jsonRes({ error: 'Invalid phone number' }, 400));
+
+    await expect(tool('register_for_event').handler({ ...args, phone: '12345' }, env, ctx))
+      .rejects.toThrow('Invalid phone number');
+    expect(handleRegister).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('join_waitlist', () => {
   const args = { event_id: 'E1', name: 'Asha', phone: '9876543210', email: 'a@b.com', seats: 1 };
 

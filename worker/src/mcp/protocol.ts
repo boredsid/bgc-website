@@ -12,6 +12,8 @@ Payments: BGC uses UPI. No tool takes payment — when a registration or purchas
 
 Personal data: only pass a phone number when the user has explicitly asked you to act on their behalf.
 
+Duplicate bookings: if register_for_event returns requires_confirmation, the person already has a spot for that event — tell them so explicitly, and only retry with confirm_additional: true after they clearly say they want an additional spot.
+
 Cancellations cannot be done through these tools — the user must message a BGC admin on WhatsApp (see get_community_links).`;
 
 interface RpcMessage {

@@ -2,6 +2,7 @@ import { handleRegister } from '../register';
 import { handleWaitlist } from '../waitlist';
 import { handleGuildPurchase } from '../guild-purchase';
 import { getSupabase } from '../supabase';
+import { sanitizePhone } from '../validation';
 import { CANCELLATION_NOTE } from './links';
 import { ToolError, type McpTool } from './types';
 
@@ -29,10 +30,32 @@ function upiPayment(env: { UPI_ID: string; BGC_SITE_URL: string }, amount: numbe
   };
 }
 
+// Best-effort duplicate check: sum of non-cancelled seats this phone already
+// holds for the event. Any failure returns 0 — the guard must never block a
+// valid registration.
+async function existingSeatsFor(
+  env: { SUPABASE_URL: string; SUPABASE_SERVICE_KEY: string },
+  eventId: string,
+  phone: string,
+): Promise<number> {
+  try {
+    const { data, error } = await getSupabase(env)
+      .from('registrations')
+      .select('seats')
+      .eq('event_id', eventId)
+      .eq('phone', phone)
+      .neq('payment_status', 'cancelled');
+    if (error || !data) return 0;
+    return data.reduce((sum: number, r: { seats: number }) => sum + (r.seats || 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
 const registerForEvent: McpTool = {
   name: 'register_for_event',
   description:
-    "Register someone for a BGC event. Before calling: use get_event to see the event's custom questions, then collect the user's name, 10-digit phone, email, and answers. Returns the amount due and UPI payment details — relay them verbatim; the user pays via UPI themselves. Registration stays pending until an admin confirms payment.",
+    "Register someone for a BGC event. Before calling: use get_event to see the event's custom questions, then collect the user's name, 10-digit phone, email, and answers. Returns the amount due and UPI payment details — relay them verbatim; the user pays via UPI themselves. Registration stays pending until an admin confirms payment. If the phone already has a registration for this event, the tool returns requires_confirmation=true instead of booking — tell the user, and only call again with confirm_additional: true after their explicit yes.",
   inputSchema: {
     type: 'object',
     properties: {
@@ -45,10 +68,28 @@ const registerForEvent: McpTool = {
         type: 'object',
         description: 'Answers keyed by question id from get_event. Strings for text/radio/select questions, booleans for checkboxes.',
       },
+      confirm_additional: {
+        type: 'boolean',
+        description:
+          'Set to true ONLY after the user has been told they already have a spot for this event and has explicitly confirmed they want another.',
+      },
     },
     required: ['event_id', 'name', 'phone', 'email'],
   },
   handler: async (args, env, ctx) => {
+    const sanitizedPhone = sanitizePhone(String(args.phone ?? ''));
+    if (sanitizedPhone && args.confirm_additional !== true) {
+      const existing = await existingSeatsFor(env, String(args.event_id ?? ''), sanitizedPhone);
+      if (existing > 0) {
+        return {
+          registered: false,
+          requires_confirmation: true,
+          existing_seats: existing,
+          message: `This phone number already has ${existing} seat(s) booked for this event. Tell the user this explicitly and ask whether they want to book an additional spot. Only if they confirm, call register_for_event again with confirm_additional: true.`,
+        };
+      }
+    }
+
     const res = await handleRegister(
       internalPost('/api/register', {
         event_id: args.event_id,
