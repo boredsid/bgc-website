@@ -3,7 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import CorporateShowcase from '../components/CorporateShowcase.tsx';
 
 const WHATSAPP_URL =
-  "https://wa.me/919982200768?text=" +
+  "https://wa.me/919928998920?text=" +
   encodeURIComponent("Hi! I'd like to plan a corporate event for my team.");
 const MAILTO_URL =
   'mailto:hello@boardgamecompany.in?subject=' + encodeURIComponent('Corporate event enquiry');
@@ -17,11 +17,11 @@ const serviceSchema = {
   provider: { '@id': `${siteUrl}/#organization` },
   areaServed: { '@type': 'City', name: 'Bangalore' },
   description:
-    'Facilitated board game events for corporate offsites, team days and office parties in Bangalore. Games, hosts and setup handled by Board Game Company.',
+    'Facilitated board game events for corporate networking, team days and office get togethers in Bangalore. Games, hosts and setup handled by Board Game Company.',
 };
 
 const specs = [
-  { label: 'Players', value: '10–200+' },
+  { label: 'Players', value: '20–100+' },
   { label: 'Time', value: '2–4 hours' },
   { label: 'Setup', value: 'We handle it' },
   { label: 'Experience', value: 'None needed' },
@@ -31,12 +31,12 @@ const steps = [
   {
     number: '01',
     heading: 'Tell us about your team',
-    body: 'Headcount, date, and where — your office, an offsite venue, or ask us to suggest one.',
+    body: 'Headcount, date, and where — your office, an offsite venue, or ask us to take care of it.',
   },
   {
     number: '02',
     heading: 'We build the game plan',
-    body: 'Games picked from our 130+ library to fit your group, plus hosts who teach every rule. No one reads a manual.',
+    body: 'Games picked from our 200+ library to fit your group, plus hosts who teach every rule. No one reads a manual.',
   },
   {
     number: '03',
@@ -48,7 +48,7 @@ const steps = [
 
 <Layout
   title="Corporate & Team Events"
-  description="Board game events for corporate offsites, team days and office parties in Bangalore. We bring the games and the hosts — your team brings the competitive streak."
+  description="Board game events for corporate networking, team days and office get togethers in Bangalore. We bring the games and the hosts — your team brings the competitive streak."
   schema={serviceSchema}
 >
   <!-- Hero: dark slab, same register as home -->
@@ -61,10 +61,10 @@ const steps = [
         class="font-heading font-bold text-white mt-3"
         style="font-size: clamp(2.4rem, 6.5vw, 4.6rem); line-height: 1.0; letter-spacing: -2px;"
       >
-        Team building that doesn't feel like team building.
+        Getting together shouldn't feel like a mandate.
       </h1>
       <p class="mt-5 text-base md:text-lg text-white/70 max-w-xl">
-        Facilitated board game events for offsites, team days and office parties.
+        Facilitated board game events for networking, team days and office get togethers.
         We bring the games and the hosts — your team brings the competitive streak.
       </p>
 
