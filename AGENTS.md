@@ -28,7 +28,7 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 - `src/lib/` — `supabase.ts`, `types.ts`, `guild-tiers.ts`, `source.ts` (UTM/source attribution via sessionStorage)
 - `worker/src/` — root handlers + `worker/src/admin/` (admin endpoints) + `*.test.ts` (Vitest)
 - `admin/src/` — admin SPA, separate package, shadcn-based
-- `supabase/migrations/` — `001`–`013` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits, leads, llm_notes, user_promos, guild_path_exclusive)
+- `supabase/migrations/` — `001`–`017` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits, leads, llm_notes, user_promos, guild_path_exclusive, guest admins, waitlist fields, Demon's Draft submissions, corporate events)
   - **New-table grants (from migration `014`+):** Supabase stops auto-exposing `public` tables to the Data API for this project on **2026-10-30**. After that, any new `public` table is invisible to PostgREST until granted — this hits the **worker (`service_role`) too**, not just public `anon` reads. So every new-table migration must include: `grant all on public.<table> to authenticated, service_role;` plus `grant select on public.<table> to anon;` only if the browser reads it directly (pair with RLS). Existing tables keep their grants; no backfill needed.
 - `docs/superpowers/specs/` — design specs + implementation plans
 
@@ -43,12 +43,18 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 | `registrations` | no | Spots are summed by `seats` on confirmed rows, not row counts |
 | `user_credits` | no | Credit ledger; auto-applied on registration/purchase, idempotent |
 | `leads` | no | Partial registration capture (phone+event); auto-converted on registration; admin-managed via `/api/admin/leads*` |
+| `user_promos` | no | One-time free-registration grants; apply before guild discounts and credits |
+| `event_guest_admins` | no | Event-scoped, time-bound access for collaboration partners |
+| `corporate_events` | yes (published only via RLS) | Display-only B2B showcase records; no registration/capacity logic |
+| `dd_submissions` | no | Demon's Draft contest submissions |
 
 ## Worker endpoints
 
-**Public:** `POST /api/lookup-phone`, `POST /api/register`, `GET /api/event-spots/:id`, `POST /api/guild-purchase`, `POST /api/cancel-registration`, `POST /api/cancel-guild-membership`, `POST /api/lead`
+**Public:** `POST /api/lookup-phone`, `POST /api/register`, `GET /api/event-spots/:id`, `POST /api/guild-purchase`, `POST /api/lead`, `POST /api/waitlist`, `POST /api/guild-status`, `GET /api/event-photos*`, `POST /api/dd-submit`
 
-**Admin** (gated by Cloudflare Access JWT + `ADMIN_EMAILS` allowlist, all under `/api/admin/`): `whoami`, `summary`, `search`, `log`, `lookup-phone`, `cancel-registration`, `events` (CRUD), `games` (list/get/update + `export`, `owners-summary`), `registrations` (list/get/update + `manual` + `export`), `guild-members` (CRUD + `export`), `users` (list/get/update + credit adjustment), `leads` (list + patch junk + `export`).
+**Admin** (gated by Cloudflare Access JWT + `ADMIN_EMAILS` allowlist, all under `/api/admin/`): `whoami`, `summary`, `search`, `log`, `lookup-phone`, `cancel-registration`, `events` (CRUD), `games` (CRUD + `export`, `owners-summary`), `registrations` (list/get/update + `manual` + `export`), `guild-members` (CRUD + `export`), `users` (list/get/update + credit adjustment), `leads` (list + patch junk + `export`), `promos` (CRUD), `corporate-events` (CRUD + logo upload).
+
+**MCP:** `POST /mcp` is a public, unauthenticated Streamable HTTP server in `worker/src/mcp/`. It deliberately has no cancellation tools. Write tools must call the existing request handlers rather than reimplement pricing/credits. If a post-success amount lookup fails, return an unknown amount with guidance instead of implying nothing is due or retrying the write. Duplicate event registrations require explicit user confirmation through `confirm_additional: true`.
 
 Routing is a flat `if/else` chain in `worker/src/index.ts` — add new endpoints there.
 
@@ -85,14 +91,17 @@ cd admin && npm test
 
 Orange Energy palette — primary `#F47B20`, bg `#FFF8F0`, secondary `#1A1A1A`, accent `#4A9B8E`, highlight `#FFD166`. Fonts: Space Grotesk (headers), Inter (body). Logo at `public/bgc-logo.png`.
 
-Admin tool uses shadcn defaults — non-coder admins use it, so prefer structured forms with smart defaults / autofill / phone-first lookups over free-text.
+Admin tool uses shadcn defaults and is operated by non-coders, often on mobile. Prefer structured forms, plain-English validation with suggested fixes, smart defaults, autofill, phone-first lookups, and single-tap actions. Avoid raw JSON, technical IDs/slugs in labels, and unnecessary typing; confirm destructive actions with their concrete consequences.
 
 ## Gotchas
 
 - Astro build runs without `.env.local` access for some imports — `src/lib/supabase.ts` has fallback values so `astro build` doesn't crash; React islands use the real values at runtime.
+- Supabase URLs use the dashboard project ref (`https://<project-ref>.supabase.co`); never guess a URL from the project name. A wrong URL can fail without a useful error.
 - `games.owned_by` and `games.currently_with` are internal — never surface in public components.
 - Event spot capacity = sum of `seats` across confirmed registrations, not row count. Per-option capacity uses the same weighting.
+- Differential option pricing lives in `worker/src/pricing.ts`: if any selected radio/select option has a defined `price` (including `0`), the sum of selected priced options replaces the event base price per seat. Keep its hand-copied mirror in `src/components/RegistrationForm.tsx` synchronized with the worker helper.
 - `user_credits` is applied automatically on registration / guild purchase. Cancellation credits the user back; the credit logic is idempotent (see `worker/src/credits.ts` + tests).
 - Admin API is double-gated: Cloudflare Access JWT (`verifyAccessJwt` in `worker/src/access-auth.ts`) **and** email allowlist (`ADMIN_EMAILS`). Adding an admin = updating the secret + the Cloudflare Access policy.
+- Guest-admin access is also double-gated: a Worker-managed Cloudflare Access group provides the coarse edge gate, while the worker re-checks event scope and expiry on every request. Do not rely on the Access group alone.
 - `/pay` is intentionally excluded from the sitemap (see `astro.config.mjs`).
 - `*.workers.dev` URLs are blocked by some browser privacy extensions / Firefox ETP — that's why the worker is on the custom `api.boardgamecompany.in` domain. Always use that URL.

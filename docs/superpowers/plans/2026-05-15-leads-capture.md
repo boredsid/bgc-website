@@ -31,7 +31,7 @@
 - `admin/src/App.tsx` — add `/leads` route
 - `admin/src/components/Sidebar.tsx` — add Leads nav item
 - `admin/src/components/BottomTabBar.tsx` — add Leads to "More" sheet
-- `CLAUDE.md` — document the new table + endpoints
+- `AGENTS.md` — document the new table + endpoints
 
 ---
 
@@ -1399,10 +1399,10 @@ git commit -m "feat: route and nav entry for admin Leads page"
 
 ---
 
-## Task 11: Update CLAUDE.md
+## Task 11: Update AGENTS.md
 
 **Files:**
-- Modify: `CLAUDE.md`
+- Modify: `AGENTS.md`
 
 - [ ] **Step 1: Add the table row**
 
@@ -1419,8 +1419,8 @@ In the `## Worker endpoints` section, append `POST /api/lead` to the **Public** 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add CLAUDE.md
-git commit -m "docs: note leads table and endpoints in CLAUDE.md"
+git add AGENTS.md
+git commit -m "docs: note leads table and endpoints in AGENTS.md"
 ```
 
 ---

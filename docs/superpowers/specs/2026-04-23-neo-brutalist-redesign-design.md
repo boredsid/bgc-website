@@ -182,7 +182,7 @@ Add a `.reveal` class + a small IntersectionObserver snippet in `Layout.astro` �
   - Badges row: rating + complexity
   - Full description
   - Detail grid: responsive `auto-fit minmax(120px, 1fr)` — Players / Duration / Complexity / Designer / BGG Link / etc. Each detail is a cream-bg card with 2px border, uppercase label + bold value
-- **Only expose non-internal fields** — per CLAUDE.md, `owned_by` and `currently_with` are internal and must never appear in the frontend.
+- **Only expose non-internal fields** — per AGENTS.md, `owned_by` and `currently_with` are internal and must never appear in the frontend.
 
 ### Empty State
 
@@ -258,7 +258,7 @@ Functionally unchanged. Restyled:
 - Full-screen modal, cream bg, thick black border, `xl` offset shadow
 - UPI QR code framed with thick black border + offset shadow
 - Three payment app buttons (GPay / PhonePe / Paytm): big colored pill-buttons with icons, each with thick border + offset shadow
-- UPI ID hardcoded in the component (per CLAUDE.md gotcha — update there if it changes)
+- UPI ID hardcoded in the component (per AGENTS.md gotcha — update there if it changes)
 
 ### Benefits / FAQ
 

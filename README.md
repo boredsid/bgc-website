@@ -60,7 +60,7 @@ PUBLIC_WORKER_URL=
 PUBLIC_UPI_ID=
 ```
 
-Worker secrets and vars are documented in [`CLAUDE.md`](./CLAUDE.md).
+Worker secrets and vars are documented in [`AGENTS.md`](./AGENTS.md).
 
 ## Deployment
 

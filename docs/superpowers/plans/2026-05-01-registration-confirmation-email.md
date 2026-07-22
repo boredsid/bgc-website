@@ -99,7 +99,7 @@ Note: `.env.local` is committed in this repo per existing pattern — verify wit
 
 1. Go to Cloudflare dashboard → Pages → the BGC site project → Settings → Environment variables.
 2. Add `PUBLIC_UPI_ID` = `suranjanadatta24-1@okaxis` to **both** Production and Preview environments.
-3. Trigger a redeploy (Deployments → "Retry deployment" on the latest, or push a fresh commit). Per CLAUDE.md gotcha: env var changes only take effect after redeploy.
+3. Trigger a redeploy (Deployments → "Retry deployment" on the latest, or push a fresh commit). Per AGENTS.md gotcha: env var changes only take effect after redeploy.
 
 ---
 
