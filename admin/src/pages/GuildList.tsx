@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,7 @@ export default function GuildList() {
   const [params, setParams] = useSearchParams();
   const status = params.get('status') || '';
   const tier = params.get('tier') || '';
+  const activeOnly = params.get('active') !== 'false';
   const [members, setMembers] = useState<GuildMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmTarget, setConfirmTarget] = useState<GuildMember | null>(null);
@@ -93,7 +95,13 @@ export default function GuildList() {
   }
 
   // ---- Bulk operations ----
-  const selectedRows = useMemo(() => members.filter((m) => selectedIds.includes(m.id)), [members, selectedIds]);
+  const visibleMembers = useMemo(() => {
+    if (!activeOnly) return members;
+    const today = new Date().toISOString().slice(0, 10);
+    return members.filter((m) => m.status === 'paid' && m.expires_at >= today);
+  }, [activeOnly, members]);
+
+  const selectedRows = useMemo(() => visibleMembers.filter((m) => selectedIds.includes(m.id)), [visibleMembers, selectedIds]);
 
   async function bulkMarkPaid() {
     const rows = [...selectedRows];
@@ -229,6 +237,17 @@ export default function GuildList() {
     <div>
       <h1 className="text-2xl font-semibold mb-4">Guild members</h1>
       <div className="flex gap-2 mb-3 flex-wrap">
+        <div className="flex h-9 items-center gap-2 rounded-md border px-3">
+          <Switch
+            id="active-only"
+            checked={activeOnly}
+            onCheckedChange={(checked) => {
+              setSelectedIds([]);
+              setFilter('active', checked ? '' : 'false');
+            }}
+          />
+          <Label htmlFor="active-only">Active only</Label>
+        </div>
         <Select value={status || 'all'} onValueChange={(v) => setFilter('status', v === 'all' ? '' : v)}>
           <SelectTrigger className="w-48"><SelectValue placeholder="All statuses" /></SelectTrigger>
           <SelectContent>
@@ -274,9 +293,9 @@ export default function GuildList() {
         <>
           <div className="md:hidden space-y-2">
             {isPendingFilter ? (
-              members.length === 0 ? (
+              visibleMembers.length === 0 ? (
                 <div className="text-sm text-muted-foreground p-4">Nothing waiting — you're caught up.</div>
-              ) : members.map((m) => (
+              ) : visibleMembers.map((m) => (
                 <div key={m.id} className="rounded-md border bg-card p-3 space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0">
@@ -297,7 +316,7 @@ export default function GuildList() {
                 </div>
               ))
             ) : (
-              <MobileCardList rows={members} fields={fields} rowKey={(m) => m.id} onRowClick={(m) => navigate(`/guild/${m.id}`)} emptyMessage="No guild members match these filters." trailing={(m) => <StatusBadge status={m.status} />} />
+              <MobileCardList rows={visibleMembers} fields={fields} rowKey={(m) => m.id} onRowClick={(m) => navigate(`/guild/${m.id}`)} emptyMessage="No guild members match these filters." trailing={(m) => <StatusBadge status={m.status} />} />
             )}
           </div>
           <div className="hidden md:block">
@@ -307,7 +326,7 @@ export default function GuildList() {
               onClear={() => setSelectedIds([])}
             />
             <DataTable
-              rows={members}
+              rows={visibleMembers}
               columns={columns}
               rowKey={(m) => m.id}
               onRowClick={(m) => navigate(`/guild/${m.id}`)}
