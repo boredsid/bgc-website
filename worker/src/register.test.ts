@@ -86,6 +86,47 @@ function buildSupabaseMock(capture: { leadUpdate: any }) {
 }
 
 describe('handleRegister lead conversion', () => {
+  it('rejects BGC registration for an externally managed event', async () => {
+    let registrationsRead = false;
+    (getSupabase as any).mockReturnValue({
+      from: (table: string) => {
+        if (table === 'events') {
+          return {
+            select: () => ({ eq: () => ({ eq: () => ({ single: async () => ({ data: {
+              id: 'E1',
+              name: 'TTRPGcon',
+              is_published: true,
+              externally_managed: true,
+              external_registration_url: 'https://ttrpgcon.example/register',
+            }, error: null }) }) }) }),
+          };
+        }
+        if (table === 'registrations') registrationsRead = true;
+        return null;
+      },
+    });
+
+    const req = new Request('http://localhost/api/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'E1',
+        name: 'Asha',
+        phone: '9876543210',
+        email: 'a@b.com',
+        seats: 1,
+        custom_answers: {},
+        payment_status: 'pending',
+      }),
+    });
+    const res = await handleRegister(req, mockEnv(), { waitUntil: () => {} } as any);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      code: 'external_registration',
+      external_registration_url: 'https://ttrpgcon.example/register',
+    });
+    expect(registrationsRead).toBe(false);
+  });
+
   it('marks matching open lead as converted after successful registration', async () => {
     const capture = { leadUpdate: null as any };
     (getSupabase as any).mockReturnValue(buildSupabaseMock(capture));

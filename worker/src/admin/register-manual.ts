@@ -41,6 +41,13 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     .eq('id', body.event_id)
     .maybeSingle();
   if (!event) return jsonResponse({ error: 'Event not found' }, 404);
+  if (event.externally_managed) {
+    return jsonResponse({
+      error: 'Registrations for this event are managed by the event partner.',
+      code: 'external_registration',
+      external_registration_url: event.external_registration_url,
+    }, 409);
+  }
 
   const customQuestions = (event.custom_questions || []) as PricingQuestion[];
   const seatPrice = effectiveSeatPrice(customQuestions, body.custom_answers || {}, event.price);

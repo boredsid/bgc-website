@@ -86,11 +86,13 @@ export default function RegistrationForm() {
         // Spots come from the Worker; if it's unreachable (e.g. *.workers.dev
         // blocked by privacy extensions/Firefox ETP), allow registration to
         // proceed with default capacity rather than blocking the whole page.
-        try {
-          const spotsRes = await fetch(`${WORKER_URL}/api/event-spots/${id}`);
-          if (spotsRes.ok) setSpots(await spotsRes.json());
-        } catch {
-          // leave spots as null — UI already handles this gracefully
+        if (!eventRes.data?.externally_managed) {
+          try {
+            const spotsRes = await fetch(`${WORKER_URL}/api/event-spots/${id}`);
+            if (spotsRes.ok) setSpots(await spotsRes.json());
+          } catch {
+            // leave spots as null — UI already handles this gracefully
+          }
         }
       } finally {
         setLoading(false);
@@ -182,6 +184,50 @@ export default function RegistrationForm() {
         <a href="/calendar" className="inline-block mt-6 btn btn-primary no-underline">
           View upcoming events
         </a>
+      </div>
+    );
+  }
+
+  if (event.externally_managed) {
+    const eventDate = new Date(event.date);
+    return (
+      <div>
+        <div className="mb-6 pb-6" style={{ borderBottom: '3px solid #1A1A1A' }}>
+          <h1 className="font-heading text-2xl font-bold">{event.name}</h1>
+          <p className="text-[#1A1A1A]/70 text-sm mt-1">
+            {eventDate.toLocaleDateString('en-IN', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}{' '}
+            at{' '}
+            {eventDate.toLocaleTimeString('en-IN', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+            })}{' '}
+            · {event.venue_name}, {event.venue_area}
+          </p>
+        </div>
+        <div className="card-brutal p-6 text-center" style={{ background: '#A8E6CF' }}>
+          <div className="text-4xl mb-3">↗</div>
+          <h2 className="font-heading text-xl font-bold mb-2">Registration is managed by our event partner</h2>
+          <p className="text-sm text-[#1A1A1A]/80 mb-5">
+            Continue to the partner's website for availability, pricing, and registration details.
+          </p>
+          {event.external_registration_url ? (
+            <a
+              href={event.external_registration_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary no-underline inline-block"
+            >
+              Continue to registration ↗
+            </a>
+          ) : (
+            <p className="font-heading font-semibold">The registration link is temporarily unavailable.</p>
+          )}
+        </div>
       </div>
     );
   }

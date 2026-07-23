@@ -25,6 +25,8 @@ export interface Event {
   llm_notes: string | null;
   is_published: boolean;
   guild_path_exclusive: boolean;
+  externally_managed: boolean;
+  external_registration_url: string | null;
   created_at: string;
 }
 

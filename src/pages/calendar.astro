@@ -35,38 +35,46 @@ const organization = {
   url: siteUrl,
 };
 
-const eventSchema = upcomingEvents.map((event) => ({
-  '@context': 'https://schema.org',
-  '@type': 'Event',
-  name: event.name,
-  description: event.description,
-  image: [`${siteUrl}/og-home.jpg`],
-  startDate: event.date,
-  endDate: computeEndDate(event.date),
-  eventStatus: 'https://schema.org/EventScheduled',
-  eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-  url: `${siteUrl}/register?event=${event.id}`,
-  location: {
-    '@type': 'Place',
-    name: event.venue_name,
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: event.venue_area || 'Bangalore',
-      addressRegion: 'Karnataka',
-      addressCountry: 'IN',
+const eventSchema = upcomingEvents.map((event) => {
+  const registrationUrl = event.externally_managed
+    ? (event.external_registration_url || `${siteUrl}/calendar`)
+    : `${siteUrl}/register?event=${event.id}`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: event.name,
+    description: event.description,
+    image: [`${siteUrl}/og-home.jpg`],
+    startDate: event.date,
+    endDate: computeEndDate(event.date),
+    eventStatus: 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    url: registrationUrl,
+    location: {
+      '@type': 'Place',
+      name: event.venue_name,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: event.venue_area || 'Bangalore',
+        addressRegion: 'Karnataka',
+        addressCountry: 'IN',
+      },
     },
-  },
-  organizer: organization,
-  performer: organization,
-  offers: {
-    '@type': 'Offer',
-    price: event.price,
-    priceCurrency: 'INR',
-    availability: 'https://schema.org/InStock',
-    url: `${siteUrl}/register?event=${event.id}`,
-    validFrom: event.created_at,
-  },
-}));
+    organizer: organization,
+    performer: organization,
+    ...(!event.externally_managed ? {
+      offers: {
+        '@type': 'Offer',
+        price: event.price,
+        priceCurrency: 'INR',
+        availability: 'https://schema.org/InStock',
+        url: registrationUrl,
+        validFrom: event.created_at,
+      },
+    } : {}),
+  };
+});
 ---
 
 <Layout

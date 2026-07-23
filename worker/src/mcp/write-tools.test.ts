@@ -118,6 +118,16 @@ describe('register_for_event', () => {
     await expect(tool('register_for_event').handler(args, env, ctx))
       .rejects.toThrow('Invalid phone number');
   });
+
+  it('redirects externally managed registration attempts to the partner URL', async () => {
+    (handleRegister as any).mockResolvedValue(jsonRes({
+      error: 'Registrations for this event are managed by the event partner.',
+      code: 'external_registration',
+      external_registration_url: 'https://ttrpgcon.example/register',
+    }, 409));
+    await expect(tool('register_for_event').handler(args, env, ctx))
+      .rejects.toThrow(/ttrpgcon\.example\/register/i);
+  });
 });
 
 describe('register_for_event duplicate guard', () => {

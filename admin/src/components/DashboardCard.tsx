@@ -13,6 +13,32 @@ export default function DashboardCard({ summary }: Props) {
   const questions: CustomQuestion[] = (event.custom_questions || []) as CustomQuestion[];
   const [breakdownOpen, setBreakdownOpen] = useState(false);
 
+  if (event.externally_managed) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>{event.name}</span>
+            <span className="text-sm font-normal text-muted-foreground">{new Date(event.date).toLocaleString()}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-sm text-muted-foreground">{event.venue_name || ''}</div>
+          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+            Registrations, pricing, and capacity are managed by the event partner.
+          </div>
+          {event.external_registration_url && (
+            <Button asChild variant="outline" size="sm">
+              <a href={event.external_registration_url} target="_blank" rel="noopener noreferrer">
+                Open partner registration ↗
+              </a>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>

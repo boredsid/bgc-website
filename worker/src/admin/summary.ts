@@ -6,6 +6,7 @@ export interface EventRow {
   id: string; name: string; date: string; venue_name: string | null; venue_area: string | null;
   capacity: number; price: number; description: string | null; price_includes: string | null;
   is_published: boolean; created_at: string;
+  externally_managed: boolean; external_registration_url: string | null;
   custom_questions: Array<{ id: string; label: string; type: string; required: boolean; options?: Array<{ value: string }> }> | null;
 }
 

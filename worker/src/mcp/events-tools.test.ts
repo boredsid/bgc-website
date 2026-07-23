@@ -20,6 +20,7 @@ const EVENT = {
   id: 'E1', name: 'Catan Night', description: 'Trade and build', date: '2099-01-15',
   venue_name: 'Dice District', venue_area: 'Indiranagar', price: 500,
   price_includes: 'Entry + snacks', capacity: 20, guild_path_exclusive: false,
+  externally_managed: false, external_registration_url: null,
   custom_questions: [
     { id: 'q1', label: 'Meal', type: 'radio', required: true,
       options: [{ value: 'Veg', price: 450 }, { value: 'Non-veg', price: 550, capacity: 5 }] },
@@ -50,6 +51,41 @@ describe('list_events', () => {
     expect(e.spots_remaining).toBe(15); // 20 capacity - 5 seats
     expect(e.register_url).toBe('https://boardgamecompany.in/register?event=E1');
     expect(e.guild_path_exclusive).toBe(false);
+    expect(e.registration_management).toBe('bgc');
+  });
+
+  it('lists externally managed events without BGC price or capacity', async () => {
+    const externalEvent = {
+      ...EVENT,
+      id: 'E2',
+      name: 'TTRPGcon',
+      price: 0,
+      capacity: 0,
+      custom_questions: [],
+      externally_managed: true,
+      external_registration_url: 'https://ttrpgcon.example/register',
+    };
+    (getSupabase as any).mockReturnValue({
+      from: (table: string) => {
+        if (table === 'events') {
+          return { select: () => ({ eq: () => ({ gte: () => ({ order: async () => ({
+            data: [externalEvent], error: null }) }) }) }) };
+        }
+        if (table === 'registrations') {
+          return { select: () => ({ in: () => ({ neq: async () => ({ data: [], error: null }) }) }) };
+        }
+        return null;
+      },
+    });
+
+    const out = await tool('list_events').handler({}, env, ctx) as any;
+    expect(out.events[0]).toMatchObject({
+      registration_management: 'external',
+      external_registration_url: 'https://ttrpgcon.example/register',
+      register_url: 'https://ttrpgcon.example/register',
+    });
+    expect(out.events[0]).not.toHaveProperty('price_inr');
+    expect(out.events[0]).not.toHaveProperty('spots_remaining');
   });
 });
 
@@ -80,5 +116,27 @@ describe('get_event', () => {
     });
     await expect(tool('get_event').handler({ event_id: 'nope' }, env, ctx))
       .rejects.toThrow(/not find that event/i);
+  });
+
+  it('returns the partner URL without requesting BGC capacity for an external event', async () => {
+    (handleEventSpots as any).mockClear();
+    (getSupabase as any).mockReturnValue({
+      from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({
+        data: {
+          ...EVENT,
+          name: 'TTRPGcon',
+          externally_managed: true,
+          external_registration_url: 'https://ttrpgcon.example/register',
+        },
+        error: null,
+      }) }) }) }) }),
+    });
+
+    const out = await tool('get_event').handler({ event_id: 'E1' }, env, ctx) as any;
+    expect(out.registration_management).toBe('external');
+    expect(out.register_url).toBe('https://ttrpgcon.example/register');
+    expect(out).not.toHaveProperty('price_inr');
+    expect(out).not.toHaveProperty('spots_remaining');
+    expect(handleEventSpots).not.toHaveBeenCalled();
   });
 });

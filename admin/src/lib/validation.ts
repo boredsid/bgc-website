@@ -23,14 +23,32 @@ interface EventInput {
   capacity?: number | null;
   price?: number | null;
   venue_name?: string | null;
+  externally_managed?: boolean | null;
+  external_registration_url?: string | null;
 }
 
 export function validateEvent(e: EventInput): ValidationErrors {
   const errs: ValidationErrors = {};
   if (!e.name || !e.name.trim()) errs.name = 'Please enter a name.';
   if (!e.date) errs.date = 'Please pick a date and time.';
-  if (e.capacity == null || e.capacity < 1) errs.capacity = 'Capacity must be at least 1.';
-  if (e.price != null && e.price < 0) errs.price = 'Price cannot be negative.';
+  if (e.externally_managed) {
+    const value = e.external_registration_url?.trim();
+    if (!value) {
+      errs.external_registration_url = 'Please enter the partner registration URL.';
+    } else {
+      try {
+        const url = new URL(value);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          errs.external_registration_url = 'Use a full http:// or https:// URL.';
+        }
+      } catch {
+        errs.external_registration_url = 'Enter a valid URL, including https://.';
+      }
+    }
+  } else {
+    if (e.capacity == null || e.capacity < 1) errs.capacity = 'Capacity must be at least 1.';
+    if (e.price != null && e.price < 0) errs.price = 'Price cannot be negative.';
+  }
   return errs;
 }
 

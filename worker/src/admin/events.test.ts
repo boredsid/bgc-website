@@ -70,4 +70,45 @@ describe('handleUpdateEvent collaboration', () => {
     expect(cap.upserted).toEqual([]);
     expect(syncCfAccessGroup).not.toHaveBeenCalled();
   });
+
+  it('normalizes fields that do not apply to externally managed events', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(mockSupabase([], cap));
+    const res = await handleUpdateEvent('e1', patch({
+      externally_managed: true,
+      external_registration_url: ' https://ttrpgcon.example/register ',
+      price: 500,
+      capacity: 100,
+      custom_questions: [{ id: 'q1' }],
+      price_includes: 'Lunch',
+      guild_path_exclusive: true,
+      is_collaboration: true,
+    }), mockEnv(), ctx, 'admin@bgc.in');
+
+    expect(res.status).toBe(200);
+    expect(cap.eventUpdate).toMatchObject({
+      externally_managed: true,
+      external_registration_url: 'https://ttrpgcon.example/register',
+      price: 0,
+      capacity: 0,
+      custom_questions: [],
+      price_includes: null,
+      guild_path_exclusive: false,
+      is_collaboration: false,
+    });
+  });
+
+  it('rejects an external event without a valid partner URL', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(mockSupabase([], cap));
+    const res = await handleUpdateEvent(
+      'e1',
+      patch({ externally_managed: true, external_registration_url: 'ttrpgcon.example/register' }),
+      mockEnv(),
+      ctx,
+      'admin@bgc.in',
+    );
+    expect(res.status).toBe(400);
+    expect(cap.eventUpdate).toBeNull();
+  });
 });

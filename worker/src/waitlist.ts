@@ -49,7 +49,28 @@ export async function handleWaitlist(request: Request, env: Env, ctx: ExecutionC
   const eventId = (body.event_id || '').trim();
   if (!UUID_RE.test(eventId)) return jsonResponse({ error: 'Invalid event id' }, 400);
 
-  // Per-isolate rate-limit drop (double-submit guard).
+  const supabase = getSupabase(env);
+
+  // Fetch the published event (covers existence + gives email content).
+  const { data: event } = await supabase
+    .from('events')
+    .select('id, name, date, venue_name, venue_area, capacity, externally_managed, external_registration_url')
+    .eq('id', eventId)
+    .eq('is_published', true)
+    .maybeSingle();
+
+  if (!event) return jsonResponse({ error: 'Event not found' }, 404);
+  if (event.externally_managed) {
+    return jsonResponse({
+      error: 'Registrations for this event are managed by the event partner.',
+      code: 'external_registration',
+      external_registration_url: event.external_registration_url,
+    }, 409);
+  }
+
+  // Per-isolate rate-limit drop (double-submit guard). This happens after the
+  // event-management check so a rejected external event can never look like a
+  // successful waitlist join on a quick retry.
   const key = `${phone}|${eventId}`;
   const now = Date.now();
   const prev = lastSeen.get(key);
@@ -57,18 +78,6 @@ export async function handleWaitlist(request: Request, env: Env, ctx: ExecutionC
     return jsonResponse({ success: true });
   }
   lastSeen.set(key, now);
-
-  const supabase = getSupabase(env);
-
-  // Fetch the published event (covers existence + gives email content).
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, name, date, venue_name, venue_area, capacity')
-    .eq('id', eventId)
-    .eq('is_published', true)
-    .maybeSingle();
-
-  if (!event) return jsonResponse({ error: 'Event not found' }, 404);
 
   // Re-check capacity server-side (same weighting as register.ts). If the event
   // is not actually full, tell the client to refresh and register normally.

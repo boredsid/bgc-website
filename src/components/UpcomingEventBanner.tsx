@@ -50,7 +50,7 @@ export default function UpcomingEventBanner() {
       if (cancelled) return;
       setEvent(nextEvent ?? null);
 
-      if (nextEvent) {
+      if (nextEvent && !nextEvent.externally_managed) {
         try {
           const res = await fetch(`${WORKER_URL}/api/event-spots/${nextEvent.id}`);
           if (res.ok) {
@@ -103,8 +103,8 @@ export default function UpcomingEventBanner() {
   const relativeDate = formatRelativeDate(eventDate);
   const time = formatTime(eventDate);
 
-  const total = spots?.capacity ?? event.capacity;
-  const remaining = spots?.remaining ?? null;
+  const total = event.externally_managed ? 0 : (spots?.capacity ?? event.capacity);
+  const remaining = event.externally_managed ? null : (spots?.remaining ?? null);
   const used = remaining !== null ? Math.max(0, total - remaining) : null;
   const fillPct = used !== null && total > 0 ? Math.min(100, (used / total) * 100) : 0;
 
@@ -134,7 +134,8 @@ export default function UpcomingEventBanner() {
           {event.name}
         </h2>
         <p className="mt-3 text-[#1A1A1A]/80 text-base md:text-lg">
-          {event.venue_area} · {time} · ₹{event.price}
+          {event.venue_area} · {time}
+          {event.externally_managed ? ' · Registration managed by partner' : ` · ₹${event.price}`}
         </p>
 
         {spotsText !== null && (
@@ -157,9 +158,24 @@ export default function UpcomingEventBanner() {
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-4">
-          <a href={`/register?event=${event.id}`} className="btn btn-black no-underline">
-            {soldOut ? 'Join waitlist →' : 'Register →'}
-          </a>
+          {event.externally_managed ? (
+            event.external_registration_url ? (
+              <a
+                href={event.external_registration_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-black no-underline"
+              >
+                Register on partner site ↗
+              </a>
+            ) : (
+              <span className="font-heading font-semibold">Registration link unavailable</span>
+            )
+          ) : (
+            <a href={`/register?event=${event.id}`} className="btn btn-black no-underline">
+              {soldOut ? 'Join waitlist →' : 'Register →'}
+            </a>
+          )}
           <a href="/calendar" className="text-sm font-semibold underline underline-offset-4">
             or see all upcoming →
           </a>

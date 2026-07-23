@@ -53,6 +53,7 @@ export default function EventList({ initialEvents = [] }: Props) {
 
       const eventsWithSpots = await Promise.all(
         baseEvents.map(async (event: Event) => {
+          if (event.externally_managed) return { ...event, remaining: null };
           try {
             const res = await fetch(`${WORKER_URL}/api/event-spots/${event.id}`);
             const spots = await res.json();
@@ -157,7 +158,7 @@ function EventCard({ event, past = false }: { event: EventWithSpots; past?: bool
   const eventDate = new Date(event.date);
   const dateStr = eventDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
   const time = eventDate.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
-  const soldOut = event.remaining !== null && event.remaining <= 0;
+  const soldOut = !event.externally_managed && event.remaining !== null && event.remaining <= 0;
   const featured = !past && (event as any).is_featured === true;
 
   return (
@@ -171,6 +172,22 @@ function EventCard({ event, past = false }: { event: EventWithSpots; past?: bool
       >
         <span className="font-heading font-bold text-base">{dateStr}</span>
         <div className="flex items-center gap-2">
+          {event.externally_managed && (
+            <span
+              className="pill"
+              style={{
+                fontSize: '0.7rem',
+                padding: '6px 12px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                background: '#A8E6CF',
+                color: '#1A1A1A',
+                border: '2px solid #1A1A1A',
+              }}
+            >
+              Partner Registration
+            </span>
+          )}
           {event.guild_path_exclusive && (
             <span
               className="pill"
@@ -225,20 +242,37 @@ function EventCard({ event, past = false }: { event: EventWithSpots; past?: bool
         {!past && (
           <>
             <div className="flex items-center gap-3 mt-2">
-              <span className="font-heading font-bold text-xl">₹{event.price}</span>
-              {event.remaining !== null && !soldOut && (
+              <span className="font-heading font-bold text-xl">
+                {event.externally_managed ? 'Registration managed by partner' : `₹${event.price}`}
+              </span>
+              {!event.externally_managed && event.remaining !== null && !soldOut && (
                 <span className="text-xs text-[#1A1A1A]/60">
                   {event.remaining} spot{event.remaining !== 1 ? 's' : ''} left
                 </span>
               )}
             </div>
-            {event.price_includes && (
+            {!event.externally_managed && event.price_includes && (
               <div className="card-brutal px-3 py-2 text-sm mt-2 font-heading font-semibold" style={{ background: '#FFD166', boxShadow: '3px 3px 0 #1A1A1A' }}>
                 {event.price_includes}
               </div>
             )}
             <div className="mt-3">
-              {soldOut ? (
+              {event.externally_managed ? (
+                event.external_registration_url ? (
+                  <a
+                    href={event.external_registration_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary btn-sm no-underline"
+                  >
+                    Register on partner site ↗
+                  </a>
+                ) : (
+                  <span className="pill" style={{ background: '#E5E5E5', color: '#1A1A1A', border: '2px solid #1A1A1A' }}>
+                    Registration link unavailable
+                  </span>
+                )
+              ) : soldOut ? (
                 <span className="pill" style={{ background: '#E5E5E5', color: '#1A1A1A', border: '2px solid #1A1A1A' }}>Sold Out</span>
               ) : (
                 <a href={`/register?event=${event.id}`} className="btn btn-primary btn-sm no-underline">Register →</a>

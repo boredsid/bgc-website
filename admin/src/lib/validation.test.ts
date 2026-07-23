@@ -49,6 +49,23 @@ describe('validateEvent', () => {
   it('requires a date', () => {
     expect(validateEvent({ ...valid, date: '' }).date).toBe('Please pick a date and time.');
   });
+  it('requires a full HTTP(S) URL for externally managed events', () => {
+    const external = { ...valid, externally_managed: true, capacity: 0, external_registration_url: '' };
+    expect(validateEvent(external).external_registration_url).toBe('Please enter the partner registration URL.');
+    expect(validateEvent({ ...external, external_registration_url: 'ttrpgcon.example/register' }).external_registration_url)
+      .toBe('Enter a valid URL, including https://.');
+    expect(validateEvent({ ...external, external_registration_url: 'https://ttrpgcon.example/register' }))
+      .toEqual({});
+  });
+  it('does not require capacity or price for externally managed events', () => {
+    expect(validateEvent({
+      ...valid,
+      externally_managed: true,
+      external_registration_url: 'https://ttrpgcon.example/register',
+      capacity: 0,
+      price: -1,
+    })).toEqual({});
+  });
 });
 
 describe('validateGame', () => {

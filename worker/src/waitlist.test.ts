@@ -22,6 +22,7 @@ interface MockOpts {
   capacity?: number;
   registeredSeats?: number;
   eventExists?: boolean;
+  externallyManaged?: boolean;
   existingLead?: { converted_at: string | null; waitlist_at: string | null } | null;
   capture: { upsertArg: any; upsertOnConflict: string | null };
 }
@@ -38,7 +39,16 @@ function buildSupabaseMock(opts: MockOpts) {
         return {
           select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({
             data: eventExists
-              ? { id: 'E1', name: 'Catan Night', date: '2026-06-01', venue_name: 'V', venue_area: null, capacity }
+              ? {
+                  id: 'E1',
+                  name: 'Catan Night',
+                  date: '2026-06-01',
+                  venue_name: 'V',
+                  venue_area: null,
+                  capacity,
+                  externally_managed: opts.externallyManaged ?? false,
+                  external_registration_url: opts.externallyManaged ? 'https://ttrpgcon.example/register' : null,
+                }
               : null,
             error: null,
           }) }) }) }),
@@ -104,6 +114,18 @@ describe('handleWaitlist', () => {
     (getSupabase as any).mockReturnValue(buildSupabaseMock({ eventExists: false, capture }));
     const res = await handleWaitlist(makeReq(validBody), mockEnv(), ctx);
     expect(res.status).toBe(404);
+    expect(capture.upsertArg).toBeNull();
+  });
+
+  it('rejects waitlisting for an externally managed event', async () => {
+    const capture = { upsertArg: null as any, upsertOnConflict: null as any };
+    (getSupabase as any).mockReturnValue(buildSupabaseMock({ externallyManaged: true, capture }));
+    const res = await handleWaitlist(makeReq(validBody), mockEnv(), ctx);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      code: 'external_registration',
+      external_registration_url: 'https://ttrpgcon.example/register',
+    });
     expect(capture.upsertArg).toBeNull();
   });
 

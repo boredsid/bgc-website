@@ -78,6 +78,35 @@ function buildSupabaseMock(eventRow: any, regs: any[]) {
 }
 
 describe('handleManualRegister', () => {
+  it('rejects manual registrations for externally managed events', async () => {
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(
+      {
+        id: 'e1',
+        name: 'TTRPGcon',
+        externally_managed: true,
+        external_registration_url: 'https://ttrpgcon.example/register',
+      },
+      [],
+    ));
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'e1',
+        name: 'A',
+        phone: '9999999999',
+        email: 'a@x.com',
+        seats: 1,
+        payment_status: 'confirmed',
+      }),
+    });
+    const res = await handleManualRegister(req, mockEnv(), { waitUntil: () => {} } as any);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      code: 'external_registration',
+      external_registration_url: 'https://ttrpgcon.example/register',
+    });
+  });
+
   it('warns (409) when seats exceed remaining capacity and overbook not confirmed', async () => {
     (getSupabase as any).mockReturnValue(buildSupabaseMock(
       { id: 'e1', name: 'Test', date: '2026-06-01T00:00:00Z', price: 500, capacity: 10, custom_questions: null, is_published: true, venue_name: 'X', venue_area: null, price_includes: null },

@@ -56,7 +56,7 @@ export default function ManualRegistrationDrawer() {
 
   useEffect(() => {
     if (isGuest) {
-      const evts = guestEvents as unknown as Event[];
+      const evts = (guestEvents as unknown as Event[]).filter((e) => !e.externally_managed);
       setEvents(evts);
       const fromUrl = searchParams.get('event');
       const startEventId = (fromUrl && evts.some((e) => e.id === fromUrl) ? fromUrl : evts[0]?.id) ?? '';
@@ -66,13 +66,14 @@ export default function ManualRegistrationDrawer() {
     }
     fetchAdmin<{ events: Event[] }>('/api/admin/events')
       .then((r) => {
-        setEvents(r.events);
+        const bgcManagedEvents = r.events.filter((e) => !e.externally_managed);
+        setEvents(bgcManagedEvents);
         const remembered = typeof window !== 'undefined' ? localStorage.getItem(LAST_EVENT_KEY) : null;
         let startEventId = '';
-        if (remembered && r.events.some((e) => e.id === remembered)) {
+        if (remembered && bgcManagedEvents.some((e) => e.id === remembered)) {
           startEventId = remembered;
         } else {
-          const upcoming = r.events
+          const upcoming = bgcManagedEvents
             .filter((e) => Date.parse(e.date) >= Date.now())
             .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
           startEventId = upcoming[0]?.id ?? '';

@@ -19,6 +19,7 @@ const empty: Partial<Event> = {
   name: '', description: '', date: '', venue_name: '', venue_area: '',
   price: 0, capacity: 0, custom_questions: [], price_includes: '', llm_notes: '',
   is_published: false, guild_path_exclusive: false, is_collaboration: false,
+  externally_managed: false, external_registration_url: '',
 };
 
 export default function EventDrawer({ mode }: Props) {
@@ -105,11 +106,27 @@ export default function EventDrawer({ mode }: Props) {
     setSaving(true);
     setServerError(null);
     try {
+      const external = form.externally_managed === true;
       const payload = {
         ...form,
         date: form.date ? new Date(form.date).toISOString() : '',
-        custom_questions: form.custom_questions || [],
-        ...(mode === 'edit' ? { guest_admins: form.is_collaboration ? guestAdmins : [] } : {}),
+        ...(external
+          ? {
+              capacity: 0,
+              price: 0,
+              custom_questions: [],
+              price_includes: null,
+              guild_path_exclusive: false,
+              is_collaboration: false,
+              external_registration_url: form.external_registration_url?.trim() || null,
+            }
+          : {
+              custom_questions: form.custom_questions || [],
+              external_registration_url: null,
+            }),
+        ...(mode === 'edit'
+          ? { guest_admins: !external && form.is_collaboration ? guestAdmins : [] }
+          : {}),
       };
       if (mode === 'create') {
         await fetchAdmin('/api/admin/events', { method: 'POST', body: JSON.stringify(payload) });
@@ -161,14 +178,43 @@ export default function EventDrawer({ mode }: Props) {
           {field('date', 'When', (
             <DateTimePicker value={form.date || ''} onChange={(iso) => set('date', iso)} />
           ))}
-          <div className="grid grid-cols-2 gap-3">
-            {field('capacity', 'Capacity', (
-              <NumberInput value={form.capacity ?? null} onChange={(n) => set('capacity', n ?? 0)} aria-label="Capacity" />
-            ))}
-            {field('price', 'Price (₹)', (
-              <NumberInput value={form.price ?? null} onChange={(n) => set('price', n ?? 0)} allowRupees aria-label="Price" />
-            ))}
+          <div className="flex items-start gap-2">
+            <Switch
+              checked={!!form.externally_managed}
+              onCheckedChange={(c) => set('externally_managed', c)}
+            />
+            <div className="flex-1">
+              <Label>Registrations managed externally</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                A partner handles registration. BGC will list the event and send visitors to their website.
+              </p>
+            </div>
           </div>
+          {form.externally_managed ? (
+            <div className="rounded-md border p-3 space-y-2">
+              {field('external_registration_url', 'Partner registration URL', (
+                <Input
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://partner.example/register"
+                  value={form.external_registration_url || ''}
+                  onChange={(e) => set('external_registration_url', e.target.value)}
+                />
+              ))}
+              <p className="text-xs text-muted-foreground">
+                Capacity, price, Guild Path access, and custom questions are not used for this event.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {field('capacity', 'Capacity', (
+                <NumberInput value={form.capacity ?? null} onChange={(n) => set('capacity', n ?? 0)} aria-label="Capacity" />
+              ))}
+              {field('price', 'Price (₹)', (
+                <NumberInput value={form.price ?? null} onChange={(n) => set('price', n ?? 0)} allowRupees aria-label="Price" />
+              ))}
+            </div>
+          )}
           {field('venue_name', 'Venue name', (
             <>
               <Input list="venue-suggestions" value={form.venue_name || ''} onChange={(e) => set('venue_name', e.target.value)} />
@@ -180,7 +226,7 @@ export default function EventDrawer({ mode }: Props) {
           {field('venue_area', 'Venue area', (
             <Input value={form.venue_area || ''} onChange={(e) => set('venue_area', e.target.value)} />
           ))}
-          {field('price_includes', 'Price includes', (
+          {!form.externally_managed && field('price_includes', 'Price includes', (
             <Input value={form.price_includes || ''} onChange={(e) => set('price_includes', e.target.value)} />
           ))}
           {field('llm_notes', 'Notes for DM agent', (
@@ -195,32 +241,36 @@ export default function EventDrawer({ mode }: Props) {
             <Switch checked={!!form.is_published} onCheckedChange={(c) => set('is_published', c)} />
             <Label>Published</Label>
           </div>
-          <div className="flex items-start gap-2">
-            <Switch
-              checked={!!form.guild_path_exclusive}
-              onCheckedChange={(c) => set('guild_path_exclusive', c)}
-            />
-            <div>
-              <Label>Guild Path Exclusive</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Only current Guild Path members can register on the public site.
-              </p>
+          {!form.externally_managed && (
+            <div className="flex items-start gap-2">
+              <Switch
+                checked={!!form.guild_path_exclusive}
+                onCheckedChange={(c) => set('guild_path_exclusive', c)}
+              />
+              <div>
+                <Label>Guild Path Exclusive</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Only current Guild Path members can register on the public site.
+                </p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-start gap-2">
-            <Switch
-              checked={!!form.is_collaboration}
-              onCheckedChange={(c) => set('is_collaboration', c)}
-            />
-            <div className="flex-1">
-              <Label>Collaboration event</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Lets guest admins from a partner community manage this event's registrations only.
-                Access auto-expires 2 days after the event date.
-              </p>
+          )}
+          {!form.externally_managed && (
+            <div className="flex items-start gap-2">
+              <Switch
+                checked={!!form.is_collaboration}
+                onCheckedChange={(c) => set('is_collaboration', c)}
+              />
+              <div className="flex-1">
+                <Label>Collaboration event</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Lets guest admins from a partner community manage this event's registrations only.
+                  Access auto-expires 2 days after the event date.
+                </p>
+              </div>
             </div>
-          </div>
-          {form.is_collaboration && mode === 'edit' && (
+          )}
+          {!form.externally_managed && form.is_collaboration && mode === 'edit' && (
             <div className="rounded-md border p-3 space-y-2">
               <Label className="block">Guest admin emails</Label>
               <div className="flex flex-wrap gap-1">
@@ -259,13 +309,15 @@ export default function EventDrawer({ mode }: Props) {
               <p className="text-xs text-muted-foreground">Press Enter to add. They log in at this admin URL with the email you list.</p>
             </div>
           )}
-          <div>
-            <Label className="block mb-2">Custom questions</Label>
-            <CustomQuestionsEditor
-              value={form.custom_questions || []}
-              onChange={(qs: CustomQuestion[]) => set('custom_questions', qs)}
-            />
-          </div>
+          {!form.externally_managed && (
+            <div>
+              <Label className="block mb-2">Custom questions</Label>
+              <CustomQuestionsEditor
+                value={form.custom_questions || []}
+                onChange={(qs: CustomQuestion[]) => set('custom_questions', qs)}
+              />
+            </div>
+          )}
         </>
       )}
     </FormDrawer>

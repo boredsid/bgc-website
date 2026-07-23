@@ -73,7 +73,7 @@ async function syncEventGuests(
 const EVENT_FIELDS = [
   'name', 'description', 'date', 'venue_name', 'venue_area',
   'price', 'capacity', 'custom_questions', 'price_includes', 'llm_notes', 'is_published',
-  'guild_path_exclusive', 'is_collaboration',
+  'guild_path_exclusive', 'is_collaboration', 'externally_managed', 'external_registration_url',
 ] as const;
 
 type EventField = (typeof EVENT_FIELDS)[number];
@@ -82,6 +82,31 @@ function pickEventFields(body: Record<string, unknown>): Partial<Record<EventFie
   const out: Partial<Record<EventField, unknown>> = {};
   for (const f of EVENT_FIELDS) if (f in body) out[f] = body[f];
   return out;
+}
+
+function normalizeExternalFields(payload: Partial<Record<EventField, unknown>>): void {
+  if (typeof payload.external_registration_url === 'string') {
+    payload.external_registration_url = payload.external_registration_url.trim();
+  }
+  if (payload.externally_managed === true) {
+    payload.price = 0;
+    payload.capacity = 0;
+    payload.custom_questions = [];
+    payload.price_includes = null;
+    payload.guild_path_exclusive = false;
+    payload.is_collaboration = false;
+  } else if (payload.externally_managed === false) {
+    payload.external_registration_url = null;
+  }
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function validateEventPayload(payload: Partial<Record<EventField, unknown>>, requireAll: boolean): string | null {
@@ -94,6 +119,17 @@ function validateEventPayload(payload: Partial<Record<EventField, unknown>>, req
   if ('price' in payload && (typeof payload.price !== 'number' || payload.price < 0)) return 'Price must be a non-negative number';
   if ('capacity' in payload && (typeof payload.capacity !== 'number' || payload.capacity < 0)) return 'Capacity must be a non-negative number';
   if ('custom_questions' in payload && payload.custom_questions !== null && !Array.isArray(payload.custom_questions)) return 'Custom questions must be a list';
+  if ('externally_managed' in payload && typeof payload.externally_managed !== 'boolean') {
+    return 'Externally managed must be true or false';
+  }
+  if ('external_registration_url' in payload && payload.external_registration_url !== null) {
+    if (typeof payload.external_registration_url !== 'string' || !isHttpUrl(payload.external_registration_url)) {
+      return 'External registration URL must be a full http:// or https:// URL';
+    }
+  }
+  if (payload.externally_managed === true && typeof payload.external_registration_url !== 'string') {
+    return 'External registration URL is required';
+  }
   return null;
 }
 
@@ -101,6 +137,7 @@ export async function handleCreateEvent(request: Request, env: Env): Promise<Res
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return jsonResponse({ error: 'Invalid request body' }, 400);
   const payload = pickEventFields(body);
+  normalizeExternalFields(payload);
   const err = validateEventPayload(payload, true);
   if (err) return jsonResponse({ error: err }, 400);
 
@@ -124,7 +161,8 @@ export async function handleUpdateEvent(
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return jsonResponse({ error: 'Invalid request body' }, 400);
   const payload = pickEventFields(body);
-  const hasGuests = 'guest_admins' in body;
+  normalizeExternalFields(payload);
+  const hasGuests = 'guest_admins' in body || payload.externally_managed === true;
   if (Object.keys(payload).length === 0 && !hasGuests) return jsonResponse({ error: 'No fields to update' }, 400);
   const err = validateEventPayload(payload, false);
   if (err) return jsonResponse({ error: err }, 400);

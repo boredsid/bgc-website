@@ -104,10 +104,21 @@ const registerForEvent: McpTool = {
       env,
       ctx,
     );
-    const body = (await res.json()) as { success?: boolean; registration_id?: string; error?: string };
+    const body = (await res.json()) as {
+      success?: boolean;
+      registration_id?: string;
+      error?: string;
+      code?: string;
+      external_registration_url?: string;
+    };
 
     if (!res.ok || !body.registration_id) {
       const error = body.error || 'Registration failed';
+      if (body.code === 'external_registration') {
+        throw new ToolError(
+          `This event's registrations are managed by the event partner. Send the user to ${body.external_registration_url || 'the external registration link from get_event'}.`,
+        );
+      }
       if (error === 'guild_path_required') {
         throw new ToolError('This event is exclusive to active Guild Path members. Use get_guild_info to see membership options.');
       }
@@ -183,8 +194,19 @@ const joinWaitlist: McpTool = {
       env,
       ctx,
     );
-    const body = (await res.json()) as { success?: boolean; available?: boolean; error?: string };
+    const body = (await res.json()) as {
+      success?: boolean;
+      available?: boolean;
+      error?: string;
+      code?: string;
+      external_registration_url?: string;
+    };
 
+    if (body.code === 'external_registration') {
+      throw new ToolError(
+        `This event's registrations and waitlist are managed by the event partner. Send the user to ${body.external_registration_url || 'the external registration link from get_event'}.`,
+      );
+    }
     if (body.available) {
       return { waitlisted: false, message: 'Good news — this event has spots available. Register with register_for_event instead.' };
     }

@@ -27,6 +27,8 @@ export interface Event {
   is_published: boolean;
   guild_path_exclusive: boolean;
   is_collaboration: boolean;
+  externally_managed: boolean;
+  external_registration_url: string | null;
   created_at: string;
 }
 

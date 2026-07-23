@@ -29,7 +29,13 @@ export default function EventsList() {
     { key: 'name', header: 'Name', render: (e) => e.name },
     { key: 'date', header: 'Date', render: (e) => <RelativeDate iso={e.date} />, sortable: true, sortValue: (e) => e.date },
     { key: 'venue', header: 'Venue', render: (e) => e.venue_name || '—' },
-    { key: 'capacity', header: 'Capacity', render: (e) => e.capacity, sortable: true, sortValue: (e) => e.capacity },
+    {
+      key: 'registration',
+      header: 'Registration',
+      render: (e) => e.externally_managed ? 'Partner site' : `${e.capacity} spots`,
+      sortable: true,
+      sortValue: (e) => e.externally_managed ? 'external' : `internal-${e.capacity}`,
+    },
     { key: 'published', header: 'Status', render: (e) => <StatusBadge status={e.is_published ? 'published' : 'draft'} /> },
   ];
 
@@ -37,6 +43,7 @@ export default function EventsList() {
     { key: 'name', render: (e) => e.name, primary: true },
     { key: 'date', render: (e) => <RelativeDate iso={e.date} /> },
     { key: 'venue', render: (e) => e.venue_name || '—' },
+    { key: 'registration', render: (e) => e.externally_managed ? 'Partner registration' : `${e.capacity} spots` },
   ];
 
   return (

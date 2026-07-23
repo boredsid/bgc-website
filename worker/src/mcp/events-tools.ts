@@ -9,7 +9,7 @@ interface EventQuestion { id: string; label: string; type: string; required: boo
 const listEvents: McpTool = {
   name: 'list_events',
   description:
-    "List upcoming published BGC events in Bangalore with date, venue, price, and spots remaining. Use this first when the user asks what's happening or wants to register.",
+    "List upcoming published BGC events in Bangalore with date, venue, and registration method. BGC-managed events include price and spots; partner-managed events include the external registration URL.",
   inputSchema: { type: 'object', properties: {} },
   handler: async (_args, env) => {
     const supabase = getSupabase(env);
@@ -17,7 +17,7 @@ const listEvents: McpTool = {
 
     const { data: events, error } = await supabase
       .from('events')
-      .select('id, name, description, date, venue_name, venue_area, price, price_includes, capacity, guild_path_exclusive')
+      .select('id, name, description, date, venue_name, venue_area, price, price_includes, capacity, guild_path_exclusive, externally_managed, external_registration_url')
       .eq('is_published', true)
       .gte('date', today)
       .order('date', { ascending: true });
@@ -37,18 +37,32 @@ const listEvents: McpTool = {
     for (const r of regs || []) taken[r.event_id] = (taken[r.event_id] || 0) + r.seats;
 
     return {
-      events: events.map((e) => ({
-        id: e.id,
-        name: e.name,
-        description: e.description,
-        date: e.date,
-        venue: [e.venue_name, e.venue_area].filter(Boolean).join(', '),
-        price_inr: e.price,
-        price_includes: e.price_includes,
-        spots_remaining: Math.max(0, e.capacity - (taken[e.id] || 0)),
-        guild_path_exclusive: e.guild_path_exclusive,
-        register_url: `${COMMUNITY.website}/register?event=${e.id}`,
-      })),
+      events: events.map((e) => {
+        const common = {
+          id: e.id,
+          name: e.name,
+          description: e.description,
+          date: e.date,
+          venue: [e.venue_name, e.venue_area].filter(Boolean).join(', '),
+        };
+        if (e.externally_managed) {
+          return {
+            ...common,
+            registration_management: 'external',
+            external_registration_url: e.external_registration_url,
+            register_url: e.external_registration_url,
+          };
+        }
+        return {
+          ...common,
+          registration_management: 'bgc',
+          price_inr: e.price,
+          price_includes: e.price_includes,
+          spots_remaining: Math.max(0, e.capacity - (taken[e.id] || 0)),
+          guild_path_exclusive: e.guild_path_exclusive,
+          register_url: `${COMMUNITY.website}/register?event=${e.id}`,
+        };
+      }),
     };
   },
 };
@@ -56,7 +70,7 @@ const listEvents: McpTool = {
 const getEvent: McpTool = {
   name: 'get_event',
   description:
-    'Full details of one event: description, pricing (including per-option prices), remaining capacity, and the registration questions that must be answered. Call this before register_for_event to learn which custom_answers are required.',
+    'Full details and registration method for one event. BGC-managed events include pricing, capacity, and required questions. Partner-managed events include the external registration URL and cannot use BGC registration or waitlist tools.',
   inputSchema: {
     type: 'object',
     properties: { event_id: { type: 'string', description: 'Event id from list_events' } },
@@ -68,13 +82,29 @@ const getEvent: McpTool = {
 
     const { data: event, error } = await supabase
       .from('events')
-      .select('id, name, description, date, venue_name, venue_area, price, price_includes, capacity, guild_path_exclusive, custom_questions, llm_notes')
+      .select('id, name, description, date, venue_name, venue_area, price, price_includes, capacity, guild_path_exclusive, custom_questions, llm_notes, externally_managed, external_registration_url')
       .eq('id', eventId)
       .eq('is_published', true)
       .maybeSingle();
 
     if (error) throw new Error(error.message);
     if (!event) throw new ToolError('Could not find that event. Use list_events to see current events.');
+
+    if (event.externally_managed) {
+      return {
+        id: event.id,
+        name: event.name,
+        description: event.description,
+        date: event.date,
+        venue: [event.venue_name, event.venue_area].filter(Boolean).join(', '),
+        registration_management: 'external',
+        external_registration_url: event.external_registration_url,
+        register_url: event.external_registration_url,
+        notes: event.llm_notes,
+        registration_note:
+          'Registration, pricing, capacity, and questions are managed by the event partner. Do not call register_for_event or join_waitlist.',
+      };
+    }
 
     // Reuse the existing spots handler for capacity + per-option counts.
     const spotsRes = await handleEventSpots(eventId, env);
@@ -108,6 +138,7 @@ const getEvent: McpTool = {
       description: event.description,
       date: event.date,
       venue: [event.venue_name, event.venue_area].filter(Boolean).join(', '),
+      registration_management: 'bgc',
       price_inr: event.price,
       price_includes: event.price_includes,
       pricing_note:

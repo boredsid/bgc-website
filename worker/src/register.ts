@@ -49,6 +49,13 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     .single();
 
   if (!event) return jsonResponse({ error: 'Event not found' }, 404);
+  if (event.externally_managed) {
+    return jsonResponse({
+      error: 'Registrations for this event are managed by the event partner.',
+      code: 'external_registration',
+      external_registration_url: event.external_registration_url,
+    }, 409);
+  }
 
   // Check spots remaining
   const { data: regs } = await supabase

@@ -12,7 +12,7 @@ export async function handleEventSpots(eventId: string, env: Env): Promise<Respo
   const [eventResult, regsResult] = await Promise.all([
     supabase
       .from('events')
-      .select('capacity, custom_questions')
+      .select('capacity, custom_questions, externally_managed, external_registration_url')
       .eq('id', eventId)
       .single(),
     supabase
@@ -24,6 +24,13 @@ export async function handleEventSpots(eventId: string, env: Env): Promise<Respo
 
   if (!eventResult.data) {
     return jsonResponse({ error: 'Event not found' }, 404);
+  }
+  if (eventResult.data.externally_managed) {
+    return jsonResponse({
+      error: 'Capacity is managed by the event partner.',
+      code: 'external_registration',
+      external_registration_url: eventResult.data.external_registration_url,
+    }, 409);
   }
 
   const capacity = eventResult.data.capacity;
