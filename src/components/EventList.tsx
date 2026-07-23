@@ -241,16 +241,16 @@ function EventCard({ event, past = false }: { event: EventWithSpots; past?: bool
         )}
         {!past && (
           <>
-            <div className="flex items-center gap-3 mt-2">
-              <span className="font-heading font-bold text-xl">
-                {event.externally_managed ? 'Registration managed by partner' : `₹${event.price}`}
-              </span>
-              {!event.externally_managed && event.remaining !== null && !soldOut && (
-                <span className="text-xs text-[#1A1A1A]/60">
-                  {event.remaining} spot{event.remaining !== 1 ? 's' : ''} left
-                </span>
-              )}
-            </div>
+            {!event.externally_managed && (
+              <div className="flex items-center gap-3 mt-2">
+                <span className="font-heading font-bold text-xl">₹{event.price}</span>
+                {event.remaining !== null && !soldOut && (
+                  <span className="text-xs text-[#1A1A1A]/60">
+                    {event.remaining} spot{event.remaining !== 1 ? 's' : ''} left
+                  </span>
+                )}
+              </div>
+            )}
             {!event.externally_managed && event.price_includes && (
               <div className="card-brutal px-3 py-2 text-sm mt-2 font-heading font-semibold" style={{ background: '#FFD166', boxShadow: '3px 3px 0 #1A1A1A' }}>
                 {event.price_includes}
