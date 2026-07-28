@@ -345,10 +345,11 @@ Normalization and reconciliation:
 - `Miscellanous` was normalized to `Miscellaneous`.
 - Displayed Sheet dates were preserved rather than shifted through the Sheet’s `America/New_York` timezone.
 - Paired internal settlements were consolidated into transfers so they do not affect operating surplus.
-- Two transfer-like income rows were retained as transfers while their genuine operating expenses remained:
-  - ₹7,000 US games reimbursement with the Games Purchase expense retained
-  - ₹400 food reimbursement with the Food expense retained
-- This produces historical operating controls of ₹1,528,384 income, ₹1,355,942 expenses, and ₹172,442 surplus. The ₹7,400 difference from the raw Sheet net is the removal of those reimbursement inflows from operating income.
+- Both reimbursements remain fully counted as operating expenses:
+  - ₹7,000 remains a Games Purchase expense
+  - ₹400 remains a Food expense
+- Only the matching founder-to-founder reimbursement receipts were reclassified from income to transfers. No expense was removed.
+- This produces historical operating controls of ₹1,528,384 income, ₹1,355,942 expenses, and ₹172,442 surplus. The ₹7,400 difference from the raw Sheet net comes only from excluding the reimbursement receipts from operating income.
 - 183 legacy paid registrations and 14 Guild memberships were linked to the aggregate Sheet income transactions that already represented their cash.
 - Three source discrepancies are recorded on the reconciliation links rather than silently changed: two Guild amount differences and one Guild member-label difference.
 - Nine paid registrations for the upcoming `Work in Progress` event were absent from the Sheet. They were posted as app-native UPI income using their original registration timestamps, totaling ₹2,320.
