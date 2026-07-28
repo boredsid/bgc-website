@@ -1,8 +1,8 @@
 # BGC Finance Admin — Implementation Handoff
 
 Date: 2026-07-28
-Branch: `codex/finance-admin`
-Status: Implemented and verified locally on `codex/finance-admin`; no migration, commit, push, Worker deploy, Pages deploy, or production data import has been performed.
+Release branch: `codex/finance-admin`
+Status: Released to production through PR #16. Migration 019, historical import, reconciliation, Worker deploy, and both Cloudflare Pages deploys are complete.
 
 ## Goal
 
@@ -111,6 +111,7 @@ Creates:
 - `finance_categories`
 - `finance_import_batches`
 - `finance_transactions`
+- `finance_reconciliation_links`
 - `finance_transaction_history`
 - Registration/Guild payment metadata columns
 - Seed historical accounts and finance categories
@@ -119,12 +120,12 @@ Creates:
 - Guild finance sync trigger
 - RLS and required `authenticated, service_role` grants
 
-Before production migration:
+Production migration procedure used:
 
-1. Run `supabase migration list --linked`.
-2. Do not use blind `supabase db push` if local numeric IDs and remote timestamp IDs still diverge.
-3. Use the same controlled migration procedure used for migration 018.
-4. Run SQL syntax validation against a local/temporary Postgres or linked dry-run first.
+1. Ran `supabase migration list --linked`.
+2. Confirmed local numeric IDs and remote timestamp IDs diverge.
+3. Avoided `supabase db push` and applied only migration 019 through the controlled linked query path.
+4. Validated the resulting schema, seeds, columns, and triggers before importing data.
 
 ### Worker
 
@@ -265,6 +266,7 @@ Implemented:
 - Full admins must choose account/date/method for positive registration and Guild confirmations.
 - Guest admins use the active default finance account and a Bangalore business date. Without a default, the server returns a plain-English setup error.
 - Existing confirmed production rows remain valid with null payment metadata because migration 019 does not backfill or update them.
+- `finance_reconciliation_links` marks historical registration/Guild rows represented by aggregate Sheet income, so they are not posted twice or shown as untracked.
 - Ordinary edits to a legacy paid record are allowed. Editing its financial fields or transitioning into paid/confirmed requires payment metadata.
 - Current cancellations issue customer credit. They do not void received cash; confirmed/paid → pending is the explicit correction that voids the linked cash entry.
 
@@ -290,8 +292,6 @@ Implemented:
   - atomic CSV import and duplicate rollback
   - audit history created
 
-The repository is not locally linked to Supabase, so `supabase migration list --linked` returned “Cannot find project ref.” This must be run from a linked/admin-capable environment before production migration.
-
 ### Browser QA
 
 Checked with realistic local mock data:
@@ -307,54 +307,56 @@ Checked with realistic local mock data:
 
 A mobile horizontal overflow in the transaction action row was found and fixed during this pass.
 
-## Production work still required
+## Production release completed
 
-No external change has been authorized or performed. Continue in this order:
-
-1. Link/prepare the Supabase environment and run `supabase migration list --linked`.
-2. Compare local numeric migration IDs with remote history. If they diverge, use the controlled migration path; do not blindly replay.
-3. Apply migration 019 and verify its tables, grants, triggers, and seeded accounts/categories.
-4. Set exactly one active default finance account before guest admins confirm payments.
-5. Deploy the Worker.
-6. Deploy the admin Pages app.
-7. Verify one full-admin and one guest-admin payment flow live.
-8. Perform the historical import/reconciliation process below.
+- Feature commit: `45e2caba831fbf3f34215ebd21f176dc2d6dec51`
+- Pull request: `#16`
+- Main merge commit: `1b8f240c8e100576c429cc029e21a76cfa6e8f7f`
+- Remote migration history still uses timestamp IDs while the repository uses numeric IDs. Migration 019 was therefore applied through the controlled linked `db query --file` path, not `db push`.
+- Migration file SHA-256: `8643308d0cf45caf3808774f0808ca1a9f2f06bb1ae2711da33c42f69ed96867`
+- Post-migration validation: 6 Finance tables, 4 seeded accounts, 16 categories, 8 source payment columns, and both source-sync/audit trigger families present.
+- Default account: Suranjana Datta, based on the Sheet’s recent app-payment ownership.
+- Worker version: `0c8f4c6c-d633-420c-a4ea-00d2ea0c73af`
+- Worker custom domain: `api.boardgamecompany.in`
+- Protected Finance endpoint returned `401 Unauthorized` without Access identity, as expected.
+- Public event-spots endpoint returned `200`, confirming public API health after deployment.
+- Cloudflare Pages production checks for both `bgc-admin` and `bgc-website` completed successfully on the main merge commit.
 
 ## Historical Sheet import and cutover
 
-The importer:
+The source tabs were read directly through Google Sheets using displayed values. The untouched source controls were:
 
-- Imports Income or Expenses CSV.
-- Rejects `Internal Settlement` expenses.
-- Does not automatically pair historical settlement income and expense rows.
-- Rejects exact duplicate files using SHA-256.
-- Normalizes the source `Miscellanous` spelling.
-- Preserves displayed dates.
+- 140 Income rows totaling ₹1,697,242
+- 297 Expenses rows totaling ₹1,517,400
+- Raw Sheet net ₹179,842
+- Date range 2024-04-28 through 2026-07-26
 
-Important duplicate boundary:
+Production import batch:
 
-- A reconciled legacy registration/Guild record creates a new automatic income transaction.
-- Importing the matching Sheet Income row as well would double-count it.
-- The reconciliation dialog therefore requires an explicit acknowledgement before posting.
+- Batch ID: `b1740888-b10b-42fe-be6f-14503f01cdb0`
+- Source SHA-256: `0ba2fd7b10514060f0546325b58543b14bf6e6c609728bdb0d72fb71e3eaa1d9`
+- 426 imported transactions
+- 126 operating income rows
+- 286 operating expense rows
+- 14 normalized transfers
 
-Recommended cutover procedure:
+Normalization and reconciliation:
 
-1. Export Income and Expenses as CSV and retain untouched source copies.
-2. Choose the source of truth for each historical income row:
-   - source-linked registration/Guild record, reconciled through the dialog; or
-   - Sheet Income row, imported as a manual historical transaction.
-3. Remove/skip Sheet Income rows represented by reconciled app records.
-4. Import operating expenses and the remaining non-source-linked income.
-5. Review settlement counterpart rows and enter one transfer per actual movement.
-6. Assign/link events where reliable.
-7. Reconcile transformed control totals and per-holder balances against:
-   - ₹1,697,242 income
-   - ₹1,517,400 expenses
-   - ₹179,842 net
-8. Document excluded/reclassified rows so the transformed ledger can be traced back to the raw Sheet.
-9. Freeze the Sheet only after reconciliation passes.
+- `Miscellanous` was normalized to `Miscellaneous`.
+- Displayed Sheet dates were preserved rather than shifted through the Sheet’s `America/New_York` timezone.
+- Paired internal settlements were consolidated into transfers so they do not affect operating surplus.
+- Two transfer-like income rows were retained as transfers while their genuine operating expenses remained:
+  - ₹7,000 US games reimbursement with the Games Purchase expense retained
+  - ₹400 food reimbursement with the Food expense retained
+- This produces historical operating controls of ₹1,528,384 income, ₹1,355,942 expenses, and ₹172,442 surplus. The ₹7,400 difference from the raw Sheet net is the removal of those reimbursement inflows from operating income.
+- 183 legacy paid registrations and 14 Guild memberships were linked to the aggregate Sheet income transactions that already represented their cash.
+- Three source discrepancies are recorded on the reconciliation links rather than silently changed: two Guild amount differences and one Guild member-label difference.
+- Nine paid registrations for the upcoming `Work in Progress` event were absent from the Sheet. They were posted as app-native UPI income using their original registration timestamps, totaling ₹2,320.
+- Final live totals after those new payments: ₹1,530,704 income, ₹1,355,942 expenses, ₹168,858 transfers, and ₹174,762 surplus.
+- Reconciliation result: 0 untracked paid registrations and 0 untracked paid Guild memberships.
+- Audit result: 435 transaction-history rows for 426 imported and 9 app-native transactions.
 
-Because the importer blocks settlements, imported operating totals will intentionally differ from raw Sheet totals until transfers and any excluded counterpart income are reconciled. Document the final transformed control totals.
+The Sheet should now be treated as a retained historical source, not the operational ledger. New income, expenses, and transfers belong in Finance Admin.
 
 ## Receipt handling
 
@@ -380,26 +382,26 @@ Do not use a public bucket for finance receipts.
 7. The Worker’s admin routing is a flat chain; keep special Finance routes before generic transaction-id matching.
 8. Do not expose `finance_transaction_history` directly to the browser except through the gated Worker.
 9. Imported rows use a file SHA-256 plus source row for deduplication.
-10. The migration has been parsed and executed in an isolated PostgreSQL runtime, but it has not been applied to the linked Supabase project.
-11. The Finance summary returns legacy unreconciled rows in batches of 50. Successful reconciliation refreshes the next batch.
+10. Migration 019 is live. Do not rerun the raw migration file; it is intentionally non-idempotent.
+11. The Finance summary fetches up to 500 source rows, removes historical reconciliation links, then returns at most 50 genuinely untracked records of each type.
 12. Do not import and reconcile the same historical income.
 
 ## Git state
 
-- Branch creation required elevated Git permission and succeeded.
-- Branch: `codex/finance-admin`
-- No commit or push has been requested or performed.
-- Preserve unrelated user changes if any appear later.
+- Release branch: `codex/finance-admin`
+- Feature commit: `45e2caba831fbf3f34215ebd21f176dc2d6dec51`
+- PR #16 merged to `main` as `1b8f240c8e100576c429cc029e21a76cfa6e8f7f`
+- Both Cloudflare Pages production checks passed.
 
 ## Definition of done
 
-The local implementation is complete. Production cutover is complete when:
+The implementation and production cutover are complete:
 
-- Migration 019 passes validation and controlled production application.
-- Worker/admin/full test suites and builds pass.
+- Migration 019 passed validation and controlled production application.
+- Worker/admin/full test suites and builds passed.
 - Finance is reachable only to full admins.
 - Paid registration/Guild transitions create exactly one linked finance row.
-- Transfers never affect operating surplus.
-- Legacy untracked payments can be assigned without guessing.
+- Transfers do not affect operating surplus.
+- Historical source rows are reconciled without double-counting.
 - Sheet data is imported and reconciled to documented transformed totals.
-- Admin, Worker, and migration are deployed in the safe order and live behavior is verified.
+- Admin, Worker, and migration were deployed in the safe order and production health checks passed.
