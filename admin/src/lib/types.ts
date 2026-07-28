@@ -47,6 +47,19 @@ export interface Game {
   currently_with: string | null;
 }
 
+export interface CorporateEvent {
+  id: string;
+  company_name: string;
+  title: string | null;
+  event_date: string;
+  headcount: number | null;
+  description: string | null;
+  logo_url: string | null;
+  testimonial: string | null;
+  is_published: boolean;
+  created_at: string;
+}
+
 export interface Registration {
   id: string;
   event_id: string;
@@ -62,6 +75,10 @@ export interface Registration {
   plus_ones_consumed: number;
   credits_applied: number;
   source: string | null;
+  payment_account_id: string | null;
+  paid_at: string | null;
+  payment_method: FinancePaymentMethod | null;
+  payment_recorded_by: string | null;
   created_at: string;
 }
 
@@ -75,6 +92,10 @@ export interface GuildMember {
   expires_at: string;
   plus_ones_used: number;
   source: string | null;
+  payment_account_id: string | null;
+  paid_at: string | null;
+  payment_method: FinancePaymentMethod | null;
+  payment_recorded_by: string | null;
   user_name: string | null;
   user_phone: string;
   user_email: string | null;
@@ -139,4 +160,97 @@ export interface OwnerSummaryRow {
   with_others: number;
   top_holders: Array<{ name: string; count: number }>;
   more_holders: number;
+}
+
+export type FinanceTransactionType = 'income' | 'expense' | 'transfer';
+export type FinancePaymentMethod = 'upi' | 'cash' | 'bank_transfer' | 'card' | 'other';
+
+export interface FinanceAccount {
+  id: string;
+  name: string;
+  account_type: 'person' | 'bank' | 'upi' | 'cash' | 'other';
+  is_active: boolean;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinanceCategory {
+  id: string;
+  name: string;
+  transaction_type: 'income' | 'expense';
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface FinanceTransaction {
+  id: string;
+  transaction_type: FinanceTransactionType;
+  occurred_on: string;
+  amount: number;
+  title: string;
+  category_id: string | null;
+  from_account_id: string | null;
+  to_account_id: string | null;
+  payment_method: FinancePaymentMethod | null;
+  event_id: string | null;
+  registration_id: string | null;
+  guild_member_id: string | null;
+  corporate_event_id: string | null;
+  game_id: string | null;
+  notes: string | null;
+  receipt_url: string | null;
+  source: 'manual' | 'registration' | 'guild' | 'import' | 'adjustment' | 'refund';
+  source_key: string | null;
+  source_row: number | null;
+  created_by: string;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
+  category?: Pick<FinanceCategory, 'id' | 'name' | 'transaction_type'> | null;
+  from_account?: Pick<FinanceAccount, 'id' | 'name' | 'account_type'> | null;
+  to_account?: Pick<FinanceAccount, 'id' | 'name' | 'account_type'> | null;
+  event?: { id: string; name: string } | null;
+  corporate_event?: { id: string; company_name: string; title: string | null } | null;
+  game?: { id: string; title: string } | null;
+}
+
+export interface FinanceSummary {
+  totals: {
+    income: number;
+    expenses: number;
+    surplus: number;
+    outstanding_credits: number | null;
+  };
+  account_balances: Array<FinanceAccount & { balance: number }>;
+  category_spend: Array<{ category: string; amount: number }>;
+  monthly: Array<{ month: string; income: number; expenses: number }>;
+  event_profit: Array<{
+    event_id: string;
+    event_name: string;
+    income: number;
+    expenses: number;
+    surplus: number;
+  }>;
+  untracked: {
+    registrations: Array<{
+      id: string;
+      name: string;
+      total_amount: number;
+      event_id: string;
+      created_at: string;
+      events?: { name: string } | null;
+    }>;
+    guild_members: Array<{
+      id: string;
+      amount: number;
+      tier: string;
+      starts_at: string;
+      users?: { name: string } | null;
+    }>;
+  };
+  recent_transactions: FinanceTransaction[];
 }

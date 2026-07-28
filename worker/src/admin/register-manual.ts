@@ -5,8 +5,15 @@ import { sendEventRegistrationEmail } from '../email';
 import { applyCreditsToTotal, recordCreditEvent } from '../credits';
 import { consumePromoUses, getApplicablePromo } from '../promos';
 import { effectiveSeatPrice, type PricingQuestion } from '../pricing';
+import { currentBangaloreDate } from '../finance-date';
 
-export async function handleManualRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+export async function handleManualRegister(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  adminEmail = 'system:admin',
+  useDefaultPaymentAccount = false,
+): Promise<Response> {
   const body = await request.json<{
     event_id: string;
     name: string;
@@ -16,6 +23,9 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
     custom_answers?: Record<string, string | boolean>;
     payment_status: 'pending' | 'confirmed';
     allow_overbook?: boolean;
+    payment_account_id?: string;
+    paid_at?: string;
+    payment_method?: 'upi' | 'cash' | 'bank_transfer' | 'card' | 'other';
   }>().catch(() => null);
 
   if (!body) return jsonResponse({ error: 'Invalid request body' }, 400);
@@ -171,6 +181,36 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
   const { creditsApplied, finalAmount } = await applyCreditsToTotal(supabase, userId, totalAmount);
   totalAmount = finalAmount;
 
+  if (body.payment_status === 'confirmed' && totalAmount > 0) {
+    if ((!body.payment_account_id || !body.paid_at || !body.payment_method) && useDefaultPaymentAccount) {
+      const { data: defaultAccount } = await supabase
+        .from('finance_accounts')
+        .select('id')
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (defaultAccount) {
+        body.payment_account_id = defaultAccount.id;
+        body.paid_at = currentBangaloreDate();
+        body.payment_method = 'upi';
+      }
+    }
+    if (!body.payment_account_id || !body.paid_at || !body.payment_method) {
+      return jsonResponse({
+        error: useDefaultPaymentAccount
+          ? 'A full admin must set a default finance account before guest admins can confirm payments.'
+          : 'Choose where and when payment was received before creating a confirmed registration.',
+        code: 'payment_details_required',
+      }, 400);
+    }
+    if (Number.isNaN(Date.parse(body.paid_at))) {
+      return jsonResponse({ error: 'Payment date must be valid' }, 400);
+    }
+    if (!['upi', 'cash', 'bank_transfer', 'card', 'other'].includes(body.payment_method)) {
+      return jsonResponse({ error: 'Choose a valid payment method' }, 400);
+    }
+  }
+
   const { data: reg, error: regErr } = await supabase
     .from('registrations')
     .insert({
@@ -187,11 +227,18 @@ export async function handleManualRegister(request: Request, env: Env, ctx: Exec
       promo_id: promoIdUsed,
       promo_uses_consumed: promoSeatsConsumed,
       source: 'admin',
+      payment_account_id: body.payment_status === 'confirmed' && totalAmount > 0 ? body.payment_account_id : null,
+      paid_at: body.payment_status === 'confirmed' && totalAmount > 0 ? body.paid_at : null,
+      payment_method: body.payment_status === 'confirmed' && totalAmount > 0 ? body.payment_method : null,
+      payment_recorded_by: body.payment_status === 'confirmed' && totalAmount > 0 ? adminEmail : null,
     })
     .select('id')
     .single();
 
-  if (regErr || !reg) return jsonResponse({ error: 'Registration failed' }, 500);
+  if (regErr || !reg) {
+    console.error('[register-manual] insert failed', regErr);
+    return jsonResponse({ error: 'Registration failed' }, 500);
+  }
 
   // Convert any open lead matching this phone+event (e.g. a waitlist entry).
   // Best-effort — failures here must not fail the registration.

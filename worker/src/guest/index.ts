@@ -90,7 +90,7 @@ export async function handleGuestRequest(
   if (p === '/api/admin/registrations/manual' && request.method === 'POST') {
     const body = (await request.clone().json().catch(() => null)) as { event_id?: string } | null;
     if (!body?.event_id || !allowed.has(body.event_id)) return jsonResponse({ error: 'Forbidden' }, 403);
-    return handleManualRegister(request, env, ctx);
+    return handleManualRegister(request, env, ctx, guest.email, true);
   }
 
   if (p === '/api/admin/cancel-registration' && request.method === 'POST') {
@@ -107,7 +107,7 @@ export async function handleGuestRequest(
     const evId = await registrationEventId(id, env);
     if (!evId || !allowed.has(evId)) return jsonResponse({ error: 'Forbidden' }, 403);
     if (request.method === 'GET') return handleGetRegistration(id, env);
-    if (request.method === 'PATCH') return handleUpdateRegistration(id, request, env);
+    if (request.method === 'PATCH') return handleUpdateRegistration(id, request, env, guest.email, true);
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 

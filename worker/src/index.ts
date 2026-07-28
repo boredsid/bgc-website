@@ -43,6 +43,20 @@ import {
 import { handleSummary } from './admin/summary';
 import { handleSearch } from './admin/search';
 import { handleLog } from './admin/log';
+import {
+  handleCreateFinanceAccount,
+  handleCreateFinanceCategory,
+  handleCreateFinanceTransaction,
+  handleExportFinanceTransactions,
+  handleFinanceBootstrap,
+  handleFinanceSummary,
+  handleGetFinanceTransaction,
+  handleImportFinanceTransactions,
+  handleListFinanceTransactions,
+  handleUpdateFinanceAccount,
+  handleUpdateFinanceTransaction,
+  handleVoidFinanceTransaction,
+} from './admin/finance';
 import { resolveRole } from './guest/auth';
 import { handleGuestRequest } from './guest';
 import { syncCfAccessGroup } from './guest/cf-access';
@@ -225,8 +239,67 @@ export default {
             adminResponse = await handleLog(request, env, gate.admin.email);
           }
 
+          if (!adminResponse && url.pathname === '/api/admin/finance/bootstrap' && request.method === 'GET') {
+            adminResponse = await handleFinanceBootstrap(env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/finance/summary' && request.method === 'GET') {
+            adminResponse = await handleFinanceSummary(url, env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/finance/export' && request.method === 'GET') {
+            adminResponse = await handleExportFinanceTransactions(request, env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/finance/import' && request.method === 'POST') {
+            adminResponse = await handleImportFinanceTransactions(request, env, gate.admin.email);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/finance/accounts' && request.method === 'POST') {
+            adminResponse = await handleCreateFinanceAccount(request, env);
+          }
+
+          if (!adminResponse) {
+            const financeAccountMatch = url.pathname.match(/^\/api\/admin\/finance\/accounts\/([^/]+)$/);
+            if (financeAccountMatch && request.method === 'PATCH') {
+              adminResponse = await handleUpdateFinanceAccount(financeAccountMatch[1], request, env);
+            }
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/finance/categories' && request.method === 'POST') {
+            adminResponse = await handleCreateFinanceCategory(request, env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/finance/transactions' && request.method === 'GET') {
+            adminResponse = await handleListFinanceTransactions(url, env);
+          }
+
+          if (!adminResponse && url.pathname === '/api/admin/finance/transactions' && request.method === 'POST') {
+            adminResponse = await handleCreateFinanceTransaction(request, env, gate.admin.email);
+          }
+
+          if (!adminResponse) {
+            const financeVoidMatch = url.pathname.match(/^\/api\/admin\/finance\/transactions\/([^/]+)\/void$/);
+            if (financeVoidMatch && request.method === 'POST') {
+              adminResponse = await handleVoidFinanceTransaction(financeVoidMatch[1], request, env, gate.admin.email);
+            }
+          }
+
+          if (!adminResponse) {
+            const financeTransactionMatch = url.pathname.match(/^\/api\/admin\/finance\/transactions\/([^/]+)$/);
+            if (financeTransactionMatch) {
+              const transactionId = financeTransactionMatch[1];
+              if (request.method === 'GET') adminResponse = await handleGetFinanceTransaction(transactionId, env);
+              else if (request.method === 'PATCH') {
+                adminResponse = await handleUpdateFinanceTransaction(transactionId, request, env, gate.admin.email);
+              } else {
+                adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+              }
+            }
+          }
+
           if (!adminResponse && url.pathname === '/api/admin/registrations/manual' && request.method === 'POST') {
-            adminResponse = await handleManualRegister(request, env, ctx);
+            adminResponse = await handleManualRegister(request, env, ctx, gate.admin.email);
           }
 
           if (!adminResponse && url.pathname === '/api/admin/registrations/export' && request.method === 'GET') {
@@ -239,7 +312,7 @@ export default {
               const regId = regsMatch[1];
               if (!regId && request.method === 'GET') adminResponse = await handleListRegistrations(url, env);
               else if (regId && regId !== 'manual' && request.method === 'GET') adminResponse = await handleGetRegistration(regId, env);
-              else if (regId && regId !== 'manual' && request.method === 'PATCH') adminResponse = await handleUpdateRegistration(regId, request, env);
+              else if (regId && regId !== 'manual' && request.method === 'PATCH') adminResponse = await handleUpdateRegistration(regId, request, env, gate.admin.email);
               else if (regId !== 'manual') adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }
@@ -254,7 +327,7 @@ export default {
               const gmId = gmMatch[1];
               if (!gmId && request.method === 'GET') adminResponse = await handleListGuildMembers(url, env);
               else if (gmId && request.method === 'GET') adminResponse = await handleGetGuildMember(gmId, env);
-              else if (gmId && request.method === 'PATCH') adminResponse = await handleUpdateGuildMember(gmId, request, env);
+              else if (gmId && request.method === 'PATCH') adminResponse = await handleUpdateGuildMember(gmId, request, env, gate.admin.email);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }

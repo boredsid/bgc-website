@@ -15,6 +15,8 @@ import UserDrawer from './pages/UserDrawer';
 import Leads from './pages/Leads';
 import Giveaways from './pages/Giveaways';
 import Corporate from './pages/Corporate';
+import Finance from './pages/Finance';
+import FinanceTransactionDrawer from './pages/FinanceTransactionDrawer';
 import GuestApp from './GuestApp';
 import { WhoAmIProvider } from './lib/whoami';
 import { Toaster } from '@/components/ui/sonner';
@@ -36,6 +38,9 @@ function AdminRoutes() {
         <Route path="/leads" element={<Leads />} />
         <Route path="/giveaways" element={<Giveaways />} />
         <Route path="/corporate" element={<Corporate />} />
+        <Route path="/finance" element={<Finance />} />
+        <Route path="/finance/new" element={<><Finance /><FinanceTransactionDrawer /></>} />
+        <Route path="/finance/:id" element={<><Finance /><FinanceTransactionDrawer /></>} />
         <Route path="/guild" element={<GuildList />} />
         <Route path="/guild/:id" element={<><GuildList /><GuildDrawer /></>} />
         <Route path="/guild/:id/user" element={<><GuildList /><GuildDrawer /><UserDrawer /></>} />
