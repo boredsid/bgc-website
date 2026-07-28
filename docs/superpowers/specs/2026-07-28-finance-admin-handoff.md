@@ -335,9 +335,9 @@ Production import batch:
 
 - Batch ID: `b1740888-b10b-42fe-be6f-14503f01cdb0`
 - Source SHA-256: `0ba2fd7b10514060f0546325b58543b14bf6e6c609728bdb0d72fb71e3eaa1d9`
-- 426 imported transactions
+- 426 imported transactions retained for audit; 424 remain active after the correction below
 - 126 operating income rows
-- 286 operating expense rows
+- 284 active operating expense rows
 - 14 normalized transfers
 
 Normalization and reconciliation:
@@ -346,17 +346,16 @@ Normalization and reconciliation:
 - Displayed Sheet dates were preserved rather than shifted through the Sheet’s `America/New_York` timezone.
 - Paired internal settlements were consolidated into transfers so they do not affect operating surplus.
 - All 14 founder-to-founder movements are treated uniformly as internal transfers.
-- Two of those transfers are linked to operating expenses that remain fully counted:
-  - ₹7,000 remains a Games Purchase expense
-  - ₹400 remains a Food expense
-- No expense was removed. The corresponding ₹7,400 of founder-to-founder receipts moved from income to internal transfers.
-- This produces historical operating controls of ₹1,528,384 income, ₹1,355,942 expenses, and ₹172,442 surplus. The ₹7,400 difference from the raw Sheet net comes only from excluding those internal-transfer receipts from operating income.
+- The ₹7,000 US-games and ₹400 food pairs each appeared once as an Income-side movement and once as an Expense-side movement in the Sheet. Each pair is represented by one internal transfer in Finance.
+- The two duplicate Expense-side imported records were voided on 2026-07-29 rather than deleted, preserving their audit history.
+- This produces historical operating controls of ₹1,528,384 income, ₹1,348,542 expenses, ₹168,858 internal transfers, and ₹179,842 surplus. The normalized historical surplus now matches the raw Sheet net exactly.
 - 183 legacy paid registrations and 14 Guild memberships were linked to the aggregate Sheet income transactions that already represented their cash.
 - Three source discrepancies are recorded on the reconciliation links rather than silently changed: two Guild amount differences and one Guild member-label difference.
 - Nine paid registrations for the upcoming `Work in Progress` event were absent from the Sheet. They were posted as app-native UPI income using their original registration timestamps, totaling ₹2,320.
-- Final live totals after those new payments: ₹1,530,704 income, ₹1,355,942 expenses, ₹168,858 transfers, and ₹174,762 surplus.
+- Final live totals after those new payments: ₹1,530,704 income, ₹1,348,542 expenses, ₹168,858 transfers, and ₹182,162 surplus.
+- Final account balances: Amrit ₹139,490; Siddhant −₹20,806; Suranjana ₹63,478; Swapnil ₹0.
 - Reconciliation result: 0 untracked paid registrations and 0 untracked paid Guild memberships.
-- Audit result: 435 transaction-history rows for 426 imported and 9 app-native transactions.
+- Audit result: 437 transaction-history rows for 426 imported and 9 app-native transactions, including two audit-preserving void actions.
 
 The Sheet should now be treated as a retained historical source, not the operational ledger. New income, expenses, and transfers belong in Finance Admin.
 
