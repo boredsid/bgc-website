@@ -25,6 +25,12 @@ vi.mock('../promos', () => ({
 import { getSupabase } from '../supabase';
 import { handleManualRegister } from './register-manual';
 
+const paymentDetails = {
+  payment_account_id: 'finance-account-1',
+  paid_at: '2026-06-01',
+  payment_method: 'upi',
+};
+
 function noMember() {
   return {
     select: () => ({
@@ -131,7 +137,17 @@ describe('handleManualRegister', () => {
     ));
     const req = new Request('http://localhost/api/admin/registrations/manual', {
       method: 'POST',
-      body: JSON.stringify({ event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com', seats: 5, payment_status: 'confirmed', custom_answers: {}, allow_overbook: true }),
+      body: JSON.stringify({
+        event_id: 'e1',
+        name: 'A',
+        phone: '9999999999',
+        email: 'a@x.com',
+        seats: 5,
+        payment_status: 'confirmed',
+        custom_answers: {},
+        allow_overbook: true,
+        ...paymentDetails,
+      }),
     });
     const ctx = { waitUntil: () => {} } as any;
     const res = await handleManualRegister(req, mockEnv(), ctx);
@@ -172,7 +188,16 @@ describe('handleManualRegister', () => {
     });
     const req = new Request('http://localhost/api/admin/registrations/manual', {
       method: 'POST',
-      body: JSON.stringify({ event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com', seats: 1, payment_status: 'confirmed', custom_answers: {} }),
+      body: JSON.stringify({
+        event_id: 'e1',
+        name: 'A',
+        phone: '9999999999',
+        email: 'a@x.com',
+        seats: 1,
+        payment_status: 'confirmed',
+        custom_answers: {},
+        ...paymentDetails,
+      }),
     });
     const ctx = { waitUntil: () => {} } as any;
     const res = await handleManualRegister(req, mockEnv(), ctx);
@@ -221,6 +246,41 @@ describe('handleManualRegister', () => {
     expect(res.status).toBe(200);
     expect(inserted.source).toBe('admin');
     expect(inserted.payment_status).toBe('confirmed');
+  });
+
+  it('requires payment details for a positive confirmed registration', async () => {
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(
+      {
+        id: 'e1',
+        name: 'Test',
+        date: '2026-06-01T00:00:00Z',
+        price: 500,
+        capacity: 10,
+        custom_questions: null,
+        is_published: true,
+        venue_name: 'X',
+        venue_area: null,
+        price_includes: null,
+      },
+      [],
+    ));
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'e1',
+        name: 'A',
+        phone: '9999999999',
+        email: 'a@x.com',
+        seats: 1,
+        payment_status: 'confirmed',
+        custom_answers: {},
+      }),
+    });
+
+    const res = await handleManualRegister(req, mockEnv(), { waitUntil: () => {} } as any);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: 'payment_details_required' });
   });
 
   it('marks a matching open lead converted after a manual registration', async () => {
@@ -334,6 +394,7 @@ describe('handleManualRegister differential pricing', () => {
       body: JSON.stringify({
         event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com',
         seats: 2, payment_status: 'confirmed', custom_answers: { table: 'VIP' },
+        ...paymentDetails,
       }),
     });
     const ctx = { waitUntil: () => {} } as any;
@@ -350,6 +411,7 @@ describe('handleManualRegister differential pricing', () => {
       body: JSON.stringify({
         event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com',
         seats: 1, payment_status: 'confirmed', custom_answers: { table: 'Standard' },
+        ...paymentDetails,
       }),
     });
     const ctx = { waitUntil: () => {} } as any;

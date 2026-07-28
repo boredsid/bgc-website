@@ -5,10 +5,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormDrawer } from '@/components/FormDrawer';
 import { NumberInput } from '@/components/NumberInput';
+import { PaymentDetailsFields } from '@/components/PaymentDetailsFields';
 import { fetchAdmin, showApiError } from '@/lib/api';
 import { validateGuildMember, type ValidationErrors } from '@/lib/validation';
 import { toast } from 'sonner';
-import type { GuildMember } from '@/lib/types';
+import type { GuildMember, FinanceAccount, FinanceCategory } from '@/lib/types';
 
 export default function GuildDrawer() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function GuildDrawer() {
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [financeAccounts, setFinanceAccounts] = useState<FinanceAccount[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -25,6 +27,12 @@ export default function GuildDrawer() {
       .then((r) => { setM(r.member); setInitial(r.member); })
       .catch(showApiError);
   }, [id]);
+
+  useEffect(() => {
+    fetchAdmin<{ accounts: FinanceAccount[]; categories: FinanceCategory[] }>('/api/admin/finance/bootstrap')
+      .then((data) => setFinanceAccounts(data.accounts))
+      .catch(showApiError);
+  }, []);
 
   const errors: ValidationErrors = useMemo(() => validateGuildMember({
     tier: m?.tier,
@@ -56,6 +64,9 @@ export default function GuildDrawer() {
         tier: m.tier, amount: m.amount, status: m.status,
         starts_at: m.starts_at, expires_at: m.expires_at,
         plus_ones_used: m.plus_ones_used, source: m.source,
+        payment_account_id: m.payment_account_id,
+        paid_at: m.paid_at,
+        payment_method: m.payment_method,
       };
       await fetchAdmin(`/api/admin/guild-members/${m.id}`, { method: 'PATCH', body: JSON.stringify(payload) });
       toast.success('Guild member updated');
@@ -112,7 +123,28 @@ export default function GuildDrawer() {
             </Select>
           ))}
           {field('status', 'Status', (
-            <Select value={m.status} onValueChange={(v) => set('status', v as GuildMember['status'])}>
+            <Select
+              value={m.status}
+              onValueChange={(v) => {
+                const status = v as GuildMember['status'];
+                setM((current) => {
+                  if (!current) return current;
+                  if (status !== 'paid' || current.status === 'paid' || current.amount <= 0) {
+                    return { ...current, status };
+                  }
+                  const remembered = localStorage.getItem('admin.finance.lastAccountId');
+                  const account = financeAccounts.find((item) => item.is_active && item.id === remembered)
+                    || financeAccounts.find((item) => item.is_active && item.is_default);
+                  return {
+                    ...current,
+                    status,
+                    payment_account_id: current.payment_account_id || account?.id || null,
+                    paid_at: current.paid_at || new Date().toISOString().slice(0, 10),
+                    payment_method: current.payment_method || 'upi',
+                  };
+                });
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="pending">Pending</SelectItem>
@@ -121,6 +153,25 @@ export default function GuildDrawer() {
               </SelectContent>
             </Select>
           ))}
+          {m.status === 'paid' && m.amount > 0 && (
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="text-sm font-medium mb-2">Payment details</div>
+              <PaymentDetailsFields
+                accounts={financeAccounts}
+                value={{
+                  payment_account_id: m.payment_account_id || '',
+                  paid_at: m.paid_at?.slice(0, 10) || '',
+                  payment_method: m.payment_method || 'upi',
+                }}
+                onChange={(value) => {
+                  setM((current) => current ? { ...current, ...value } : current);
+                  if (value.payment_account_id) {
+                    localStorage.setItem('admin.finance.lastAccountId', value.payment_account_id);
+                  }
+                }}
+              />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             {field('starts_at', 'Starts at', (
               <Input type="date" value={m.starts_at} onChange={(e) => set('starts_at', e.target.value)} />

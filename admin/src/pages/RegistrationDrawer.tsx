@@ -5,11 +5,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormDrawer } from '@/components/FormDrawer';
+import { PaymentDetailsFields } from '@/components/PaymentDetailsFields';
 import { NumberInput } from '@/components/NumberInput';
 import { fetchAdmin, showApiError } from '@/lib/api';
 import { validateRegistration, type ValidationErrors } from '@/lib/validation';
 import { toast } from 'sonner';
-import type { Registration, Event, CustomQuestion } from '@/lib/types';
+import type { Registration, Event, CustomQuestion, FinanceAccount, FinanceCategory } from '@/lib/types';
 
 export default function RegistrationDrawer() {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ export default function RegistrationDrawer() {
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [financeAccounts, setFinanceAccounts] = useState<FinanceAccount[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -38,6 +40,12 @@ export default function RegistrationDrawer() {
       .then((r) => setEvent(r.event))
       .catch(showApiError);
   }, [id]);
+
+  useEffect(() => {
+    fetchAdmin<{ accounts: FinanceAccount[]; categories: FinanceCategory[] }>('/api/admin/finance/bootstrap')
+      .then((data) => setFinanceAccounts(data.accounts))
+      .catch(showApiError);
+  }, []);
 
   const errors: ValidationErrors = useMemo(() => {
     if (!reg) return {};
@@ -147,7 +155,28 @@ export default function RegistrationDrawer() {
             />
           ))}
           {field('payment_status', 'Payment status', (
-            <Select value={reg.payment_status} onValueChange={(v) => set('payment_status', v as Registration['payment_status'])}>
+            <Select
+              value={reg.payment_status}
+              onValueChange={(v) => {
+                const next = v as Registration['payment_status'];
+                setReg((current) => {
+                  if (!current) return current;
+                  if (next !== 'confirmed' || current.payment_status === 'confirmed' || current.total_amount <= 0) {
+                    return { ...current, payment_status: next };
+                  }
+                  const remembered = localStorage.getItem('admin.finance.lastAccountId');
+                  const account = financeAccounts.find((item) => item.is_active && item.id === remembered)
+                    || financeAccounts.find((item) => item.is_active && item.is_default);
+                  return {
+                    ...current,
+                    payment_status: next,
+                    payment_account_id: current.payment_account_id || account?.id || null,
+                    paid_at: current.paid_at || new Date().toISOString().slice(0, 10),
+                    payment_method: current.payment_method || 'upi',
+                  };
+                });
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="pending">Pending</SelectItem>
@@ -156,6 +185,28 @@ export default function RegistrationDrawer() {
               </SelectContent>
             </Select>
           ))}
+          {reg.payment_status === 'confirmed' && reg.total_amount > 0 && (
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="text-sm font-medium mb-2">Payment details</div>
+              <PaymentDetailsFields
+                accounts={financeAccounts}
+                value={{
+                  payment_account_id: reg.payment_account_id || '',
+                  paid_at: reg.paid_at?.slice(0, 10) || '',
+                  payment_method: reg.payment_method || 'upi',
+                }}
+                onChange={(value) => {
+                  setReg((current) => current ? {
+                    ...current,
+                    ...value,
+                  } : current);
+                  if (value.payment_account_id) {
+                    localStorage.setItem('admin.finance.lastAccountId', value.payment_account_id);
+                  }
+                }}
+              />
+            </div>
+          )}
           {(() => {
             const refund = (reg.total_amount || 0) + (reg.credits_applied || 0);
             const initialStatus = initial?.payment_status;

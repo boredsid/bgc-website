@@ -239,6 +239,9 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
   totalAmount = finalAmount;
 
   // Insert registration
+  // Public callers never verify a positive payment. Only the gated admin
+  // workflow can mark money as received and supply the finance metadata.
+  const paymentStatus = totalAmount > 0 ? 'pending' : 'confirmed';
   const { data: registration, error: regError } = await supabase
     .from('registrations')
     .insert({
@@ -251,7 +254,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       total_amount: totalAmount,
       discount_applied: discountApplied,
       custom_answers: customAnswers,
-      payment_status: body.payment_status,
+      payment_status: paymentStatus,
       plus_ones_consumed: plusOnesToConsume,
       credits_applied: creditsApplied,
       promo_id: promoIdUsed,

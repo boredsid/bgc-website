@@ -370,4 +370,22 @@ describe('handleRegister differential pricing', () => {
     await handleRegister(req, mockEnv(), ctx);
     expect(capture.insert.total_amount).toBe(500);
   });
+
+  it('does not let a public caller confirm a positive payment', async () => {
+    const capture = { insert: null as any };
+    (getSupabase as any).mockReturnValue(buildMock(capture));
+    const req = new Request('http://localhost/api/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'E1', name: 'Asha', phone: '9876543210', email: 'a@b.com',
+        seats: 1, custom_answers: { table: 'Standard' }, payment_status: 'confirmed',
+      }),
+    });
+    const ctx = { waitUntil: (p: Promise<unknown>) => p } as any;
+
+    const response = await handleRegister(req, mockEnv(), ctx);
+
+    expect(response.status).toBe(200);
+    expect(capture.insert.payment_status).toBe('pending');
+  });
 });

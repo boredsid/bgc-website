@@ -19,6 +19,9 @@ interface Prior {
   payment_status: 'pending' | 'confirmed' | 'cancelled';
   total_amount: number;
   credits_applied: number;
+  payment_account_id?: string | null;
+  paid_at?: string | null;
+  payment_method?: string | null;
 }
 
 interface Capture {
@@ -85,7 +88,12 @@ describe('handleUpdateRegistration credit transitions', () => {
       { id: 'r2', user_id: 'u1', payment_status: 'cancelled', total_amount: 300, credits_applied: 500 },
       [{ amount: 800 }], cap,
     ));
-    const res = await handleUpdateRegistration('r2', patchReg('r2', { payment_status: 'confirmed' }), mockEnv());
+    const res = await handleUpdateRegistration('r2', patchReg('r2', {
+      payment_status: 'confirmed',
+      payment_account_id: 'finance-account-1',
+      paid_at: '2026-06-01',
+      payment_method: 'upi',
+    }), mockEnv());
     expect(res.status).toBe(200);
     expect(cap.creditInsert).toMatchObject({
       user_id: 'u1', amount: -800, reason: 'cancellation_reversal', registration_id: 'r2',
@@ -126,5 +134,23 @@ describe('handleUpdateRegistration credit transitions', () => {
     const res = await handleUpdateRegistration('r5', patchReg('r5', { name: 'Renamed' }), mockEnv());
     expect(res.status).toBe(200);
     expect(cap.creditInsert).toBeNull();
+  });
+
+  it('pending → confirmed with a positive amount requires payment details', async () => {
+    const cap: Capture = { creditInsert: null, updatedRow: null };
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(
+      { id: 'r6', user_id: 'u1', payment_status: 'pending', total_amount: 800, credits_applied: 0 },
+      [], cap,
+    ));
+
+    const res = await handleUpdateRegistration(
+      'r6',
+      patchReg('r6', { payment_status: 'confirmed' }),
+      mockEnv(),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ code: 'payment_details_required' });
+    expect(cap.updatedRow).toBeNull();
   });
 });

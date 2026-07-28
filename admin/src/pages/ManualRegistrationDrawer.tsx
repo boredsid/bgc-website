@@ -7,11 +7,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormDrawer } from '@/components/FormDrawer';
+import { PaymentDetailsFields, type PaymentDetailsValue } from '@/components/PaymentDetailsFields';
 import { NumberInput } from '@/components/NumberInput';
 import { fetchAdmin, showApiError, ApiError } from '@/lib/api';
 import { validateManualRegistration, type ValidationErrors } from '@/lib/validation';
 import { toast } from 'sonner';
-import type { Event, CustomQuestion } from '@/lib/types';
+import type { Event, CustomQuestion, FinanceAccount, FinanceCategory } from '@/lib/types';
 import { useWhoAmI } from '@/lib/whoami';
 import { useSearchParams } from 'react-router-dom';
 
@@ -39,6 +40,12 @@ export default function ManualRegistrationDrawer() {
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [capacityWarning, setCapacityWarning] = useState<string | null>(null);
+  const [financeAccounts, setFinanceAccounts] = useState<FinanceAccount[]>([]);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailsValue>({
+    payment_account_id: '',
+    paid_at: new Date().toISOString().slice(0, 10),
+    payment_method: 'upi',
+  });
   const [initial, setInitial] = useState<{
     eventId: string;
     name: string;
@@ -84,6 +91,21 @@ export default function ManualRegistrationDrawer() {
       .catch(showApiError);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGuest, guestEvents.length]);
+
+  useEffect(() => {
+    if (isGuest) return;
+    fetchAdmin<{ accounts: FinanceAccount[]; categories: FinanceCategory[] }>('/api/admin/finance/bootstrap')
+      .then((data) => {
+        setFinanceAccounts(data.accounts);
+        const remembered = localStorage.getItem('admin.finance.lastAccountId');
+        const account = data.accounts.find((item) => item.is_active && item.id === remembered)
+          || data.accounts.find((item) => item.is_active && item.is_default);
+        if (account) {
+          setPaymentDetails((current) => ({ ...current, payment_account_id: account.id }));
+        }
+      })
+      .catch(showApiError);
+  }, [isGuest]);
 
   const event = events.find((e) => e.id === eventId);
   const customQuestions: CustomQuestion[] = (event?.custom_questions || []) as CustomQuestion[];
@@ -159,6 +181,7 @@ export default function ManualRegistrationDrawer() {
           payment_status: paymentStatus,
           custom_answers: customAnswers,
           allow_overbook: allowOverbook,
+          ...(paymentStatus === 'confirmed' && !isGuest ? paymentDetails : {}),
         }),
       });
       setCapacityWarning(null);
@@ -257,6 +280,21 @@ export default function ManualRegistrationDrawer() {
             </SelectContent>
           </Select>
         ))}
+        {paymentStatus === 'confirmed' && !isGuest && (
+          <div className="rounded-md border bg-muted/30 p-3">
+            <div className="text-sm font-medium mb-2">Payment details</div>
+            <PaymentDetailsFields
+              accounts={financeAccounts}
+              value={paymentDetails}
+              onChange={(next) => {
+                setPaymentDetails(next);
+                if (next.payment_account_id) {
+                  localStorage.setItem('admin.finance.lastAccountId', next.payment_account_id);
+                }
+              }}
+            />
+          </div>
+        )}
 
         {customQuestions.length > 0 && (
           <div className="space-y-2 pt-2 border-t">

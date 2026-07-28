@@ -28,7 +28,7 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 - `src/lib/` — `supabase.ts`, `types.ts`, `guild-tiers.ts`, `source.ts` (UTM/source attribution via sessionStorage)
 - `worker/src/` — root handlers + `worker/src/admin/` (admin endpoints) + `*.test.ts` (Vitest)
 - `admin/src/` — admin SPA, separate package, shadcn-based
-- `supabase/migrations/` — `001`–`017` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits, leads, llm_notes, user_promos, guild_path_exclusive, guest admins, waitlist fields, Demon's Draft submissions, corporate events)
+- `supabase/migrations/` — `001`–`019` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits, leads, llm_notes, user_promos, guild_path_exclusive, guest admins, waitlist fields, Demon's Draft submissions, corporate events, externally managed registrations, finance ledger)
   - **New-table grants (from migration `014`+):** Supabase stops auto-exposing `public` tables to the Data API for this project on **2026-10-30**. After that, any new `public` table is invisible to PostgREST until granted — this hits the **worker (`service_role`) too**, not just public `anon` reads. So every new-table migration must include: `grant all on public.<table> to authenticated, service_role;` plus `grant select on public.<table> to anon;` only if the browser reads it directly (pair with RLS). Existing tables keep their grants; no backfill needed.
 - `docs/superpowers/specs/` — design specs + implementation plans
 
@@ -47,12 +47,17 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 | `event_guest_admins` | no | Event-scoped, time-bound access for collaboration partners |
 | `corporate_events` | yes (published only via RLS) | Display-only B2B showcase records; no registration/capacity logic |
 | `dd_submissions` | no | Demon's Draft contest submissions |
+| `finance_accounts` | no | Private cash-holding locations; one active account can be the guest-confirmation default |
+| `finance_categories` | no | Private income/expense categories; transfers deliberately have no category |
+| `finance_transactions` | no | Private cash-basis ledger with linked source keys, soft voids, and account movement |
+| `finance_import_batches` | no | Private CSV import audit and duplicate-file protection |
+| `finance_transaction_history` | no | Append-only audit snapshots for finance transaction changes |
 
 ## Worker endpoints
 
 **Public:** `POST /api/lookup-phone`, `POST /api/register`, `GET /api/event-spots/:id`, `POST /api/guild-purchase`, `POST /api/lead`, `POST /api/waitlist`, `POST /api/guild-status`, `GET /api/event-photos*`, `POST /api/dd-submit`
 
-**Admin** (gated by Cloudflare Access JWT + `ADMIN_EMAILS` allowlist, all under `/api/admin/`): `whoami`, `summary`, `search`, `log`, `lookup-phone`, `cancel-registration`, `events` (CRUD), `games` (CRUD + `export`, `owners-summary`), `registrations` (list/get/update + `manual` + `export`), `guild-members` (CRUD + `export`), `users` (list/get/update + credit adjustment), `leads` (list + patch junk + `export`), `promos` (CRUD), `corporate-events` (CRUD + logo upload).
+**Admin** (gated by Cloudflare Access JWT + `ADMIN_EMAILS` allowlist, all under `/api/admin/`): `whoami`, `summary`, `search`, `log`, `lookup-phone`, `cancel-registration`, `events` (CRUD), `games` (CRUD + `export`, `owners-summary`), `registrations` (list/get/update + `manual` + `export`), `guild-members` (CRUD + `export`), `users` (list/get/update + credit adjustment), `leads` (list + patch junk + `export`), `promos` (CRUD), `corporate-events` (CRUD + logo upload), `finance` (summary/bootstrap, accounts/categories, transaction CRUD/void/restore, import/export).
 
 **MCP:** `POST /mcp` is a public, unauthenticated Streamable HTTP server in `worker/src/mcp/`. It deliberately has no cancellation tools. Write tools must call the existing request handlers rather than reimplement pricing/credits. If a post-success amount lookup fails, return an unknown amount with guidance instead of implying nothing is due or retrying the write. Duplicate event registrations require explicit user confirmation through `confirm_additional: true`.
 
@@ -101,6 +106,8 @@ Admin tool uses shadcn defaults and is operated by non-coders, often on mobile. 
 - Event spot capacity = sum of `seats` across confirmed registrations, not row count. Per-option capacity uses the same weighting.
 - Differential option pricing lives in `worker/src/pricing.ts`: if any selected radio/select option has a defined `price` (including `0`), the sum of selected priced options replaces the event base price per seat. Keep its hand-copied mirror in `src/components/RegistrationForm.tsx` synchronized with the worker helper.
 - `user_credits` is applied automatically on registration / guild purchase. Cancellation credits the user back; the credit logic is idempotent (see `worker/src/credits.ts` + tests).
+- Positive registration/Guild payments require a finance account, payment date, and method when a full admin confirms them. Database triggers post the linked income atomically using `registration:<id>` / `guild:<id>` source keys. Cancellation credit keeps the original cash transaction; confirmed/paid → pending voids it as a correction.
+- Finance migration 019 must be applied before deploying finance-aware Worker/admin code. Run `supabase migration list --linked` first and use the controlled migration path when remote timestamp IDs do not match local numeric IDs.
 - Admin API is double-gated: Cloudflare Access JWT (`verifyAccessJwt` in `worker/src/access-auth.ts`) **and** email allowlist (`ADMIN_EMAILS`). Adding an admin = updating the secret + the Cloudflare Access policy.
 - Guest-admin access is also double-gated: a Worker-managed Cloudflare Access group provides the coarse edge gate, while the worker re-checks event scope and expiry on every request. Do not rely on the Access group alone.
 - `/pay` is intentionally excluded from the sitemap (see `astro.config.mjs`).

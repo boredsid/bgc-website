@@ -18,6 +18,8 @@ import { RelativeDate } from '@/components/RelativeDate';
 import { ActionSheet, type ActionItem } from '@/components/ActionSheet';
 import { BulkActionBar, type BulkAction } from '@/components/BulkActionBar';
 import { BulkConfirmDialog } from '@/components/BulkConfirmDialog';
+import { PaymentDetailsDialog } from '@/components/PaymentDetailsDialog';
+import type { PaymentDetailsValue } from '@/components/PaymentDetailsFields';
 import { fetchAdmin, showApiError } from '@/lib/api';
 import { useRevalidate } from '@/lib/revalidate';
 import { listViews, saveView, deleteView, getView } from '@/lib/savedViews';
@@ -39,6 +41,7 @@ export default function RegistrationsList() {
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [paymentTargets, setPaymentTargets] = useState<Registration[]>([]);
   const [viewsVersion, setViewsVersion] = useState(0);
   const navigate = useNavigate();
 
@@ -135,13 +138,40 @@ export default function RegistrationsList() {
     setParams(next);
   }
 
+  async function applyStatus(
+    rows: Registration[],
+    status: Registration['payment_status'],
+    payment?: PaymentDetailsValue,
+  ) {
+    const results = await Promise.allSettled(
+      rows.map((reg) =>
+        fetchAdmin(`/api/admin/registrations/${reg.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            payment_status: status,
+            ...(payment || {}),
+          }),
+        }),
+      ),
+    );
+    const failed = results.filter((result) => result.status === 'rejected');
+    if (failed.length > 0) {
+      showApiError((failed[0] as PromiseRejectedResult).reason);
+      return false;
+    }
+    toast.success(rows.length === 1 ? `Marked ${status}` : `Marked ${rows.length} as ${status}`);
+    setSelectedIds([]);
+    refresh();
+    return true;
+  }
+
   async function changeStatus(reg: Registration, status: Registration['payment_status']) {
+    if (!isGuest && status === 'confirmed' && reg.payment_status !== 'confirmed' && reg.total_amount > 0) {
+      setPaymentTargets([reg]);
+      return;
+    }
     try {
-      await fetchAdmin(`/api/admin/registrations/${reg.id}`, {
-        method: 'PATCH', body: JSON.stringify({ payment_status: status }),
-      });
-      toast.success(`Marked ${status}`);
-      refresh();
+      await applyStatus([reg], status);
     } catch (e) { showApiError(e); }
   }
 
@@ -157,25 +187,16 @@ export default function RegistrationsList() {
   const selectedRows = useMemo(() => filteredRegs.filter((r) => selectedIds.includes(r.id)), [filteredRegs, selectedIds]);
 
   async function bulkSetStatus(status: Registration['payment_status']) {
-    const ids = [...selectedIds];
-    if (ids.length === 0) return;
-    const results = await Promise.allSettled(
-      ids.map((id) =>
-        fetchAdmin(`/api/admin/registrations/${id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ payment_status: status }),
-        }),
-      ),
-    );
-    const failed = results.filter((r) => r.status === 'rejected');
-    if (failed.length === 0) {
-      toast.success(`Marked ${ids.length} as ${status}`);
-    } else {
-      const firstError = (failed[0] as PromiseRejectedResult).reason;
-      showApiError(firstError);
+    if (selectedRows.length === 0) return;
+    if (
+      !isGuest
+      && status === 'confirmed'
+      && selectedRows.some((row) => row.payment_status !== 'confirmed' && row.total_amount > 0)
+    ) {
+      setPaymentTargets(selectedRows.filter((row) => row.payment_status !== 'confirmed'));
+      return;
     }
-    setSelectedIds([]);
-    refresh();
+    await applyStatus(selectedRows, status);
   }
 
   function exportCsvForIds(ids: string[]) {
@@ -230,6 +251,10 @@ export default function RegistrationsList() {
             const prev = r.payment_status;
             const next = v as Registration['payment_status'];
             if (next === prev) return;
+            if (!isGuest && next === 'confirmed' && prev !== 'confirmed' && r.total_amount > 0) {
+              setPaymentTargets([r]);
+              return;
+            }
             setRegs((rows) => rows.map((x) => x.id === r.id ? { ...x, payment_status: next } : x));
             try {
               await fetchAdmin(`/api/admin/registrations/${r.id}`, {
@@ -479,6 +504,22 @@ export default function RegistrationsList() {
           bulkSetStatus('cancelled');
         }}
         onCancel={() => setConfirmCancelOpen(false)}
+      />
+
+      <PaymentDetailsDialog
+        open={paymentTargets.length > 0}
+        title={paymentTargets.length === 1
+          ? `Confirm payment for ${paymentTargets[0]?.name || 'registration'}`
+          : `Confirm ${paymentTargets.length} payments`}
+        description={paymentTargets.length === 1
+          ? `₹${paymentTargets[0]?.total_amount || 0} will be added to Finance.`
+          : 'The same receiving account, date, and payment method will be used for this batch.'}
+        confirmLabel={paymentTargets.length === 1 ? 'Mark confirmed' : `Confirm ${paymentTargets.length}`}
+        onConfirm={async (payment) => {
+          const ok = await applyStatus(paymentTargets, 'confirmed', payment);
+          if (ok) setPaymentTargets([]);
+        }}
+        onCancel={() => setPaymentTargets([])}
       />
     </div>
   );

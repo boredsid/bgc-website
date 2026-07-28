@@ -9,4 +9,5 @@ dist/
 worker/node_modules/
 worker/dist/
 .wrangler/
+supabase/.temp/
 .DS_Store

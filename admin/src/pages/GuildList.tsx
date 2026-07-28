@@ -17,6 +17,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { PhoneCell } from '@/components/PhoneCell';
 import { BulkActionBar, type BulkAction } from '@/components/BulkActionBar';
 import { BulkConfirmDialog } from '@/components/BulkConfirmDialog';
+import { PaymentDetailsFields, type PaymentDetailsValue } from '@/components/PaymentDetailsFields';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +25,7 @@ import { fetchAdmin, showApiError } from '@/lib/api';
 import { useRevalidate } from '@/lib/revalidate';
 import { listViews, saveView, deleteView, getView } from '@/lib/savedViews';
 import { toast } from 'sonner';
-import type { GuildMember } from '@/lib/types';
+import type { GuildMember, FinanceAccount, FinanceCategory } from '@/lib/types';
 
 const TIER_DAYS: Record<string, number> = { initiate: 90, adventurer: 180, guildmaster: 365 };
 const PAGE_KEY = 'guild';
@@ -44,6 +45,12 @@ export default function GuildList() {
   const [bulkPaidStartDate, setBulkPaidStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [bulkCancelOpen, setBulkCancelOpen] = useState(false);
   const [viewsVersion, setViewsVersion] = useState(0);
+  const [financeAccounts, setFinanceAccounts] = useState<FinanceAccount[]>([]);
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetailsValue>({
+    payment_account_id: '',
+    paid_at: new Date().toISOString().slice(0, 10),
+    payment_method: 'upi',
+  });
   const navigate = useNavigate();
 
   const refresh = useCallback(() => {
@@ -58,6 +65,18 @@ export default function GuildList() {
   }, [status, tier]);
   useEffect(() => { refresh(); }, [refresh]);
   useRevalidate(refresh);
+
+  useEffect(() => {
+    fetchAdmin<{ accounts: FinanceAccount[]; categories: FinanceCategory[] }>('/api/admin/finance/bootstrap')
+      .then((data) => {
+        setFinanceAccounts(data.accounts);
+        const remembered = localStorage.getItem('admin.finance.lastAccountId');
+        const account = data.accounts.find((item) => item.is_active && item.id === remembered)
+          || data.accounts.find((item) => item.is_active && item.is_default);
+        if (account) setPaymentDetails((current) => ({ ...current, payment_account_id: account.id }));
+      })
+      .catch(showApiError);
+  }, []);
 
   function setFilter(k: string, v: string) {
     const next = new URLSearchParams(params);
@@ -86,6 +105,7 @@ export default function GuildList() {
           status: 'paid',
           starts_at: startDate,
           expires_at: expires.toISOString().slice(0, 10),
+          ...paymentDetails,
         }),
       });
       toast.success(`${confirmTarget.user_name || 'Member'} marked paid`);
@@ -118,6 +138,7 @@ export default function GuildList() {
             status: 'paid',
             starts_at: bulkPaidStartDate,
             expires_at: expires.toISOString().slice(0, 10),
+            ...paymentDetails,
           }),
         });
       }),
@@ -350,10 +371,18 @@ export default function GuildList() {
             <div className="text-xs text-muted-foreground">
               Expires {TIER_DAYS[confirmTarget?.tier || 'initiate']} days later (auto).
             </div>
+            <PaymentDetailsFields
+              accounts={financeAccounts}
+              value={paymentDetails}
+              onChange={(next) => {
+                setPaymentDetails(next);
+                if (next.payment_account_id) localStorage.setItem('admin.finance.lastAccountId', next.payment_account_id);
+              }}
+            />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setConfirmTarget(null)}>Cancel</Button>
-            <Button onClick={confirmMarkPaid}>Confirm</Button>
+            <Button onClick={confirmMarkPaid} disabled={!paymentDetails.payment_account_id}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -369,10 +398,23 @@ export default function GuildList() {
             <div className="text-xs text-muted-foreground">
               Each member's expiry is calculated from their tier (initiate 90d, adventurer 180d, guildmaster 365d).
             </div>
+            <PaymentDetailsFields
+              accounts={financeAccounts}
+              value={paymentDetails}
+              onChange={(next) => {
+                setPaymentDetails(next);
+                if (next.payment_account_id) localStorage.setItem('admin.finance.lastAccountId', next.payment_account_id);
+              }}
+            />
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setBulkPaidOpen(false)}>Cancel</Button>
-            <Button onClick={() => { setBulkPaidOpen(false); bulkMarkPaid(); }}>Confirm</Button>
+            <Button
+              onClick={() => { setBulkPaidOpen(false); bulkMarkPaid(); }}
+              disabled={!paymentDetails.payment_account_id}
+            >
+              Confirm
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
