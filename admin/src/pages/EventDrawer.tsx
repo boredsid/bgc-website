@@ -15,10 +15,32 @@ import type { Event, CustomQuestion } from '@/lib/types';
 
 interface Props { mode: 'create' | 'edit' }
 
+/** All-day events carry no meaningful clock time, so pin them to midnight. */
+function atMidnight(iso: string): string {
+  if (!iso) return iso;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+/** Sensible first guess when an admin turns the end on: next day, or +3 hours. */
+function defaultEnd(startIso: string | null | undefined, allDay: boolean): string {
+  const d = startIso && !Number.isNaN(Date.parse(startIso)) ? new Date(startIso) : new Date();
+  if (allDay) {
+    d.setDate(d.getDate() + 1);
+    d.setHours(0, 0, 0, 0);
+  } else {
+    d.setHours(d.getHours() + 3);
+  }
+  return d.toISOString();
+}
+
 const empty: Partial<Event> = {
-  name: '', description: '', date: '', venue_name: '', venue_area: '',
+  name: '', description: '', date: '', end_date: null, is_all_day: false,
+  venue_name: '', venue_area: '',
   price: 0, capacity: 0, custom_questions: [], price_includes: '', llm_notes: '',
-  is_published: false, guild_path_exclusive: false, is_collaboration: false,
+  is_published: false, guild_path_exclusive: false, replay_pass_free: false, is_collaboration: false,
   externally_managed: false, external_registration_url: '',
 };
 
@@ -110,6 +132,8 @@ export default function EventDrawer({ mode }: Props) {
       const payload = {
         ...form,
         date: form.date ? new Date(form.date).toISOString() : '',
+        end_date: form.end_date ? new Date(form.end_date).toISOString() : null,
+        is_all_day: !!form.is_all_day,
         ...(external
           ? {
               capacity: 0,
@@ -117,6 +141,7 @@ export default function EventDrawer({ mode }: Props) {
               custom_questions: [],
               price_includes: null,
               guild_path_exclusive: false,
+              replay_pass_free: false,
               is_collaboration: false,
               external_registration_url: form.external_registration_url?.trim() || null,
             }
@@ -175,9 +200,47 @@ export default function EventDrawer({ mode }: Props) {
           {field('description', 'Description', (
             <Textarea value={form.description || ''} onChange={(e) => set('description', e.target.value)} rows={4} />
           ))}
-          {field('date', 'When', (
-            <DateTimePicker value={form.date || ''} onChange={(iso) => set('date', iso)} />
-          ))}
+          <div className="rounded-md border p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={!!form.is_all_day}
+                onCheckedChange={(c) => setForm((f) => ({
+                  ...f,
+                  is_all_day: c,
+                  date: c && f.date ? atMidnight(f.date) : f.date,
+                  end_date: c && f.end_date ? atMidnight(f.end_date) : f.end_date,
+                }))}
+              />
+              <Label>All day (no start time)</Label>
+            </div>
+            {field('date', form.end_date ? 'Starts' : 'When', (
+              <DateTimePicker
+                value={form.date || ''}
+                onChange={(iso) => set('date', iso)}
+                dateOnly={!!form.is_all_day}
+              />
+            ))}
+            <div className="flex items-start gap-2">
+              <Switch
+                checked={!!form.end_date}
+                onCheckedChange={(c) => set('end_date', c ? defaultEnd(form.date, !!form.is_all_day) : null)}
+              />
+              <div className="flex-1">
+                <Label>Set an end</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Turn this on for an event that runs across several days, or to show when a
+                  single session wraps up. The event stays listed as upcoming until it ends.
+                </p>
+              </div>
+            </div>
+            {form.end_date && field('end_date', 'Ends', (
+              <DateTimePicker
+                value={form.end_date || ''}
+                onChange={(iso) => set('end_date', iso)}
+                dateOnly={!!form.is_all_day}
+              />
+            ))}
+          </div>
           <div className="flex items-start gap-2">
             <Switch
               checked={!!form.externally_managed}
@@ -251,6 +314,21 @@ export default function EventDrawer({ mode }: Props) {
                 <Label>Guild Path Exclusive</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Only current Guild Path members can register on the public site.
+                </p>
+              </div>
+            </div>
+          )}
+          {!form.externally_managed && (
+            <div className="flex items-start gap-2">
+              <Switch
+                checked={!!form.replay_pass_free}
+                onCheckedChange={(c) => set('replay_pass_free', c)}
+              />
+              <div>
+                <Label>Free for REPLAY pass holders</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Anyone with a confirmed pass for the latest REPLAY gets their own seat free.
+                  Extra seats they book still cost full price.
                 </p>
               </div>
             </div>

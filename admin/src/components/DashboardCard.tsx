@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { EventWhen } from '@/components/EventWhen';
 import type { SummaryCard, CustomQuestion, QuestionSummary } from '@/lib/types';
 
 interface Props { summary: SummaryCard }
@@ -19,7 +20,7 @@ export default function DashboardCard({ summary }: Props) {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>{event.name}</span>
-            <span className="text-sm font-normal text-muted-foreground">{new Date(event.date).toLocaleString()}</span>
+            <EventWhen event={event} className="text-sm font-normal text-muted-foreground" />
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -44,7 +45,7 @@ export default function DashboardCard({ summary }: Props) {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>{event.name}</span>
-          <span className="text-sm font-normal text-muted-foreground">{new Date(event.date).toLocaleString()}</span>
+          <EventWhen event={event} className="text-sm font-normal text-muted-foreground" />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

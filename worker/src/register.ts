@@ -4,7 +4,8 @@ import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonRespons
 import { sendEventRegistrationEmail } from './email';
 import { applyCreditsToTotal, recordCreditEvent } from './credits';
 import { consumePromoUses, getApplicablePromo } from './promos';
-import { effectiveSeatPrice } from './pricing';
+import { effectiveSeatPrice, applyReplayPassSeat } from './pricing';
+import { fetchReplayPassStatus } from './replay-client';
 
 export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -171,15 +172,20 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
   // Per-seat cost array so the promo can cover the most-expensive seats first.
   let seatCosts: number[] = Array(seats).fill(seatPrice);
 
-  if (member) {
+  // Both the Guild Path discount and the REPLAY pass are once-per-person perks,
+  // so both need to know what this user already holds for the event.
+  let existingSeats = 0;
+  if (member || event.replay_pass_free) {
     const { data: priorRegs } = await supabase
       .from('registrations')
       .select('seats')
       .eq('event_id', body.event_id)
       .eq('user_id', userId)
       .neq('payment_status', 'cancelled');
-    const existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
+    existingSeats = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
+  }
 
+  if (member) {
     if (member.tier === 'initiate') {
       const firstSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
       const afterFirst = seats - firstSeats;
@@ -210,6 +216,22 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       discountApplied = member.tier;
       membershipIdToUpdate = member.id;
       membershipNewPlusOnesUsed = member.plus_ones_used + plusOnesToConsume;
+    }
+  }
+
+  // REPLAY pass covers the holder's own seat on events flagged for the perk.
+  // Pass ownership lives in the REPLAY project, so this is a cross-worker call;
+  // it fails closed (no pass) rather than failing the registration.
+  if (event.replay_pass_free && totalAmount > 0) {
+    const pass = await fetchReplayPassStatus(env, phone);
+    const applied = applyReplayPassSeat(seatCosts, {
+      hasPass: pass.has_pass,
+      existingSeatsForEvent: existingSeats,
+    });
+    if (applied.seatCovered) {
+      seatCosts = applied.seatCosts;
+      totalAmount = Math.round(seatCosts.reduce((s, c) => s + c, 0));
+      if (!discountApplied) discountApplied = 'replay_pass';
     }
   }
 
@@ -325,6 +347,8 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
         event: {
           name: event.name,
           date: event.date,
+          end_date: event.end_date ?? null,
+          is_all_day: !!event.is_all_day,
           venue_name: event.venue_name,
           venue_area: event.venue_area ?? null,
           price_includes: event.price_includes ?? null,

@@ -6,6 +6,10 @@ export interface EventEmailPayload {
   event: {
     name: string;
     date: string;
+    // Set only when the event runs past its start day; is_all_day means the
+    // date carries no meaningful clock time.
+    end_date: string | null;
+    is_all_day: boolean;
     venue_name: string;
     venue_area: string | null;
     price_includes: string | null;
@@ -44,6 +48,8 @@ export interface WaitlistEmailPayload {
   event: {
     name: string;
     date: string;
+    end_date: string | null;
+    is_all_day: boolean;
     venue_name: string;
     venue_area: string | null;
   };

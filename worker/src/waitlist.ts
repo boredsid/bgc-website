@@ -54,7 +54,7 @@ export async function handleWaitlist(request: Request, env: Env, ctx: ExecutionC
   // Fetch the published event (covers existence + gives email content).
   const { data: event } = await supabase
     .from('events')
-    .select('id, name, date, venue_name, venue_area, capacity, externally_managed, external_registration_url')
+    .select('id, name, date, end_date, is_all_day, venue_name, venue_area, capacity, externally_managed, external_registration_url')
     .eq('id', eventId)
     .eq('is_published', true)
     .maybeSingle();
@@ -141,6 +141,8 @@ export async function handleWaitlist(request: Request, env: Env, ctx: ExecutionC
         event: {
           name: event.name,
           date: event.date,
+          end_date: event.end_date ?? null,
+          is_all_day: !!event.is_all_day,
           venue_name: event.venue_name,
           venue_area: event.venue_area ?? null,
         },

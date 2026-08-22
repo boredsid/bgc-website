@@ -20,11 +20,12 @@ export async function handleGuestSummary(env: Env, eventIds: string[]): Promise<
   const all = (events || []) as EventRow[];
   if (all.length === 0) return jsonResponse({ upcoming: [], past: [] });
 
+  // ends_at, not date: a multi-day or all-day event stays "upcoming" while it runs.
   const upcoming = all
-    .filter((e) => e.date >= nowIso)
+    .filter((e) => e.ends_at >= nowIso)
     .sort((a, b) => a.date.localeCompare(b.date));
   const past = all
-    .filter((e) => e.date < nowIso)
+    .filter((e) => e.ends_at < nowIso)
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const { data: regs, error: rErr } = await supabase

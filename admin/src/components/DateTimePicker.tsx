@@ -4,6 +4,10 @@ interface Props {
   value: string;
   onChange: (iso: string) => void;
   className?: string;
+  /** Hide the time picker and pin the value to local midnight. */
+  dateOnly?: boolean;
+  /** Rendered as the empty option, e.g. "Same day" for an optional end. */
+  emptyTimeLabel?: string;
 }
 
 const TIMES: string[] = (() => {
@@ -41,8 +45,21 @@ function combine(date: string, time: string): string {
   return `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(m)}:00${sign}${offH}:${offM}`;
 }
 
-export function DateTimePicker({ value, onChange, className }: Props) {
+export function DateTimePicker({ value, onChange, className, dateOnly, emptyTimeLabel }: Props) {
   const { date, time } = splitIso(value);
+
+  if (dateOnly) {
+    return (
+      <Input
+        aria-label="Date"
+        type="date"
+        value={date}
+        onChange={(e) => onChange(combine(e.target.value, '00:00'))}
+        className={`min-w-0 ${className || ''}`}
+      />
+    );
+  }
+
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 ${className || ''}`}>
       <Input
@@ -58,7 +75,7 @@ export function DateTimePicker({ value, onChange, className }: Props) {
         onChange={(e) => onChange(combine(date, e.target.value))}
         className="flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm md:text-sm"
       >
-        <option value="">—</option>
+        <option value="">{emptyTimeLabel || '—'}</option>
         {TIMES.map((t) => <option key={t} value={t}>{t}</option>)}
       </select>
     </div>

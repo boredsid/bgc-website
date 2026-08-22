@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { formatEventDateLabel, formatEventTimeLabel, isHappeningNow, isMultiDay } from '../lib/event-date';
 import type { Event, EventSpots } from '../lib/types';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
 const WHATSAPP_URL = 'https://chat.whatsapp.com/GL1h4jipksfCW4vm7OtZjp';
 
-function formatRelativeDate(eventDate: Date): string {
+function formatRelativeDate(event: Event): string {
+  // A multi-day event that has already started is running right now, so the
+  // countdown wording ("TOMORROW") would be wrong.
+  if (isHappeningNow(event)) return 'HAPPENING NOW';
+
+  const eventDate = new Date(event.date);
+
   // Calendar-day diff (not millisecond diff) so a late-night event
   // can't be mislabeled by a few hours of clock drift.
   const today = new Date();
@@ -14,7 +21,10 @@ function formatRelativeDate(eventDate: Date): string {
   eventDay.setHours(0, 0, 0, 0);
   const diffDays = Math.round((eventDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return 'TONIGHT';
+  // A multi-day run reads better as its date range than as a single day.
+  if (isMultiDay(event)) return formatEventDateLabel(event, 'short').toUpperCase();
+
+  if (diffDays === 0) return event.is_all_day ? 'TODAY' : 'TONIGHT';
   if (diffDays === 1) return 'TOMORROW';
 
   const weekday = eventDate.toLocaleDateString('en-IN', { weekday: 'long' }).toUpperCase();
@@ -22,13 +32,7 @@ function formatRelativeDate(eventDate: Date): string {
   if (diffDays >= 2 && diffDays <= 7) return `THIS ${weekday}`;
   if (diffDays >= 8 && diffDays <= 14) return `NEXT ${weekday}`;
 
-  return eventDate
-    .toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
-    .toUpperCase();
-}
-
-function formatTime(eventDate: Date): string {
-  return eventDate.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return formatEventDateLabel(event, 'short').toUpperCase();
 }
 
 export default function UpcomingEventBanner() {
@@ -42,7 +46,8 @@ export default function UpcomingEventBanner() {
       const { data: nextEvent } = await supabase
         .from('events')
         .select('*')
-        .gte('date', new Date().toISOString())
+        // ends_at, not date: keep showing a multi-day event while it runs.
+        .gte('ends_at', new Date().toISOString())
         .order('date', { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -99,9 +104,8 @@ export default function UpcomingEventBanner() {
     );
   }
 
-  const eventDate = new Date(event.date);
-  const relativeDate = formatRelativeDate(eventDate);
-  const time = formatTime(eventDate);
+  const relativeDate = formatRelativeDate(event);
+  const time = formatEventTimeLabel(event);
 
   const total = event.externally_managed ? 0 : (spots?.capacity ?? event.capacity);
   const remaining = event.externally_managed ? null : (spots?.remaining ?? null);

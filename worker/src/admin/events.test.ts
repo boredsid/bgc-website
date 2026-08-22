@@ -18,12 +18,17 @@ import { handleUpdateEvent } from './events';
 
 interface Capture { eventUpdate: any; deletedFor: string | null; upserted: any[] }
 
-function mockSupabase(existingGuests: { email: string }[], capture: Capture) {
+function mockSupabase(
+  existingGuests: { email: string }[],
+  capture: Capture,
+  existingEvent: any = { date: '2026-09-05T18:00:00+05:30', end_date: null },
+) {
   return {
     from: (table: string) => {
       if (table === 'events') {
         return {
           update: (row: any) => { capture.eventUpdate = row; return { eq: () => ({ select: () => ({ maybeSingle: async () => ({ data: { id: 'e1', ...row }, error: null }) }) }) }; },
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: existingEvent, error: null }) }) }),
         };
       }
       if (table === 'event_guest_admins') {
@@ -110,5 +115,78 @@ describe('handleUpdateEvent collaboration', () => {
     );
     expect(res.status).toBe(400);
     expect(cap.eventUpdate).toBeNull();
+  });
+});
+
+describe('handleUpdateEvent timing', () => {
+  it('persists an all-day, multi-day event', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(mockSupabase([], cap));
+    const res = await handleUpdateEvent('e1', patch({
+      date: '2026-09-05T00:00:00+05:30',
+      end_date: '2026-09-07T00:00:00+05:30',
+      is_all_day: true,
+    }), mockEnv(), ctx, 'admin@bgc.in');
+    expect(res.status).toBe(200);
+    expect(cap.eventUpdate).toMatchObject({
+      date: '2026-09-05T00:00:00+05:30',
+      end_date: '2026-09-07T00:00:00+05:30',
+      is_all_day: true,
+    });
+  });
+
+  it('clears the end when it is sent as null or blank', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(mockSupabase([], cap));
+    const res = await handleUpdateEvent('e1', patch({ end_date: '' }), mockEnv(), ctx, 'admin@bgc.in');
+    expect(res.status).toBe(200);
+    expect(cap.eventUpdate).toMatchObject({ end_date: null });
+  });
+
+  it('rejects an end that falls before the start in the same payload', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(mockSupabase([], cap));
+    const res = await handleUpdateEvent('e1', patch({
+      date: '2026-09-05T18:00:00+05:30',
+      end_date: '2026-09-04T18:00:00+05:30',
+    }), mockEnv(), ctx, 'admin@bgc.in');
+    expect(res.status).toBe(400);
+    expect(cap.eventUpdate).toBeNull();
+  });
+
+  it('checks a lone end against the stored start', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(
+      mockSupabase([], cap, { date: '2026-09-05T18:00:00+05:30', end_date: null }),
+    );
+    const res = await handleUpdateEvent('e1', patch({ end_date: '2026-09-01T18:00:00+05:30' }), mockEnv(), ctx, 'admin@bgc.in');
+    expect(res.status).toBe(400);
+    expect(cap.eventUpdate).toBeNull();
+  });
+
+  it('checks a lone start against the stored end', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(
+      mockSupabase([], cap, { date: '2026-09-05T18:00:00+05:30', end_date: '2026-09-07T18:00:00+05:30' }),
+    );
+    const res = await handleUpdateEvent('e1', patch({ date: '2026-09-09T18:00:00+05:30' }), mockEnv(), ctx, 'admin@bgc.in');
+    expect(res.status).toBe(400);
+    expect(cap.eventUpdate).toBeNull();
+  });
+
+  it('rejects a non-boolean all-day flag', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(mockSupabase([], cap));
+    const res = await handleUpdateEvent('e1', patch({ is_all_day: 'yes' }), mockEnv(), ctx, 'admin@bgc.in');
+    expect(res.status).toBe(400);
+    expect(cap.eventUpdate).toBeNull();
+  });
+
+  it('never lets a client write the derived ends_at column', async () => {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(mockSupabase([], cap));
+    const res = await handleUpdateEvent('e1', patch({ name: 'Renamed', ends_at: '2030-01-01T00:00:00Z' }), mockEnv(), ctx, 'admin@bgc.in');
+    expect(res.status).toBe(200);
+    expect(cap.eventUpdate).not.toHaveProperty('ends_at');
   });
 });

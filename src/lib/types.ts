@@ -16,6 +16,9 @@ export interface Event {
   name: string;
   description: string;
   date: string;
+  end_date: string | null;
+  is_all_day: boolean;
+  ends_at: string;
   venue_name: string;
   venue_area: string;
   price: number;
@@ -25,6 +28,7 @@ export interface Event {
   llm_notes: string | null;
   is_published: boolean;
   guild_path_exclusive: boolean;
+  replay_pass_free: boolean;
   externally_managed: boolean;
   external_registration_url: string | null;
   created_at: string;
@@ -73,6 +77,7 @@ export interface PhoneLookupResponse {
     plus_ones_remaining: number;
   };
   existing_seats_for_event: number;
+  replay_pass: { has_pass: boolean; edition_name: string | null } | null;
   credit_balance: number;
   active_promo: {
     remaining_uses: number;

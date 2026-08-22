@@ -17,6 +17,9 @@ export interface Event {
   name: string;
   description: string | null;
   date: string;
+  end_date: string | null;
+  is_all_day: boolean;
+  ends_at: string;
   venue_name: string | null;
   venue_area: string | null;
   price: number;
@@ -26,6 +29,7 @@ export interface Event {
   llm_notes: string | null;
   is_published: boolean;
   guild_path_exclusive: boolean;
+  replay_pass_free: boolean;
   is_collaboration: boolean;
   externally_managed: boolean;
   external_registration_url: string | null;

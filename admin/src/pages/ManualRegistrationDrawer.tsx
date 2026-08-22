@@ -11,6 +11,7 @@ import { PaymentDetailsFields, type PaymentDetailsValue } from '@/components/Pay
 import { NumberInput } from '@/components/NumberInput';
 import { fetchAdmin, showApiError, ApiError } from '@/lib/api';
 import { validateManualRegistration, type ValidationErrors } from '@/lib/validation';
+import { formatEventDateLabel } from '@/lib/eventDate';
 import { toast } from 'sonner';
 import type { Event, CustomQuestion, FinanceAccount, FinanceCategory } from '@/lib/types';
 import { useWhoAmI } from '@/lib/whoami';
@@ -20,6 +21,7 @@ interface PhoneLookup {
   user: { found: boolean; name: string | null; email: string | null };
   membership?: { isMember: boolean; tier: string | null; discount: string | null; plus_ones_remaining: number };
   existing_seats_for_event: number;
+  replay_pass?: { has_pass: boolean; edition_name: string | null } | null;
   credit_balance?: number;
 }
 
@@ -80,8 +82,10 @@ export default function ManualRegistrationDrawer() {
         if (remembered && bgcManagedEvents.some((e) => e.id === remembered)) {
           startEventId = remembered;
         } else {
+          // ends_at, not date: on day 2 of a three-day event, that event is
+          // still the one an admin at the door wants preselected.
           const upcoming = bgcManagedEvents
-            .filter((e) => Date.parse(e.date) >= Date.now())
+            .filter((e) => Date.parse(e.ends_at ?? e.date) >= Date.now())
             .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
           startEventId = upcoming[0]?.id ?? '';
         }
@@ -227,7 +231,7 @@ export default function ManualRegistrationDrawer() {
             <SelectContent>
               {events.map((e) => (
                 <SelectItem key={e.id} value={e.id}>
-                  {e.name} — {new Date(e.date).toLocaleDateString()}
+                  {e.name} — {formatEventDateLabel(e)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -249,6 +253,16 @@ export default function ManualRegistrationDrawer() {
         {lookup && (lookup.credit_balance ?? 0) > 0 && (
           <div className="text-xs rounded-md bg-amber-50 text-amber-900 p-2">
             ₹{lookup.credit_balance} credit available — will auto-apply against this registration's total.
+          </div>
+        )}
+        {lookup?.replay_pass?.has_pass && (
+          <div className="text-xs rounded-md bg-emerald-50 text-emerald-900 p-2">
+            Holds a {lookup.replay_pass.edition_name || 'REPLAY'} pass — their own seat is free on this event.
+          </div>
+        )}
+        {lookup && event?.replay_pass_free && lookup.replay_pass?.has_pass === false && (
+          <div className="text-xs rounded-md bg-muted text-muted-foreground p-2">
+            No confirmed {lookup.replay_pass.edition_name || 'REPLAY'} pass for this number — full price applies.
           </div>
         )}
         {lookup && !lookup.membership?.isMember && event?.guild_path_exclusive && (

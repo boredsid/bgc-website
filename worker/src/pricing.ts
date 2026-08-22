@@ -36,3 +36,30 @@ export function effectiveSeatPrice(
   if (pricedSelections.length === 0) return basePrice;
   return pricedSelections.reduce((sum, p) => sum + p, 0);
 }
+
+/**
+ * Apply a REPLAY pass to a per-seat cost array.
+ *
+ * A REPLAY pass belongs to one person, so it covers exactly one seat: the pass
+ * holder's own. Companion seats still pay. Someone who already holds seats for
+ * this event has spent the entitlement, and a booking that already contains a
+ * free seat (a Guild Path self-seat) doesn't need it — in both cases the pass
+ * changes nothing rather than stacking.
+ *
+ * Runs after the Guild Path discount and before the giveaway promo, so the
+ * promo covers whatever the pass didn't. Returns the new cost array; the caller
+ * decides how to label it.
+ */
+export function applyReplayPassSeat(
+  seatCosts: number[],
+  opts: { hasPass: boolean; existingSeatsForEvent: number },
+): { seatCosts: number[]; seatCovered: boolean } {
+  if (!opts.hasPass || opts.existingSeatsForEvent > 0) return { seatCosts, seatCovered: false };
+  if (seatCosts.length === 0 || seatCosts.some((c) => c <= 0)) return { seatCosts, seatCovered: false };
+
+  // Cover the most expensive seat, matching how the giveaway promo spends.
+  const priciest = seatCosts.reduce((best, c, i) => (c > seatCosts[best] ? i : best), 0);
+  const next = [...seatCosts];
+  next[priciest] = 0;
+  return { seatCosts: next, seatCovered: true };
+}

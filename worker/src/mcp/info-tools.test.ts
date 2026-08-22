@@ -65,9 +65,11 @@ describe('my_status', () => {
         if (table === 'registrations') {
           return { select: () => ({ eq: () => ({ neq: async () => ({ data: [
             { seats: 2, total_amount: 900, payment_status: 'confirmed',
-              events: { name: 'Catan Night', date: '2099-01-15', venue_name: 'Dice District' } },
+              events: { name: 'Catan Night', date: '2099-01-15', end_date: null, is_all_day: false,
+                ends_at: '2099-01-15', venue_name: 'Dice District' } },
             { seats: 1, total_amount: 500, payment_status: 'pending',
-              events: { name: 'Old Event', date: '2001-01-01', venue_name: 'X' } },
+              events: { name: 'Old Event', date: '2001-01-01', end_date: null, is_all_day: false,
+                ends_at: '2001-01-01', venue_name: 'X' } },
           ] }) }) }) };
         }
         if (table === 'guild_path_members') {
@@ -77,7 +79,8 @@ describe('my_status', () => {
         if (table === 'leads') {
           return { select: () => ({ eq: () => ({ not: () => ({ is: async () => ({ data: [
             { seats: 2, waitlist_at: '2026-07-01T00:00:00Z',
-              events: { name: 'Full House Night', date: '2099-02-01' } },
+              events: { name: 'Full House Night', date: '2099-02-01', end_date: null, is_all_day: false,
+                ends_at: '2099-02-01' } },
           ] }) }) }) }) };
         }
         return null;

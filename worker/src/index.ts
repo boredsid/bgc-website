@@ -74,6 +74,7 @@ export interface Env {
   ENVIRONMENT: string;
   PAGES_DEPLOY_HOOK?: string;
   REPLAY_TO_BGC_SECRET: string;
+  REPLAY_WORKER_URL: string;
   CF_API_TOKEN?: string;
   CF_ACCOUNT_ID?: string;
   CF_ACCESS_GROUP_ID?: string;

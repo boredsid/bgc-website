@@ -3,7 +3,8 @@ import { getSupabase } from '../supabase';
 import { jsonResponse } from '../validation';
 
 export interface EventRow {
-  id: string; name: string; date: string; venue_name: string | null; venue_area: string | null;
+  id: string; name: string; date: string; end_date: string | null; is_all_day: boolean;
+  ends_at: string; venue_name: string | null; venue_area: string | null;
   capacity: number; price: number; description: string | null; price_includes: string | null;
   is_published: boolean; created_at: string;
   externally_managed: boolean; external_registration_url: string | null;
@@ -84,12 +85,14 @@ export async function handleSummary(env: Env): Promise<Response> {
   const supabase = getSupabase(env);
   const nowIso = new Date().toISOString();
 
+  // Split on ends_at, not date, so an event that is part-way through its run
+  // stays under "upcoming" instead of jumping to past at its start time.
   const { data: upcomingEvents, error: ueErr } = await supabase
-    .from('events').select('*').gte('date', nowIso).order('date', { ascending: true });
+    .from('events').select('*').gte('ends_at', nowIso).order('date', { ascending: true });
   if (ueErr) return jsonResponse({ error: 'Failed to load events' }, 500);
 
   const { data: pastEvents, error: peErr } = await supabase
-    .from('events').select('*').lt('date', nowIso).order('date', { ascending: false }).limit(3);
+    .from('events').select('*').lt('ends_at', nowIso).order('date', { ascending: false }).limit(3);
   if (peErr) return jsonResponse({ error: 'Failed to load events' }, 500);
 
   const allEvents = [...(upcomingEvents || []), ...(pastEvents || [])];

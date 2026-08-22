@@ -20,6 +20,7 @@ export function parseRupees(input: string): number | null {
 interface EventInput {
   name?: string | null;
   date?: string | null;
+  end_date?: string | null;
   capacity?: number | null;
   price?: number | null;
   venue_name?: string | null;
@@ -31,6 +32,13 @@ export function validateEvent(e: EventInput): ValidationErrors {
   const errs: ValidationErrors = {};
   if (!e.name || !e.name.trim()) errs.name = 'Please enter a name.';
   if (!e.date) errs.date = 'Please pick a date and time.';
+  if (e.end_date) {
+    if (!e.date) {
+      errs.end_date = 'Pick the start first.';
+    } else if (Date.parse(e.end_date) < Date.parse(e.date)) {
+      errs.end_date = 'The end must be on or after the start.';
+    }
+  }
   if (e.externally_managed) {
     const value = e.external_registration_url?.trim();
     if (!value) {

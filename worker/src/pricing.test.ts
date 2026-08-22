@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveSeatPrice, type PricingQuestion } from './pricing';
+import { effectiveSeatPrice, applyReplayPassSeat, type PricingQuestion } from './pricing';
 
 const tableQ: PricingQuestion = {
   id: 'table', label: 'Table', type: 'radio', required: true,
@@ -39,5 +39,52 @@ describe('effectiveSeatPrice', () => {
       options: [{ value: 'Extras', price: 200 }],
     };
     expect(effectiveSeatPrice([checkboxQ], { addon: true }, 500)).toBe(500);
+  });
+});
+
+describe('applyReplayPassSeat', () => {
+  const held = { hasPass: true, existingSeatsForEvent: 0 };
+
+  it('covers the only seat for a pass holder', () => {
+    expect(applyReplayPassSeat([500], held)).toEqual({ seatCosts: [0], seatCovered: true });
+  });
+
+  it('covers exactly one seat, leaving companions to pay', () => {
+    expect(applyReplayPassSeat([500, 500, 500], held)).toEqual({ seatCosts: [0, 500, 500], seatCovered: true });
+  });
+
+  it('covers the most expensive seat', () => {
+    expect(applyReplayPassSeat([400, 900, 400], held)).toEqual({ seatCosts: [400, 0, 400], seatCovered: true });
+  });
+
+  it('does nothing without a pass', () => {
+    const costs = [500, 500];
+    expect(applyReplayPassSeat(costs, { hasPass: false, existingSeatsForEvent: 0 })).toEqual({
+      seatCosts: costs, seatCovered: false,
+    });
+  });
+
+  it('does nothing once the holder already has a seat for this event', () => {
+    expect(applyReplayPassSeat([500], { hasPass: true, existingSeatsForEvent: 1 })).toEqual({
+      seatCosts: [500], seatCovered: false,
+    });
+  });
+
+  it('does not stack on a Guild Path seat that is already free', () => {
+    expect(applyReplayPassSeat([0, 500], held)).toEqual({ seatCosts: [0, 500], seatCovered: false });
+  });
+
+  it('leaves an all-free booking alone', () => {
+    expect(applyReplayPassSeat([0, 0], held)).toEqual({ seatCosts: [0, 0], seatCovered: false });
+  });
+
+  it('handles an empty seat list', () => {
+    expect(applyReplayPassSeat([], held)).toEqual({ seatCosts: [], seatCovered: false });
+  });
+
+  it('does not mutate the input array', () => {
+    const costs = [500, 500];
+    applyReplayPassSeat(costs, held);
+    expect(costs).toEqual([500, 500]);
   });
 });

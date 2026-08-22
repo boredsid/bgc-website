@@ -3,6 +3,7 @@ import { getSupabase } from './supabase';
 import { sanitizePhone, jsonResponse } from './validation';
 import { getUserBalance } from './credits';
 import { getActivePromo } from './promos';
+import { fetchReplayPassStatus } from './replay-client';
 
 export async function handleLookupPhone(request: Request, env: Env): Promise<Response> {
   const body = await request.json<{ phone: string; event_id?: string }>();
@@ -65,6 +66,21 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
     existingSeatsForEvent = (priorRegs || []).reduce((sum, r) => sum + r.seats, 0);
   }
 
+  // Only ask REPLAY when the event actually offers the perk — the cross-worker
+  // call shouldn't sit on the critical path of every other event's lookup.
+  let replayPass: { has_pass: boolean; edition_name: string | null } | null = null;
+  if (body.event_id) {
+    const { data: event } = await supabase
+      .from('events')
+      .select('replay_pass_free')
+      .eq('id', body.event_id)
+      .maybeSingle();
+    if (event?.replay_pass_free) {
+      const status = await fetchReplayPassStatus(env, phone);
+      replayPass = { has_pass: status.has_pass, edition_name: status.edition_name };
+    }
+  }
+
   const creditBalance = user ? await getUserBalance(supabase, user.id) : 0;
   const activePromo = user ? await getActivePromo(supabase, user.id) : null;
 
@@ -81,6 +97,7 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
       plus_ones_remaining: plusOnesRemaining,
     },
     existing_seats_for_event: existingSeatsForEvent,
+    replay_pass: replayPass,
     credit_balance: creditBalance,
     active_promo: activePromo
       ? {

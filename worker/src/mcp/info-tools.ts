@@ -101,15 +101,17 @@ const myStatus: McpTool = {
 
     const { data: regs } = await supabase
       .from('registrations')
-      .select('seats, total_amount, payment_status, events(name, date, venue_name)')
+      .select('seats, total_amount, payment_status, events(name, date, end_date, is_all_day, ends_at, venue_name)')
       .eq('user_id', user.id)
       .neq('payment_status', 'cancelled');
 
     const upcoming = (regs || [])
-      .filter((r: any) => r.events?.date >= today)
+      .filter((r: any) => r.events?.ends_at >= today)
       .map((r: any) => ({
         event: r.events.name,
         date: r.events.date,
+        end_date: r.events.end_date,
+        all_day: r.events.is_all_day,
         venue: r.events.venue_name,
         seats: r.seats,
         amount_inr: r.total_amount,
@@ -128,14 +130,20 @@ const myStatus: McpTool = {
 
     const { data: waitlistRows } = await supabase
       .from('leads')
-      .select('seats, waitlist_at, events(name, date)')
+      .select('seats, waitlist_at, events(name, date, end_date, is_all_day, ends_at)')
       .eq('phone', phone)
       .not('waitlist_at', 'is', null)
       .is('converted_at', null);
 
     const waitlist = (waitlistRows || [])
-      .filter((w: any) => w.events?.date >= today)
-      .map((w: any) => ({ event: w.events.name, date: w.events.date, seats: w.seats }));
+      .filter((w: any) => w.events?.ends_at >= today)
+      .map((w: any) => ({
+        event: w.events.name,
+        date: w.events.date,
+        end_date: w.events.end_date,
+        all_day: w.events.is_all_day,
+        seats: w.seats,
+      }));
 
     const creditBalance = await getUserBalance(supabase, user.id);
 

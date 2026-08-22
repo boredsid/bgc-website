@@ -9,7 +9,7 @@ export async function activeGuestEmails(env: Env): Promise<string[]> {
     .from('events')
     .select('id')
     .eq('is_collaboration', true)
-    .gte('date', cutoff);
+    .gte('ends_at', cutoff);
   const ids = (events || []).map((e: { id: string }) => e.id);
   if (ids.length === 0) return [];
 

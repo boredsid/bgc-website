@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getSource } from '../lib/source';
+import { formatEventDateLabel, formatEventWhen } from '../lib/event-date';
 import type { Event, PhoneLookupResponse, EventSpots, CustomQuestion as CustomQuestionType } from '../lib/types';
 import CustomQuestion from './CustomQuestion';
 import PaymentSheet from './PaymentSheet';
@@ -30,6 +31,21 @@ function effectiveSeatPrice(
   return priced.reduce((sum, p) => sum + p, 0);
 }
 
+// Mirror of worker/src/pricing.ts applyReplayPassSeat. A REPLAY pass belongs to
+// one person, so it covers one seat — the holder's own. It does nothing if they
+// already hold seats for this event, or if a Guild Path seat is already free.
+function applyReplayPassSeat(
+  seatCosts: number[],
+  opts: { hasPass: boolean; existingSeatsForEvent: number },
+): { seatCosts: number[]; seatCovered: boolean } {
+  if (!opts.hasPass || opts.existingSeatsForEvent > 0) return { seatCosts, seatCovered: false };
+  if (seatCosts.length === 0 || seatCosts.some((c) => c <= 0)) return { seatCosts, seatCovered: false };
+  const priciest = seatCosts.reduce((best, c, i) => (c > seatCosts[best] ? i : best), 0);
+  const next = [...seatCosts];
+  next[priciest] = 0;
+  return { seatCosts: next, seatCovered: true };
+}
+
 type Step = 'form' | 'payment' | 'success';
 
 export default function RegistrationForm() {
@@ -49,6 +65,7 @@ export default function RegistrationForm() {
   const [existingSeatsForEvent, setExistingSeatsForEvent] = useState(0);
   const [creditBalance, setCreditBalance] = useState(0);
   const [activePromo, setActivePromo] = useState<PhoneLookupResponse['active_promo']>(null);
+  const [replayPass, setReplayPass] = useState<PhoneLookupResponse['replay_pass']>(null);
   const [phoneLookedUp, setPhoneLookedUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +86,9 @@ export default function RegistrationForm() {
             .from('events')
             .select('id')
             .eq('is_published', true)
-            .gte('date', new Date().toISOString())
+            // ends_at, not date: a multi-day event that is running is still the
+            // one someone landing on /register means to sign up for.
+            .gte('ends_at', new Date().toISOString())
             .order('date', { ascending: true })
             .limit(1)
             .maybeSingle();
@@ -128,6 +147,7 @@ export default function RegistrationForm() {
       setExistingSeatsForEvent(data.existing_seats_for_event ?? 0);
       setCreditBalance(data.credit_balance ?? 0);
       setActivePromo(data.active_promo ?? null);
+      setReplayPass(data.replay_pass ?? null);
       setPhoneLookedUp(true);
     } catch {
       setPhoneLookedUp(false);
@@ -143,6 +163,7 @@ export default function RegistrationForm() {
         setExistingSeatsForEvent(0);
         setCreditBalance(0);
         setActivePromo(null);
+        setReplayPass(null);
       }
       return;
     }
@@ -189,24 +210,12 @@ export default function RegistrationForm() {
   }
 
   if (event.externally_managed) {
-    const eventDate = new Date(event.date);
     return (
       <div>
         <div className="mb-6 pb-6" style={{ borderBottom: '3px solid #1A1A1A' }}>
           <h1 className="font-heading text-2xl font-bold">{event.name}</h1>
           <p className="text-[#1A1A1A]/70 text-sm mt-1">
-            {eventDate.toLocaleDateString('en-IN', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            })}{' '}
-            at{' '}
-            {eventDate.toLocaleTimeString('en-IN', {
-              hour: 'numeric',
-              minute: '2-digit',
-              hour12: true,
-            })}{' '}
-            · {event.venue_name}, {event.venue_area}
+            {formatEventWhen(event)} · {event.venue_name}, {event.venue_area}
           </p>
         </div>
         <div className="card-brutal p-6 text-center" style={{ background: '#A8E6CF' }}>
@@ -281,7 +290,21 @@ export default function RegistrationForm() {
     }
   }
 
-  // 2. If anything's still owed, giveaway covers highest-cost paid seats first.
+  // 2. REPLAY pass covers the holder's own seat on events flagged for the perk.
+  let replayPassLabel = '';
+  if (total > 0) {
+    const applied = applyReplayPassSeat(seatCosts, {
+      hasPass: !!replayPass?.has_pass,
+      existingSeatsForEvent: existingSeatsForEvent,
+    });
+    if (applied.seatCovered) {
+      seatCosts = applied.seatCosts;
+      total = Math.round(seatCosts.reduce((s, c) => s + c, 0));
+      replayPassLabel = `🎟️ ${replayPass?.edition_name || 'REPLAY'} pass — your seat is free`;
+    }
+  }
+
+  // 3. If anything's still owed, giveaway covers highest-cost paid seats first.
   let promoLabel = '';
   let promoSeatsApplied = 0;
   if (total > 0 && promoFits) {
@@ -303,8 +326,6 @@ export default function RegistrationForm() {
 
   const guildGate =
     event.guild_path_exclusive && phoneLookedUp && membership?.isMember === false;
-
-  const eventDate = new Date(event.date);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -400,12 +421,7 @@ export default function RegistrationForm() {
         <h1 className="font-heading text-3xl font-bold mb-3">You're in! 🎲</h1>
         <p className="text-[#1A1A1A]/85 mb-2">
           See you at <strong>{event.name}</strong> on{' '}
-          {eventDate.toLocaleDateString('en-IN', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}
-          .
+          {formatEventDateLabel(event, 'long')}.
         </p>
         <p className="text-sm text-[#1A1A1A]/70">
           {event.venue_name}, {event.venue_area}
@@ -440,18 +456,7 @@ export default function RegistrationForm() {
       <div className="mb-6 pb-6" style={{ borderBottom: '3px solid #1A1A1A' }}>
         <h1 className="font-heading text-2xl font-bold">{event.name}</h1>
         <p className="text-[#1A1A1A]/70 text-sm mt-1">
-          {eventDate.toLocaleDateString('en-IN', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}{' '}
-          at{' '}
-          {eventDate.toLocaleTimeString('en-IN', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-          })}{' '}
-          · {event.venue_name}, {event.venue_area}
+          {formatEventWhen(event)} · {event.venue_name}, {event.venue_area}
         </p>
         <div className="flex items-center gap-3 mt-3">
           <span className="font-heading font-bold text-lg">₹{seatPrice} / person</span>
@@ -620,6 +625,17 @@ export default function RegistrationForm() {
             </div>
           ) : (
             <>
+              {phoneLookedUp && replayPassLabel && (
+                <div className="mb-3">
+                  <span
+                    className="pill inline-block"
+                    style={{ background: '#FFD166', padding: '8px 16px' }}
+                  >
+                    {replayPassLabel}
+                  </span>
+                </div>
+              )}
+
               {phoneLookedUp && promoLabel && (
                 <div className="mb-3">
                   <span

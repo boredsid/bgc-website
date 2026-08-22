@@ -16,14 +16,15 @@ export async function resolveRole(email: string, env: Env): Promise<AdminContext
   const eventIds = (rows || []).map((r: { event_id: string }) => r.event_id);
   if (eventIds.length === 0) return { email, role: 'none' };
 
-  // Active = is_collaboration AND now < event.date + buffer  ⇔  event.date >= now - buffer.
+  // Active = is_collaboration AND now < event end + buffer  ⇔  ends_at >= now - buffer.
+  // Keyed on ends_at so a guest keeps access through a whole multi-day event.
   const cutoff = new Date(Date.now() - GUEST_EXPIRY_BUFFER_DAYS * 86400000).toISOString();
   const { data: events } = await supabase
     .from('events')
     .select('id')
     .in('id', eventIds)
     .eq('is_collaboration', true)
-    .gte('date', cutoff);
+    .gte('ends_at', cutoff);
   const activeIds = (events || []).map((e: { id: string }) => e.id);
   if (activeIds.length === 0) return { email, role: 'none' };
 

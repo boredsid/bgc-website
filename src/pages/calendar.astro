@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import EventList from '../components/EventList.tsx';
 import { supabase } from '../lib/supabase';
+import { bangaloreDayKey } from '../lib/event-date';
 import type { Event } from '../lib/types';
 
 const siteUrl = Astro.site!.toString().replace(/\/$/, '');
@@ -13,20 +14,32 @@ try {
     .from('events')
     .select('*')
     .eq('is_published', true)
-    .gte('date', todayIso)
+    // ends_at, not date: a multi-day event stays listed until its last day.
+    .gte('ends_at', todayIso)
     .order('date', { ascending: true });
   upcomingEvents = data ?? [];
 } catch {
   upcomingEvents = [];
 }
 
-function computeEndDate(start: string): string {
-  if (start.includes('T')) {
-    const d = new Date(start);
-    d.setHours(d.getHours() + 4);
-    return d.toISOString();
+// schema.org wants date-only values for all-day events and a real interval for
+// everything else. Without an explicit end we keep the old 4-hour assumption.
+function schemaDates(event: Event): { startDate: string; endDate: string } {
+  if (event.is_all_day) {
+    return {
+      startDate: bangaloreDayKey(event.date),
+      endDate: bangaloreDayKey(event.end_date || event.date),
+    };
   }
-  return start;
+  if (event.end_date) {
+    return { startDate: event.date, endDate: event.end_date };
+  }
+  if (event.date.includes('T')) {
+    const d = new Date(event.date);
+    d.setHours(d.getHours() + 4);
+    return { startDate: event.date, endDate: d.toISOString() };
+  }
+  return { startDate: event.date, endDate: event.date };
 }
 
 const organization = {
@@ -40,14 +53,16 @@ const eventSchema = upcomingEvents.map((event) => {
     ? (event.external_registration_url || `${siteUrl}/calendar`)
     : `${siteUrl}/register?event=${event.id}`;
 
+  const { startDate, endDate } = schemaDates(event);
+
   return {
     '@context': 'https://schema.org',
     '@type': 'Event',
     name: event.name,
     description: event.description,
     image: [`${siteUrl}/og-home.jpg`],
-    startDate: event.date,
-    endDate: computeEndDate(event.date),
+    startDate,
+    endDate,
     eventStatus: 'https://schema.org/EventScheduled',
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
     url: registrationUrl,

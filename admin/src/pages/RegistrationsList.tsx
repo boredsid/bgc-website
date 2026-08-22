@@ -313,8 +313,9 @@ export default function RegistrationsList() {
     { key: 'total', render: (r) => `${r.seats} seat${r.seats === 1 ? '' : 's'} · ₹${r.total_amount}` },
   ];
 
-  const upcoming = events.filter((e) => Date.parse(e.date) >= Date.now()).sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-  const past = events.filter((e) => Date.parse(e.date) < Date.now()).sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  // Split on ends_at so a multi-day event stays under "upcoming" while it runs.
+  const upcoming = events.filter((e) => Date.parse(e.ends_at ?? e.date) >= Date.now()).sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  const past = events.filter((e) => Date.parse(e.ends_at ?? e.date) < Date.now()).sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 
   // ---- Saved views ----
   const savedViews = useMemo(() => listViews(PAGE_KEY), [viewsVersion]);

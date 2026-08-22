@@ -70,10 +70,12 @@ async function syncEventGuests(
   }
 }
 
+// `ends_at` is deliberately absent: the database trigger derives it from
+// date / end_date / is_all_day and clients must not set it.
 const EVENT_FIELDS = [
-  'name', 'description', 'date', 'venue_name', 'venue_area',
+  'name', 'description', 'date', 'end_date', 'is_all_day', 'venue_name', 'venue_area',
   'price', 'capacity', 'custom_questions', 'price_includes', 'llm_notes', 'is_published',
-  'guild_path_exclusive', 'is_collaboration', 'externally_managed', 'external_registration_url',
+  'guild_path_exclusive', 'replay_pass_free', 'is_collaboration', 'externally_managed', 'external_registration_url',
 ] as const;
 
 type EventField = (typeof EVENT_FIELDS)[number];
@@ -82,6 +84,12 @@ function pickEventFields(body: Record<string, unknown>): Partial<Record<EventFie
   const out: Partial<Record<EventField, unknown>> = {};
   for (const f of EVENT_FIELDS) if (f in body) out[f] = body[f];
   return out;
+}
+
+function normalizeTimingFields(payload: Partial<Record<EventField, unknown>>): void {
+  if (typeof payload.end_date === 'string' && payload.end_date.trim() === '') {
+    payload.end_date = null;
+  }
 }
 
 function normalizeExternalFields(payload: Partial<Record<EventField, unknown>>): void {
@@ -94,6 +102,7 @@ function normalizeExternalFields(payload: Partial<Record<EventField, unknown>>):
     payload.custom_questions = [];
     payload.price_includes = null;
     payload.guild_path_exclusive = false;
+    payload.replay_pass_free = false;
     payload.is_collaboration = false;
   } else if (payload.externally_managed === false) {
     payload.external_registration_url = null;
@@ -109,12 +118,33 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-function validateEventPayload(payload: Partial<Record<EventField, unknown>>, requireAll: boolean): string | null {
+// The end can only be checked against the start, and a PATCH may carry just one
+// of the two, so the caller supplies whatever the stored row already holds.
+interface ExistingTiming { date?: string | null; end_date?: string | null }
+
+function validateEventPayload(
+  payload: Partial<Record<EventField, unknown>>,
+  requireAll: boolean,
+  existing: ExistingTiming = {},
+): string | null {
   if (requireAll || 'name' in payload) {
     if (typeof payload.name !== 'string' || payload.name.trim().length === 0) return 'Name is required';
   }
   if (requireAll || 'date' in payload) {
     if (typeof payload.date !== 'string' || isNaN(Date.parse(payload.date as string))) return 'Date is required and must be a valid date';
+  }
+  if ('is_all_day' in payload && typeof payload.is_all_day !== 'boolean') {
+    return 'All day must be true or false';
+  }
+  if ('end_date' in payload && payload.end_date !== null) {
+    if (typeof payload.end_date !== 'string' || isNaN(Date.parse(payload.end_date))) {
+      return 'End date must be a valid date, or empty for a single-day event';
+    }
+  }
+  const startIso = 'date' in payload ? (payload.date as string) : existing.date;
+  const endIso = 'end_date' in payload ? (payload.end_date as string | null) : existing.end_date;
+  if (typeof startIso === 'string' && typeof endIso === 'string') {
+    if (Date.parse(endIso) < Date.parse(startIso)) return 'End date must be on or after the start date';
   }
   if ('price' in payload && (typeof payload.price !== 'number' || payload.price < 0)) return 'Price must be a non-negative number';
   if ('capacity' in payload && (typeof payload.capacity !== 'number' || payload.capacity < 0)) return 'Capacity must be a non-negative number';
@@ -137,6 +167,7 @@ export async function handleCreateEvent(request: Request, env: Env): Promise<Res
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return jsonResponse({ error: 'Invalid request body' }, 400);
   const payload = pickEventFields(body);
+  normalizeTimingFields(payload);
   normalizeExternalFields(payload);
   const err = validateEventPayload(payload, true);
   if (err) return jsonResponse({ error: err }, 400);
@@ -161,13 +192,25 @@ export async function handleUpdateEvent(
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return jsonResponse({ error: 'Invalid request body' }, 400);
   const payload = pickEventFields(body);
+  normalizeTimingFields(payload);
   normalizeExternalFields(payload);
   const hasGuests = 'guest_admins' in body || payload.externally_managed === true;
   if (Object.keys(payload).length === 0 && !hasGuests) return jsonResponse({ error: 'No fields to update' }, 400);
-  const err = validateEventPayload(payload, false);
-  if (err) return jsonResponse({ error: err }, 400);
 
   const supabase = getSupabase(env);
+
+  // Only one half of the start/end pair may be changing; read the other half so
+  // the ordering check runs against what the row will actually look like.
+  let existingTiming: ExistingTiming = {};
+  const touchesTiming = 'date' in payload || 'end_date' in payload;
+  if (touchesTiming && !('date' in payload && 'end_date' in payload)) {
+    const { data: current } = await supabase.from('events').select('date, end_date').eq('id', id).maybeSingle();
+    if (!current) return jsonResponse({ error: 'Event not found' }, 404);
+    existingTiming = current as ExistingTiming;
+  }
+
+  const err = validateEventPayload(payload, false, existingTiming);
+  if (err) return jsonResponse({ error: err }, 400);
 
   let data: Record<string, unknown> | null = null;
   if (Object.keys(payload).length > 0) {

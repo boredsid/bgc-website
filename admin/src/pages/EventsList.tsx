@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import DataTable, { Column } from '@/components/DataTable';
 import MobileCardList, { CardField } from '@/components/MobileCardList';
 import { StatusBadge } from '@/components/StatusBadge';
-import { RelativeDate } from '@/components/RelativeDate';
+import { EventWhen } from '@/components/EventWhen';
 import { fetchAdmin, showApiError } from '@/lib/api';
 import { useRevalidate } from '@/lib/revalidate';
 import type { Event } from '@/lib/types';
@@ -27,7 +27,7 @@ export default function EventsList() {
 
   const columns: Column<Event>[] = [
     { key: 'name', header: 'Name', render: (e) => e.name },
-    { key: 'date', header: 'Date', render: (e) => <RelativeDate iso={e.date} />, sortable: true, sortValue: (e) => e.date },
+    { key: 'date', header: 'Date', render: (e) => <EventWhen event={e} />, sortable: true, sortValue: (e) => e.date },
     { key: 'venue', header: 'Venue', render: (e) => e.venue_name || '—' },
     {
       key: 'registration',
@@ -41,7 +41,7 @@ export default function EventsList() {
 
   const fields: CardField<Event>[] = [
     { key: 'name', render: (e) => e.name, primary: true },
-    { key: 'date', render: (e) => <RelativeDate iso={e.date} /> },
+    { key: 'date', render: (e) => <EventWhen event={e} /> },
     { key: 'venue', render: (e) => e.venue_name || '—' },
     { key: 'registration', render: (e) => e.externally_managed ? 'Partner registration' : `${e.capacity} spots` },
   ];
