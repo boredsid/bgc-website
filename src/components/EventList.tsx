@@ -10,7 +10,9 @@ interface EventWithSpots extends Event {
 }
 
 function monthKey(date: Date) {
-  return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'long' });
+  // Grouped by the Bangalore month, so an event just after midnight IST can't
+  // fall into the previous month for a visitor in another timezone.
+  return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'long' });
 }
 
 function groupByMonth(events: EventWithSpots[]) {

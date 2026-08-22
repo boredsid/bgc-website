@@ -10,30 +10,16 @@ import { DateTimePicker } from '@/components/DateTimePicker';
 import CustomQuestionsEditor from '@/components/CustomQuestionsEditor';
 import { fetchAdmin, showApiError } from '@/lib/api';
 import { validateEvent, type ValidationErrors } from '@/lib/validation';
+import { addIstDays, addIstHours, istMidnight } from '@/lib/ist';
 import { toast } from 'sonner';
 import type { Event, CustomQuestion } from '@/lib/types';
 
 interface Props { mode: 'create' | 'edit' }
 
-/** All-day events carry no meaningful clock time, so pin them to midnight. */
-function atMidnight(iso: string): string {
-  if (!iso) return iso;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-
 /** Sensible first guess when an admin turns the end on: next day, or +3 hours. */
 function defaultEnd(startIso: string | null | undefined, allDay: boolean): string {
-  const d = startIso && !Number.isNaN(Date.parse(startIso)) ? new Date(startIso) : new Date();
-  if (allDay) {
-    d.setDate(d.getDate() + 1);
-    d.setHours(0, 0, 0, 0);
-  } else {
-    d.setHours(d.getHours() + 3);
-  }
-  return d.toISOString();
+  const from = startIso && !Number.isNaN(Date.parse(startIso)) ? startIso : new Date().toISOString();
+  return allDay ? istMidnight(addIstDays(from, 1)) : addIstHours(from, 3);
 }
 
 const empty: Partial<Event> = {
@@ -207,8 +193,8 @@ export default function EventDrawer({ mode }: Props) {
                 onCheckedChange={(c) => setForm((f) => ({
                   ...f,
                   is_all_day: c,
-                  date: c && f.date ? atMidnight(f.date) : f.date,
-                  end_date: c && f.end_date ? atMidnight(f.end_date) : f.end_date,
+                  date: c && f.date ? istMidnight(f.date) : f.date,
+                  end_date: c && f.end_date ? istMidnight(f.end_date) : f.end_date,
                 }))}
               />
               <Label>All day (no start time)</Label>

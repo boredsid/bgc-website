@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { formatEventDateLabel, formatEventTimeLabel, isHappeningNow, isMultiDay } from '../lib/event-date';
+import { bangaloreDayKey, formatEventDateLabel, formatEventTimeLabel, isHappeningNow, isMultiDay } from '../lib/event-date';
 import type { Event, EventSpots } from '../lib/types';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
@@ -13,13 +13,12 @@ function formatRelativeDate(event: Event): string {
 
   const eventDate = new Date(event.date);
 
-  // Calendar-day diff (not millisecond diff) so a late-night event
-  // can't be mislabeled by a few hours of clock drift.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const eventDay = new Date(eventDate);
-  eventDay.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((eventDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  // Bangalore calendar-day diff (not millisecond diff): a late-night event
+  // can't be mislabeled by clock drift, and "TONIGHT" means tonight at the
+  // venue rather than tonight wherever the visitor happens to be.
+  const diffDays = Math.round(
+    (Date.parse(bangaloreDayKey(event.date)) - Date.parse(bangaloreDayKey(new Date()))) / 86400000,
+  );
 
   // A multi-day run reads better as its date range than as a single day.
   if (isMultiDay(event)) return formatEventDateLabel(event, 'short').toUpperCase();
@@ -27,7 +26,9 @@ function formatRelativeDate(event: Event): string {
   if (diffDays === 0) return event.is_all_day ? 'TODAY' : 'TONIGHT';
   if (diffDays === 1) return 'TOMORROW';
 
-  const weekday = eventDate.toLocaleDateString('en-IN', { weekday: 'long' }).toUpperCase();
+  const weekday = eventDate
+    .toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long' })
+    .toUpperCase();
 
   if (diffDays >= 2 && diffDays <= 7) return `THIS ${weekday}`;
   if (diffDays >= 8 && diffDays <= 14) return `NEXT ${weekday}`;

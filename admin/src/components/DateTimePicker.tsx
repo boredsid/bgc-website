@@ -1,10 +1,11 @@
 import { Input } from '@/components/ui/input';
+import { istIso, istWallClock } from '@/lib/ist';
 
 interface Props {
   value: string;
   onChange: (iso: string) => void;
   className?: string;
-  /** Hide the time picker and pin the value to local midnight. */
+  /** Hide the time picker and pin the value to Bangalore midnight. */
   dateOnly?: boolean;
   /** Rendered as the empty option, e.g. "Same day" for an optional end. */
   emptyTimeLabel?: string;
@@ -20,29 +21,15 @@ const TIMES: string[] = (() => {
   return out;
 })();
 
-const pad = (n: number) => String(n).padStart(2, '0');
-
+// Both directions run in Bangalore time, never the editing machine's zone, so
+// an event edited from another country keeps the time at the venue.
 function splitIso(iso: string): { date: string; time: string } {
   if (!iso) return { date: '', time: '' };
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return { date: '', time: '' };
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
+  return istWallClock(iso) ?? { date: '', time: '' };
 }
 
 function combine(date: string, time: string): string {
-  if (!date) return '';
-  const [h, m] = (time || '00:00').split(':').map(Number);
-  const [y, mo, d] = date.split('-').map(Number);
-  const local = new Date(y, mo - 1, d, h, m);
-  const offsetMin = -local.getTimezoneOffset();
-  const sign = offsetMin >= 0 ? '+' : '-';
-  const absMin = Math.abs(offsetMin);
-  const offH = pad(Math.floor(absMin / 60));
-  const offM = pad(absMin % 60);
-  return `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(m)}:00${sign}${offH}:${offM}`;
+  return istIso(date, time || '00:00');
 }
 
 export function DateTimePicker({ value, onChange, className, dateOnly, emptyTimeLabel }: Props) {
