@@ -471,6 +471,27 @@ export default function RegistrationForm() {
             {event.price_includes}
           </div>
         )}
+        {event.replay_pass_free && (
+          <div className="mt-3">
+            <span
+              className="pill inline-block"
+              style={{
+                background: '#FFD166',
+                padding: '6px 14px',
+                fontSize: '0.75rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                border: '2px solid #1A1A1A',
+              }}
+            >
+              🎟️ Free with REPLAY Pass
+            </span>
+            <p className="mt-2 text-sm text-[#1A1A1A]/70 leading-relaxed">
+              Your own seat is free when you enter the phone number linked to a valid REPLAY pass.
+              Additional seats follow the per-person price shown above.
+            </p>
+          </div>
+        )}
         {event.guild_path_exclusive && (
           <div className="mt-3">
             <span

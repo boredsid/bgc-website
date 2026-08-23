@@ -175,7 +175,7 @@ function EventCard({ event, past = false }: { event: EventWithSpots; past?: bool
         style={{ background: featured ? '#FFD166' : past ? '#F5F1EA' : '#FFFFFF', borderBottom: '4px solid #1A1A1A' }}
       >
         <span className="font-heading font-bold text-base">{dateStr}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {event.externally_managed && (
             <span
               className="pill"
@@ -206,6 +206,22 @@ function EventCard({ event, past = false }: { event: EventWithSpots; past?: bool
               }}
             >
               Guild Only
+            </span>
+          )}
+          {!past && event.replay_pass_free && (
+            <span
+              className="pill"
+              style={{
+                fontSize: '0.7rem',
+                padding: '6px 12px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                background: '#FFD166',
+                color: '#1A1A1A',
+                border: '2px solid #1A1A1A',
+              }}
+            >
+              🎟️ Free with REPLAY Pass
             </span>
           )}
           {featured && (
