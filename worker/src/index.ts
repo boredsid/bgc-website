@@ -11,7 +11,7 @@ import { handleCancelRegistration, handleCancelGuildMembership } from './cancel'
 import { verifyAccessJwt } from './access-auth';
 import { handleMcp } from './mcp/protocol';
 import { ALL_TOOLS } from './mcp/tools';
-import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent } from './admin/events';
+import { handleListEvents, handleGetEvent, handleCreateEvent, handleUpdateEvent, handleDeleteEvent } from './admin/events';
 import { handleListGames, handleGetGame, handleCreateGame, handleUpdateGame, handleOwnersSummary } from './admin/games';
 import { handleListRegistrations, handleGetRegistration, handleUpdateRegistration } from './admin/registrations';
 import { handleExportRegistrations } from './admin/export-registrations';
@@ -193,6 +193,7 @@ export default {
               else if (!eventId && request.method === 'POST') adminResponse = await handleCreateEvent(request, env);
               else if (eventId && request.method === 'GET') adminResponse = await handleGetEvent(eventId, env);
               else if (eventId && request.method === 'PATCH') adminResponse = await handleUpdateEvent(eventId, request, env, ctx, gate.admin.email);
+              else if (eventId && request.method === 'DELETE') adminResponse = await handleDeleteEvent(eventId, env, ctx);
               else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
             }
           }

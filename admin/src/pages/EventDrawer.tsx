@@ -8,11 +8,13 @@ import { FormDrawer } from '@/components/FormDrawer';
 import { NumberInput } from '@/components/NumberInput';
 import { DateTimePicker } from '@/components/DateTimePicker';
 import CustomQuestionsEditor from '@/components/CustomQuestionsEditor';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fetchAdmin, showApiError } from '@/lib/api';
 import { validateEvent, type ValidationErrors } from '@/lib/validation';
 import { addIstDays, addIstHours, istMidnight } from '@/lib/ist';
 import { toast } from 'sonner';
-import type { Event, CustomQuestion } from '@/lib/types';
+import type { Event, CustomQuestion, EventDeletability } from '@/lib/types';
 
 interface Props { mode: 'create' | 'edit' }
 
@@ -43,13 +45,17 @@ export default function EventDrawer({ mode }: Props) {
   const [guestAdmins, setGuestAdmins] = useState<string[]>([]);
   const [guestInput, setGuestInput] = useState('');
   const [initialGuests, setInitialGuests] = useState<string[]>([]);
+  const [deletable, setDeletable] = useState<EventDeletability | null>(null);
+  const [askDelete, setAskDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (mode === 'edit' && id) {
-      fetchAdmin<{ event: Event }>(`/api/admin/events/${id}`)
+      fetchAdmin<{ event: Event; deletable?: EventDeletability }>(`/api/admin/events/${id}`)
         .then((r) => {
           setForm(r.event);
           setInitial(r.event);
+          setDeletable(r.deletable ?? null);
           const loaded = ((r.event as Event & { guest_admins?: string[] }).guest_admins) ?? [];
           setGuestAdmins(loaded);
           setInitialGuests(loaded);
@@ -154,7 +160,80 @@ export default function EventDrawer({ mode }: Props) {
     }
   }
 
+  async function remove() {
+    setDeleting(true);
+    setServerError(null);
+    try {
+      await fetchAdmin(`/api/admin/events/${id}`, { method: 'DELETE' });
+      toast.success('Event deleted');
+      navigate('/events');
+    } catch (err) {
+      // Usually means the event stopped being deletable while the form was open
+      // (someone registered, it got published), so the banner explains it.
+      setAskDelete(false);
+      setServerError(err instanceof Error ? err.message : 'Could not delete this event.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function set<K extends keyof Event>(k: K, v: Event[K]) { setForm((f) => ({ ...f, [k]: v })); }
+
+  // Deleting is only offered for an unsaved-to-the-world draft that hasn't
+  // happened yet; the server decides, since the form's copy can be stale.
+  // Published / past events simply don't show the option — the two reasons an
+  // admin wouldn't expect (registrations, money) are spelled out instead.
+  const justUnpublished = deletable?.blocked_by === 'published' && !form.is_published;
+  const deleteSection = mode === 'edit' && deletable && (deletable.allowed || justUnpublished || deletable.blocked_by === 'registrations' || deletable.blocked_by === 'finance') ? (
+    <div className="rounded-md border border-destructive/40 p-3 space-y-2">
+      <Label className="block">Delete this event</Label>
+      {deletable.allowed ? (
+        <>
+          <p className="text-xs text-muted-foreground">
+            It's a draft that hasn't happened yet, so it was never on the website and nobody registered.
+          </p>
+          <Button variant="destructive" size="sm" onClick={() => setAskDelete(true)} disabled={saving}>
+            Delete event
+          </Button>
+          <Dialog open={askDelete} onOpenChange={(o) => { if (!o && !deleting) setAskDelete(false); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete “{form.name || 'this event'}”?</DialogTitle>
+              </DialogHeader>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>The event and everything set up on it goes for good. This can't be undone.</p>
+                {!!deletable?.leads && (
+                  <p>
+                    {deletable.leads === 1
+                      ? '1 person started registering and left their phone number — that will be deleted too.'
+                      : `${deletable.leads} people started registering and left their phone numbers — those will be deleted too.`}
+                  </p>
+                )}
+                {!!deletable?.guest_admins && (
+                  <p>
+                    {deletable.guest_admins === 1
+                      ? '1 guest admin will lose access to this event.'
+                      : `${deletable.guest_admins} guest admins will lose access to this event.`}
+                  </p>
+                )}
+                <p>No one has registered for it, so nobody will be affected.</p>
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setAskDelete(false)} disabled={deleting}>Keep it</Button>
+                <Button variant="destructive" onClick={remove} disabled={deleting}>
+                  {deleting ? 'Deleting…' : 'Delete event'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          {justUnpublished ? 'Save this change first, then you can delete the event.' : deletable.reason}
+        </p>
+      )}
+    </div>
+  ) : null;
 
   function field(key: string, label: string, control: React.ReactNode) {
     const err = showErrors ? errors[key] : undefined;
@@ -382,6 +461,7 @@ export default function EventDrawer({ mode }: Props) {
               />
             </div>
           )}
+          {deleteSection}
         </>
       )}
     </FormDrawer>

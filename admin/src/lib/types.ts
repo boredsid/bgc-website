@@ -36,6 +36,15 @@ export interface Event {
   created_at: string;
 }
 
+/** Whether an event can still be deleted, and what would go with it. */
+export interface EventDeletability {
+  allowed: boolean;
+  reason: string | null;
+  blocked_by: 'published' | 'past' | 'registrations' | 'finance' | null;
+  leads: number;
+  guest_admins: number;
+}
+
 export interface Game {
   id: string;
   title: string;

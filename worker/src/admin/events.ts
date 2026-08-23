@@ -31,7 +31,15 @@ export async function handleGetEvent(id: string, env: Env, includeGuestAdmins = 
     .from('event_guest_admins')
     .select('email')
     .eq('event_id', id);
-  return jsonResponse({ event: { ...data, guest_admins: (guests || []).map((g: { email: string }) => g.email) } });
+
+  // The editor needs to know whether the delete option applies before it offers
+  // it, and what would go with the event if it did.
+  const deletable = await getEventDeletability(supabase, data as { id: string; is_published: boolean; ends_at: string });
+
+  return jsonResponse({
+    event: { ...data, guest_admins: (guests || []).map((g: { email: string }) => g.email) },
+    deletable,
+  });
 }
 
 function normalizeEmails(input: unknown): string[] {
@@ -230,4 +238,107 @@ export async function handleUpdateEvent(
   }
 
   return jsonResponse({ event: data });
+}
+
+// ---------------------------------------------------------------------------
+// Deletion
+//
+// Deleting an event is only ever allowed to tidy up a mistake: a draft that was
+// never shown to anyone and hasn't happened yet. Anything a person or the books
+// touched stays put, so the reason for the block is phrased as the next thing
+// the admin should do about it.
+// ---------------------------------------------------------------------------
+
+export type DeleteBlocker = 'published' | 'past' | 'registrations' | 'finance';
+
+export interface EventDeletability {
+  allowed: boolean;
+  /** Plain-English reason plus the fix, when something blocks the delete. */
+  reason: string | null;
+  blocked_by: DeleteBlocker | null;
+  /** Rows that would be deleted along with the event, for the confirmation. */
+  leads: number;
+  guest_admins: number;
+}
+
+async function countRows(
+  supabase: ReturnType<typeof getSupabase>,
+  table: string,
+  eventId: string,
+): Promise<number> {
+  const { count } = await supabase
+    .from(table)
+    .select('id', { count: 'exact', head: true })
+    .eq('event_id', eventId);
+  return count || 0;
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+export async function getEventDeletability(
+  supabase: ReturnType<typeof getSupabase>,
+  event: { id: string; is_published?: boolean | null; ends_at?: string | null },
+): Promise<EventDeletability> {
+  const blocked = (blocked_by: DeleteBlocker, reason: string): EventDeletability =>
+    ({ allowed: false, reason, blocked_by, leads: 0, guest_admins: 0 });
+
+  if (event.is_published) {
+    return blocked('published', 'This event is live on the website. Switch Published off and save, then you can delete it.');
+  }
+  // Upcoming is judged on ends_at, never date, so an event part-way through its
+  // run still counts as happening rather than as a deletable draft.
+  const endsAt = event.ends_at ? Date.parse(event.ends_at) : NaN;
+  if (!Number.isNaN(endsAt) && endsAt <= Date.now()) {
+    return blocked('past', "This event has already finished. Past events are kept for the records, so it can't be deleted.");
+  }
+
+  const registrations = await countRows(supabase, 'registrations', event.id);
+  if (registrations > 0) {
+    return blocked(
+      'registrations',
+      `${plural(registrations, 'person has', 'people have')} registered for this event. Cancel their registrations first, then you can delete it.`,
+    );
+  }
+
+  const financeEntries = await countRows(supabase, 'finance_transactions', event.id);
+  if (financeEntries > 0) {
+    return blocked(
+      'finance',
+      `${plural(financeEntries, 'money entry is', 'money entries are')} linked to this event. Unlink them in Finance first, then you can delete it.`,
+    );
+  }
+
+  const [leads, guestAdmins] = await Promise.all([
+    countRows(supabase, 'leads', event.id),
+    countRows(supabase, 'event_guest_admins', event.id),
+  ]);
+
+  return { allowed: true, reason: null, blocked_by: null, leads, guest_admins: guestAdmins };
+}
+
+export async function handleDeleteEvent(id: string, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const supabase = getSupabase(env);
+  const { data: event, error } = await supabase
+    .from('events')
+    .select('id, name, is_published, ends_at')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return jsonResponse({ error: 'Failed to load event' }, 500);
+  if (!event) return jsonResponse({ error: 'Event not found' }, 404);
+
+  // Re-checked here rather than trusted from the editor: the browser's copy can
+  // be minutes old, and by then someone may have registered.
+  const deletable = await getEventDeletability(supabase, event as { id: string; is_published: boolean; ends_at: string });
+  if (!deletable.allowed) return jsonResponse({ error: deletable.reason }, 409);
+
+  const { error: deleteError } = await supabase.from('events').delete().eq('id', id);
+  if (deleteError) return jsonResponse({ error: 'Failed to delete event' }, 500);
+
+  // Guest admins go with the event via cascade, so the Access group that lets
+  // them reach the admin tool at all has to be rebuilt without them.
+  if (deletable.guest_admins > 0) ctx.waitUntil(syncCfAccessGroup(env));
+
+  return jsonResponse({ success: true, deleted: { leads: deletable.leads, guest_admins: deletable.guest_admins } });
 }

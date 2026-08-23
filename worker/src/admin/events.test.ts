@@ -190,3 +190,102 @@ describe('handleUpdateEvent timing', () => {
     expect(cap.eventUpdate).not.toHaveProperty('ends_at');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Deleting a draft event
+// ---------------------------------------------------------------------------
+
+import { handleDeleteEvent } from './events';
+
+interface DeleteCounts { registrations?: number; finance_transactions?: number; leads?: number; event_guest_admins?: number }
+
+function mockDeleteSupabase(
+  event: Record<string, unknown> | null,
+  counts: DeleteCounts = {},
+  state: { deleted: string | null } = { deleted: null },
+) {
+  return {
+    from: (table: string) => {
+      if (table === 'events') {
+        return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: event, error: null }) }) }),
+          delete: () => ({ eq: async (_col: string, id: string) => { state.deleted = id; return { error: null }; } }),
+        };
+      }
+      return {
+        select: () => ({ eq: async () => ({ count: counts[table as keyof DeleteCounts] ?? 0, error: null }) }),
+      };
+    },
+  };
+}
+
+const future = new Date(Date.now() + 7 * 86400000).toISOString();
+const past = new Date(Date.now() - 7 * 86400000).toISOString();
+const draft = { id: 'e1', name: 'Draft night', is_published: false, ends_at: future };
+
+async function body(res: Response) { return JSON.parse(await res.text()); }
+
+describe('handleDeleteEvent', () => {
+  it('deletes an unpublished future event and reports what went with it', async () => {
+    const state = { deleted: null as string | null };
+    (getSupabase as any).mockReturnValue(mockDeleteSupabase(draft, { leads: 2, event_guest_admins: 1 }, state));
+    const res = await handleDeleteEvent('e1', mockEnv(), ctx);
+    expect(res.status).toBe(200);
+    expect(await body(res)).toMatchObject({ success: true, deleted: { leads: 2, guest_admins: 1 } });
+    expect(state.deleted).toBe('e1');
+    // Guest admins vanish with the event, so their edge access has to be rebuilt.
+    expect(syncCfAccessGroup).toHaveBeenCalled();
+  });
+
+  it('refuses to delete a published event', async () => {
+    const state = { deleted: null as string | null };
+    (getSupabase as any).mockReturnValue(mockDeleteSupabase({ ...draft, is_published: true }, {}, state));
+    const res = await handleDeleteEvent('e1', mockEnv(), ctx);
+    expect(res.status).toBe(409);
+    expect((await body(res)).error).toContain('Published off');
+    expect(state.deleted).toBeNull();
+  });
+
+  it('refuses to delete an event that has already finished', async () => {
+    const state = { deleted: null as string | null };
+    (getSupabase as any).mockReturnValue(mockDeleteSupabase({ ...draft, ends_at: past }, {}, state));
+    const res = await handleDeleteEvent('e1', mockEnv(), ctx);
+    expect(res.status).toBe(409);
+    expect((await body(res)).error).toContain('already finished');
+    expect(state.deleted).toBeNull();
+  });
+
+  it('keeps a multi-day event that is still running', async () => {
+    // Started yesterday, ends next week: date is past but ends_at is not, and
+    // ends_at is what decides.
+    const state = { deleted: null as string | null };
+    (getSupabase as any).mockReturnValue(mockDeleteSupabase({ ...draft, date: past, ends_at: future }, {}, state));
+    const res = await handleDeleteEvent('e1', mockEnv(), ctx);
+    expect(res.status).toBe(200);
+    expect(state.deleted).toBe('e1');
+  });
+
+  it('refuses to delete an event people have registered for', async () => {
+    const state = { deleted: null as string | null };
+    (getSupabase as any).mockReturnValue(mockDeleteSupabase(draft, { registrations: 3 }, state));
+    const res = await handleDeleteEvent('e1', mockEnv(), ctx);
+    expect(res.status).toBe(409);
+    expect((await body(res)).error).toContain('3 people have registered');
+    expect(state.deleted).toBeNull();
+  });
+
+  it('refuses to delete an event with money linked to it', async () => {
+    const state = { deleted: null as string | null };
+    (getSupabase as any).mockReturnValue(mockDeleteSupabase(draft, { finance_transactions: 1 }, state));
+    const res = await handleDeleteEvent('e1', mockEnv(), ctx);
+    expect(res.status).toBe(409);
+    expect((await body(res)).error).toContain('1 money entry is linked');
+    expect(state.deleted).toBeNull();
+  });
+
+  it('404s when the event is already gone', async () => {
+    (getSupabase as any).mockReturnValue(mockDeleteSupabase(null));
+    const res = await handleDeleteEvent('missing', mockEnv(), ctx);
+    expect(res.status).toBe(404);
+  });
+});
