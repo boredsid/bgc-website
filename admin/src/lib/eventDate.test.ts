@@ -49,16 +49,20 @@ describe('formatEventDateLabel', () => {
     expect(formatEventDateLabel(timed, 'long')).toBe('Saturday, 5 September');
   });
 
-  it('collapses a same-month run to one month name', () => {
-    expect(formatEventDateLabel(multiDay)).toBe(`5 – 7 ${SEP}`);
+  it('leads with the weekday range, then the dates, month named once', () => {
+    expect(formatEventDateLabel(multiDay)).toBe(`Sat – Mon, 5 – 7 ${SEP}`);
   });
 
   it('repeats the month across a month boundary', () => {
-    expect(formatEventDateLabel(acrossMonths)).toBe(`28 ${SEP} – 2 ${OCT}`);
+    expect(formatEventDateLabel(acrossMonths)).toBe(`Mon – Fri, 28 ${SEP} – 2 ${OCT}`);
   });
 
   it('adds years across a year boundary', () => {
-    expect(formatEventDateLabel(acrossYears)).toBe('30 Dec 2026 – 2 Jan 2027');
+    expect(formatEventDateLabel(acrossYears)).toBe('Wed – Sat, 30 Dec 2026 – 2 Jan 2027');
+  });
+
+  it('spells the weekday out in the long style', () => {
+    expect(formatEventDateLabel(multiDay, 'long')).toBe('Saturday – Monday, 5 – 7 September');
   });
 });
 
@@ -83,7 +87,7 @@ describe('formatEventWhen', () => {
   it('reads naturally for each shape', () => {
     expect(formatEventWhen(timed, 'long')).toBe('Saturday, 5 September at 6:00 pm');
     expect(formatEventWhen(allDay, 'long')).toBe('Saturday, 5 September, all day');
-    expect(formatEventWhen(multiDayAllDay, 'short')).toBe(`5 – 7 ${SEP}, all day`);
+    expect(formatEventWhen(multiDayAllDay, 'short')).toBe(`Sat – Mon, 5 – 7 ${SEP}, all day`);
   });
 });
 

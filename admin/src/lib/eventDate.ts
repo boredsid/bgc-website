@@ -47,37 +47,40 @@ export function isHappeningNow(e: EventTiming, now: Date = new Date()): boolean 
 
 /**
  * "Sat, 5 Sep" (short) / "Saturday, 5 September" (long) for a single day.
- * Multi-day collapses to a range and drops the weekday: "5 – 7 Sep",
- * "28 Sep – 2 Oct", "30 Dec 2026 – 2 Jan 2027".
+ * A range leads with the weekdays, then the dates — "Sat – Sun, 12 – 13 Sep",
+ * "Mon – Fri, 28 Sep – 2 Oct", "Wed – Sat, 30 Dec 2026 – 2 Jan 2027" — echoing
+ * the single-day shape. Month and year are printed once when both ends share
+ * them.
  */
 export function formatEventDateLabel(e: EventTiming, style: 'short' | 'long' = 'short'): string {
   const start = new Date(e.date);
   const monthOpt = style === 'long' ? 'long' : 'short';
+  const weekdayOpt = style === 'long' ? 'long' : 'short';
 
   if (!isMultiDay(e)) {
-    return part(start, {
-      weekday: style === 'long' ? 'long' : 'short',
-      day: 'numeric',
-      month: monthOpt,
-    });
+    return part(start, { weekday: weekdayOpt, day: 'numeric', month: monthOpt });
   }
 
   const end = new Date(e.end_date!);
   const sameYear = part(start, { year: 'numeric' }) === part(end, { year: 'numeric' });
   const sameMonth = sameYear && part(start, { month: 'short' }) === part(end, { month: 'short' });
 
-  const endLabel = part(end, {
-    day: 'numeric',
-    month: monthOpt,
-    ...(sameYear ? {} : { year: 'numeric' }),
-  });
-  const startLabel = part(start, {
+  // Built piecewise rather than with one format call: the range needs the month
+  // and year suppressed on the left when both ends agree, which no single
+  // Intl pattern expresses.
+  const weekdays = `${part(start, { weekday: weekdayOpt })} – ${part(end, { weekday: weekdayOpt })}`;
+  const startDate = part(start, {
     day: 'numeric',
     ...(sameMonth ? {} : { month: monthOpt }),
     ...(sameYear ? {} : { year: 'numeric' }),
   });
+  const endDate = part(end, {
+    day: 'numeric',
+    month: monthOpt,
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
 
-  return `${startLabel} – ${endLabel}`;
+  return `${weekdays}, ${startDate} – ${endDate}`;
 }
 
 /** "All day" / "6:00 pm" / "10:00 am – 6:00 pm". */

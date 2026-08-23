@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { formatEventDateLabel, formatEventTimeLabel, isMultiDay } from '../lib/event-date';
+import { formatEventDateLabel, formatEventTimeLabel } from '../lib/event-date';
 import type { Event } from '../lib/types';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
@@ -162,7 +162,6 @@ export default function EventList({ initialEvents = [] }: Props) {
 function EventCard({ event, past = false }: { event: EventWithSpots; past?: boolean }) {
   const dateStr = formatEventDateLabel(event, 'short');
   const time = formatEventTimeLabel(event);
-  const multiDay = isMultiDay(event);
   const soldOut = !event.externally_managed && event.remaining !== null && event.remaining <= 0;
   const featured = !past && (event as any).is_featured === true;
 
@@ -177,22 +176,6 @@ function EventCard({ event, past = false }: { event: EventWithSpots; past?: bool
       >
         <span className="font-heading font-bold text-base">{dateStr}</span>
         <div className="flex items-center gap-2">
-          {multiDay && (
-            <span
-              className="pill"
-              style={{
-                fontSize: '0.7rem',
-                padding: '6px 12px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                background: '#FFD166',
-                color: '#1A1A1A',
-                border: '2px solid #1A1A1A',
-              }}
-            >
-              Multi-day
-            </span>
-          )}
           {event.externally_managed && (
             <span
               className="pill"
