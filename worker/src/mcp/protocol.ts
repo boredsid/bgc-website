@@ -14,7 +14,7 @@ Personal data: only pass a phone number when the user has explicitly asked you t
 
 Duplicate bookings: if register_for_event returns requires_confirmation, the person already has a spot for that event — tell them so explicitly, and only retry with confirm_additional: true after they clearly say they want an additional spot.
 
-Cancellations cannot be done through these tools — the user must message a BGC admin on WhatsApp (see get_community_links).`;
+Cancellations cannot be done through these tools — the user must contact us on WhatsApp (see get_community_links).`;
 
 interface RpcMessage {
   jsonrpc?: string;

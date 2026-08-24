@@ -58,7 +58,7 @@ describe('register_for_event', () => {
     expect(out.payment.payee_name).toBe('Board Game Company');
     expect(out.payment.payment_page).toBe('https://boardgamecompany.in/pay?amount=900&for=Catan%20Night');
     expect(out.payment.instructions).toMatch(/relay/i);
-    expect(out.cancellation).toContain('wa.me/919982200768');
+    expect(out.cancellation).toContain('wa.me/919606598024');
   });
 
   it('defaults seats to 1 when omitted', async () => {

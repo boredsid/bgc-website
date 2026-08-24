@@ -22,8 +22,9 @@ describe('get_community_links', () => {
     expect(out.instagram).toBe('https://instagram.com/boardgamecompany');
     expect(out.discord).toBe('https://discord.gg/7ck6U59UuJ');
     expect(out.website).toBe('https://boardgamecompany.in');
-    expect(out.admin_contact_whatsapp).toBe('https://wa.me/919982200768');
-    expect(out.cancellations).toContain('wa.me/919982200768');
+    expect(out.admin_contact_whatsapp).toBe('https://wa.me/919606598024');
+    expect(out.admin_contact_phone).toBe('+91 96065 98024');
+    expect(out.cancellations).toContain('wa.me/919606598024');
   });
 });
 
