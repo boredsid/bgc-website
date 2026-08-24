@@ -36,7 +36,7 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 
 | Table | Public read | Notes |
 |---|---|---|
-| `games` | yes | Library, ~130 games. `owned_by` / `currently_with` are internal — never expose to public site |
+| `games` | yes | Library, ~200 games. `owned_by` / `currently_with` are internal — never expose to public site |
 | `events` | yes (published only via RLS) | `custom_questions` JSONB drives dynamic registration fields. `guild_path_exclusive` gates public registration to active Guild Path members (worker-enforced) |
 | `users` | no | All registrants ever |
 | `guild_path_members` | no | Membership tiers + expiry (renamed from `guild_members` in migration 002) |

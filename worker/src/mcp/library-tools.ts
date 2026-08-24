@@ -8,7 +8,7 @@ const MAX_GAMES = 100;
 const searchLibrary: McpTool = {
   name: 'search_library',
   description:
-    "Search BGC's board game library (~130 games) by title, player count, or maximum play time. All filters optional; omit them to browse everything.",
+    "Search BGC's board game library (~200 games) by title, player count, or maximum play time. All filters optional; omit them to browse everything.",
   inputSchema: {
     type: 'object',
     properties: {
