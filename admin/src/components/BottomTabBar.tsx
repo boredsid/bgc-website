@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ShieldCheck, Calendar, MoreHorizontal, Library, LogOut, UserCircle, Inbox, Gift, Briefcase, WalletCards } from 'lucide-react';
+import { LayoutDashboard, Users, ShieldCheck, Calendar, MoreHorizontal, Library, LogOut, UserCircle, Inbox, Gift, Briefcase, WalletCards, HandHeart } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import type { SidebarCounts } from './Sidebar';
@@ -80,6 +80,19 @@ export default function BottomTabBar({ counts }: Props) {
             >
               <Library className="h-5 w-5" />
               Games
+            </NavLink>
+            <NavLink
+              to="/hosts"
+              onClick={() => setMoreOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-3 rounded-md text-sm min-h-11',
+                  isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
+                )
+              }
+            >
+              <HandHeart className="h-5 w-5" />
+              Community hosts
             </NavLink>
             <NavLink
               to="/users"

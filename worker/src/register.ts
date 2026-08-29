@@ -6,6 +6,7 @@ import { applyCreditsToTotal, recordCreditEvent } from './credits';
 import { consumePromoUses, getApplicablePromo } from './promos';
 import { effectiveSeatPrice, applyReplayPassSeat } from './pricing';
 import { fetchReplayPassStatus } from './replay-client';
+import { getActiveMembership } from './guild';
 
 export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -124,19 +125,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     .eq('phone', phone)
     .maybeSingle();
 
-  let member: { id: string; tier: string; expires_at: string; plus_ones_used: number } | null = null;
-  if (existingUser) {
-    const { data: memberData } = await supabase
-      .from('guild_path_members')
-      .select('id, tier, expires_at, plus_ones_used')
-      .eq('user_id', existingUser.id)
-      .eq('status', 'paid')
-      .gte('expires_at', new Date().toISOString().split('T')[0])
-      .order('expires_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    member = memberData;
-  }
+  const member = existingUser ? await getActiveMembership(supabase, existingUser.id) : null;
 
   if (event.guild_path_exclusive && !member) {
     return jsonResponse({ success: false, error: 'guild_path_required' }, 403);

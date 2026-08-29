@@ -28,8 +28,17 @@ import { toast } from 'sonner';
 import type { GuildMember, FinanceAccount, FinanceCategory } from '@/lib/types';
 
 const TIER_DAYS: Record<string, number> = { initiate: 90, adventurer: 180, guildmaster: 365 };
+
 const PAGE_KEY = 'guild';
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
+
+/**
+ * Never-expiring memberships (community hosts) carry a far-future sentinel
+ * date in `expires_at`; show the intent rather than the year 2999.
+ */
+function expiryLabel(m: GuildMember): string {
+  return m.never_expires ? 'Never' : m.expires_at;
+}
 
 export default function GuildList() {
   const [params, setParams] = useSearchParams();
@@ -208,11 +217,21 @@ export default function GuildList() {
     },
     { key: 'phone', header: 'Phone', render: (m) => <PhoneCell phone={m.user_phone} /> },
     {
-      key: 'tier', header: 'Tier', render: (m) => m.tier,
+      key: 'tier', header: 'Tier',
+      render: (m) => (
+        <span className="inline-flex items-center gap-1.5">
+          {m.tier}
+          {m.source === 'community_host' && (
+            <span className="rounded-full bg-accent/15 text-accent-foreground border border-accent/30 px-1.5 py-0.5 text-[10px] font-medium">
+              Host
+            </span>
+          )}
+        </span>
+      ),
       sortable: true, sortValue: (m) => m.tier,
     },
     {
-      key: 'expires', header: 'Expires', render: (m) => m.expires_at,
+      key: 'expires', header: 'Expires', render: (m) => expiryLabel(m),
       sortable: true, sortValue: (m) => m.expires_at ?? '',
     },
     {
@@ -223,7 +242,12 @@ export default function GuildList() {
 
   const fields: CardField<GuildMember>[] = [
     { key: 'name', render: (m) => m.user_name || '—', primary: true },
-    { key: 'tier', render: (m) => `${m.tier} · expires ${m.expires_at}` },
+    {
+      key: 'tier',
+      render: (m) => (m.never_expires
+        ? `${m.tier} · never expires`
+        : `${m.tier} · expires ${m.expires_at}`),
+    },
     { key: 'phone', render: (m) => <PhoneCell phone={m.user_phone} /> },
   ];
 

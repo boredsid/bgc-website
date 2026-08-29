@@ -21,6 +21,28 @@ export function sanitizeSource(source: unknown): string | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
+/**
+ * Labels of the event's required custom questions that weren't answered.
+ *
+ * A checkbox is answered by being ticked; anything else needs a non-empty
+ * value. Returns labels rather than ids so the caller can name the question the
+ * admin actually sees on screen.
+ */
+export function missingRequiredAnswers(
+  questions: Array<{ id: string; label: string; required?: boolean }>,
+  answers: Record<string, string | boolean> | null | undefined,
+): string[] {
+  const given = answers || {};
+  return questions
+    .filter((q) => q.required)
+    .filter((q) => {
+      const answer = given[q.id];
+      if (typeof answer === 'boolean') return !answer;
+      return answer === undefined || answer === null || String(answer).trim() === '';
+    })
+    .map((q) => q.label);
+}
+
 export function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,

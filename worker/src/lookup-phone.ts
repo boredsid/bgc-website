@@ -4,6 +4,7 @@ import { sanitizePhone, jsonResponse } from './validation';
 import { getUserBalance } from './credits';
 import { getActivePromo } from './promos';
 import { fetchReplayPassStatus } from './replay-client';
+import { getActiveMembership } from './guild';
 
 export async function handleLookupPhone(request: Request, env: Env): Promise<Response> {
   const body = await request.json<{ phone: string; event_id?: string }>();
@@ -17,29 +18,13 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
 
   const userResult = await supabase
     .from('users')
-    .select('id, name, email')
+    .select('id, name, email, is_community_host')
     .eq('phone', phone)
     .maybeSingle();
 
   const user = userResult.data;
 
-  let member:
-    | { tier: string; expires_at: string; plus_ones_used: number }
-    | null = null;
-
-  if (user) {
-    const memberResult = await supabase
-      .from('guild_path_members')
-      .select('tier, expires_at, plus_ones_used')
-      .eq('user_id', user.id)
-      .eq('status', 'paid')
-      .gte('expires_at', new Date().toISOString().split('T')[0])
-      .order('expires_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    member = memberResult.data;
-  }
+  const member = user ? await getActiveMembership(supabase, user.id) : null;
 
   let discount: string | null = null;
   let plusOnesRemaining = 0;
@@ -89,12 +74,14 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
       found: !!user,
       name: user?.name || null,
       email: user?.email || null,
+      is_community_host: !!user?.is_community_host,
     },
     membership: {
       isMember: !!member,
       tier: member?.tier || null,
       discount,
       plus_ones_remaining: plusOnesRemaining,
+      never_expires: !!member?.never_expires,
     },
     existing_seats_for_event: existingSeatsForEvent,
     replay_pass: replayPass,

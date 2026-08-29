@@ -1,12 +1,14 @@
 import type { Env } from '../index';
 import { getSupabase } from '../supabase';
-import { sanitizePhone, sanitizeEmail, sanitizeName, jsonResponse } from '../validation';
+import { sanitizePhone, sanitizeEmail, sanitizeName, jsonResponse, missingRequiredAnswers } from '../validation';
 import { sendEventRegistrationEmail } from '../email';
 import { applyCreditsToTotal, recordCreditEvent } from '../credits';
 import { consumePromoUses, getApplicablePromo } from '../promos';
 import { effectiveSeatPrice, applyReplayPassSeat, type PricingQuestion } from '../pricing';
 import { fetchReplayPassStatus } from '../replay-client';
 import { currentBangaloreDate } from '../finance-date';
+import { getActiveMembership } from '../guild';
+import { assertCommunityHost } from './community-hosts';
 
 export async function handleManualRegister(
   request: Request,
@@ -27,9 +29,16 @@ export async function handleManualRegister(
     payment_account_id?: string;
     paid_at?: string;
     payment_method?: 'upi' | 'cash' | 'bank_transfer' | 'card' | 'other';
+    is_community_host?: boolean;
   }>().catch(() => null);
 
   if (!body) return jsonResponse({ error: 'Invalid request body' }, 400);
+
+  // A community host seat is a manual registration with the money taken out:
+  // it fills a spot and answers the event's questions, but is always free and
+  // skips every discount, perk, and credit in the pricing pipeline.
+  const asCommunityHost = body.is_community_host === true;
+  if (asCommunityHost) body.payment_status = 'confirmed';
 
   const phone = sanitizePhone(body.phone || '');
   if (!phone) return jsonResponse({ error: 'Invalid phone number' }, 400);
@@ -46,6 +55,17 @@ export async function handleManualRegister(
 
   const supabase = getSupabase(env);
 
+  let hostUser: { id: string; name: string | null; email: string | null } | null = null;
+  if (asCommunityHost) {
+    hostUser = await assertCommunityHost(supabase, phone);
+    if (!hostUser) {
+      return jsonResponse({
+        error: 'That number isn\'t on the community host list. Mark them as a community host on their user page first.',
+        code: 'not_a_community_host',
+      }, 400);
+    }
+  }
+
   const { data: event } = await supabase
     .from('events')
     .select('*')
@@ -61,7 +81,24 @@ export async function handleManualRegister(
   }
 
   const customQuestions = (event.custom_questions || []) as PricingQuestion[];
-  const seatPrice = effectiveSeatPrice(customQuestions, body.custom_answers || {}, event.price);
+
+  // A host still needs to answer the event's questions — which table they're
+  // running, what they're bringing — so the run sheet is complete.
+  if (asCommunityHost) {
+    const missing = missingRequiredAnswers(customQuestions, body.custom_answers);
+    if (missing.length > 0) {
+      return jsonResponse({
+        error: `Answer ${missing.join(', ')} before adding this host.`,
+        code: 'custom_answers_required',
+        missing,
+      }, 400);
+    }
+  }
+
+  // Host seats are free regardless of what the answers would otherwise price at.
+  const seatPrice = asCommunityHost
+    ? 0
+    : effectiveSeatPrice(customQuestions, body.custom_answers || {}, event.price);
 
   // Capacity check (excludes cancelled). Over-capacity is allowed but must be
   // explicitly confirmed by the admin: the first attempt returns a structured
@@ -102,18 +139,12 @@ export async function handleManualRegister(
 
   // Apply guild discount first; giveaway promo then covers any remaining
   // paid seats. If guild brings the total to ₹0, the promo stays preserved.
-  const { data: member } = await supabase
-    .from('guild_path_members')
-    .select('id, tier, plus_ones_used')
-    .eq('user_id', userId)
-    .eq('status', 'paid')
-    .gte('expires_at', new Date().toISOString().split('T')[0])
-    .order('expires_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // A host seat skips all of it — their perks stay banked for when they attend
+  // as a guest rather than run the table.
+  const member = asCommunityHost ? null : await getActiveMembership(supabase, userId);
 
   let totalAmount = seatPrice * seats;
-  let discountApplied: string | null = null;
+  let discountApplied: string | null = asCommunityHost ? 'community_host' : null;
   let plusOnesToConsume = 0;
   let membershipIdToUpdate: string | null = null;
   let membershipNewPlusOnesUsed = 0;
@@ -124,7 +155,7 @@ export async function handleManualRegister(
   // Both the Guild Path discount and the REPLAY pass are once-per-person perks,
   // so both need to know what this user already holds for the event.
   let existingSeats = 0;
-  if (member || event.replay_pass_free) {
+  if (!asCommunityHost && (member || event.replay_pass_free)) {
     const { data: priorRegs } = await supabase
       .from('registrations')
       .select('seats')
@@ -246,7 +277,8 @@ export async function handleManualRegister(
       credits_applied: creditsApplied,
       promo_id: promoIdUsed,
       promo_uses_consumed: promoSeatsConsumed,
-      source: 'admin',
+      is_community_host: asCommunityHost,
+      source: asCommunityHost ? 'community_host' : 'admin',
       payment_account_id: body.payment_status === 'confirmed' && totalAmount > 0 ? body.payment_account_id : null,
       paid_at: body.payment_status === 'confirmed' && totalAmount > 0 ? body.paid_at : null,
       payment_method: body.payment_status === 'confirmed' && totalAmount > 0 ? body.payment_method : null,

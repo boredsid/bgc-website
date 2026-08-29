@@ -11,6 +11,7 @@ import ManualRegistrationDrawer from './pages/ManualRegistrationDrawer';
 import GuildList from './pages/GuildList';
 import GuildDrawer from './pages/GuildDrawer';
 import UsersList from './pages/UsersList';
+import CommunityHosts from './pages/CommunityHosts';
 import UserDrawer from './pages/UserDrawer';
 import Leads from './pages/Leads';
 import Giveaways from './pages/Giveaways';
@@ -34,6 +35,7 @@ function AdminRoutes() {
         <Route path="/games/:id" element={<><GamesList /><GameDrawer mode="edit" /></>} />
         <Route path="/registrations" element={<RegistrationsList />} />
         <Route path="/registrations/new" element={<><RegistrationsList /><ManualRegistrationDrawer /></>} />
+        <Route path="/registrations/host" element={<><RegistrationsList /><ManualRegistrationDrawer mode="host" /></>} />
         <Route path="/registrations/:id" element={<><RegistrationsList /><RegistrationDrawer /></>} />
         <Route path="/leads" element={<Leads />} />
         <Route path="/giveaways" element={<Giveaways />} />
@@ -44,6 +46,7 @@ function AdminRoutes() {
         <Route path="/guild" element={<GuildList />} />
         <Route path="/guild/:id" element={<><GuildList /><GuildDrawer /></>} />
         <Route path="/guild/:id/user" element={<><GuildList /><GuildDrawer /><UserDrawer /></>} />
+        <Route path="/hosts" element={<CommunityHosts />} />
         <Route path="/users" element={<UsersList />} />
         <Route path="/users/:id" element={<><UsersList /><UserDrawer /></>} />
         <Route path="*" element={<Navigate to="/" replace />} />

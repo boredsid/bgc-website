@@ -34,6 +34,11 @@ import {
   handleAdjustUserCredits,
 } from './admin/users';
 import {
+  handleListCommunityHosts,
+  handleCreateCommunityHost,
+  handleSetCommunityHost,
+} from './admin/community-hosts';
+import {
   handleListCorporateEvents,
   handleCreateCorporateEvent,
   handleUpdateCorporateEvent,
@@ -376,8 +381,21 @@ export default {
             }
           }
 
+          if (!adminResponse && url.pathname === '/api/admin/community-hosts') {
+            if (request.method === 'GET') adminResponse = await handleListCommunityHosts(env);
+            else if (request.method === 'POST') adminResponse = await handleCreateCommunityHost(request, env);
+            else adminResponse = new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+          }
+
           if (!adminResponse && url.pathname === '/api/admin/users' && request.method === 'GET') {
             adminResponse = await handleListUsers(url, env);
+          }
+
+          if (!adminResponse) {
+            const hostMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/community-host$/);
+            if (hostMatch && request.method === 'POST') {
+              adminResponse = await handleSetCommunityHost(hostMatch[1], request, env);
+            }
           }
 
           if (!adminResponse) {

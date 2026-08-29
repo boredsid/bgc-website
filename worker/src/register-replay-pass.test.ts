@@ -73,9 +73,9 @@ function buildSupabase(opts: Options) {
       }
       if (table === 'guild_path_members') {
         return {
-          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: () => ({ limit: () => ({
-            maybeSingle: async () => ({ data: opts.member ?? null, error: null }),
-          }) }) }) }) }) }),
+          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({
+            order: async () => ({ data: opts.member ? [opts.member] : [], error: null }),
+          }) }) }) }),
           update: () => ({ eq: async () => ({ error: null }) }),
         };
       }

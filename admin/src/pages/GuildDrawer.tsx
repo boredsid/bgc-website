@@ -172,11 +172,17 @@ export default function GuildDrawer() {
               />
             </div>
           )}
+          {m.never_expires && (
+            <div className="text-xs rounded-md bg-accent/10 border border-accent/30 p-2">
+              This is a community host's free membership — it never expires. The expiry
+              below holds a placeholder date; changing it will make the membership lapse.
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             {field('starts_at', 'Starts at', (
               <Input type="date" value={m.starts_at} onChange={(e) => set('starts_at', e.target.value)} />
             ))}
-            {field('expires_at', 'Expires at', (
+            {field('expires_at', m.never_expires ? 'Expires at (never)' : 'Expires at', (
               <Input type="date" value={m.expires_at} onChange={(e) => set('expires_at', e.target.value)} />
             ))}
             {field('amount', 'Amount (₹)', (

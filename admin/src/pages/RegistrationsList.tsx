@@ -229,6 +229,12 @@ export default function RegistrationsList() {
   ];
 
   const shareSheetActions: ActionItem[] = [
+    // The FAB covers manual registration; hosts get their entry point here so
+    // the mobile screen keeps a single primary action.
+    ...(isGuest ? [] : [{
+      label: 'Add community host',
+      onClick: () => navigate('/registrations/host'),
+    }]),
     ...(isGuest ? [] : [{
       label: `Export CSV (${filteredRegs.length})`,
       onClick: () => exportCsvForIds(filteredRegs.map((r) => r.id)),
@@ -280,7 +286,17 @@ export default function RegistrationsList() {
 
   const columns: Column<Registration>[] = [
     {
-      key: 'name', header: 'Name', render: (r) => r.name,
+      key: 'name', header: 'Name',
+      render: (r) => (
+        <span className="inline-flex items-center gap-1.5">
+          {r.name}
+          {r.is_community_host && (
+            <span className="rounded-full bg-accent/15 text-accent-foreground border border-accent/30 px-1.5 py-0.5 text-[10px] font-medium">
+              Host
+            </span>
+          )}
+        </span>
+      ),
       sortable: true, sortValue: (r) => r.name.toLowerCase(),
     },
     { key: 'phone', header: 'Phone', render: (r) => <PhoneCell phone={r.phone} /> },
@@ -307,7 +323,11 @@ export default function RegistrationsList() {
   ];
 
   const fields: CardField<Registration>[] = [
-    { key: 'name', render: (r) => r.name, primary: true },
+    {
+      key: 'name',
+      render: (r) => (r.is_community_host ? `${r.name} · host` : r.name),
+      primary: true,
+    },
     { key: 'event', render: (r) => eventNameById[r.event_id] || '—' },
     { key: 'phone', render: (r) => <PhoneCell phone={r.phone} /> },
     { key: 'total', render: (r) => `${r.seats} seat${r.seats === 1 ? '' : 's'} · ₹${r.total_amount}` },
@@ -355,6 +375,9 @@ export default function RegistrationsList() {
             aria-label="Export or share"
           >
             <MoreVertical className="h-5 w-5" />
+          </Button>
+          <Button asChild variant="outline" className="hidden md:inline-flex">
+            <Link to="/registrations/host">Add community host</Link>
           </Button>
           <Button asChild className="hidden md:inline-flex">
             <Link to="/registrations/new">New manual registration</Link>

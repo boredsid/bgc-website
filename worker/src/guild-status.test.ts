@@ -49,12 +49,10 @@ function buildSupabaseMock(opts: {
           select: () => ({
             eq: (_c1: string, _v1: string) => ({
               eq: (_c2: string, _v2: string) => ({
+                // getActiveMembership reads every active row and ranks them,
+                // so the chain resolves at .order() rather than .maybeSingle().
                 gte: (_c3: string, _v3: string) => ({
-                  order: () => ({
-                    limit: () => ({
-                      maybeSingle: async () => ({ data: member, error: null }),
-                    }),
-                  }),
+                  order: async () => ({ data: member ? [member] : [], error: null }),
                 }),
               }),
             }),

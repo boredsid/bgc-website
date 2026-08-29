@@ -54,7 +54,17 @@ export default function UsersList() {
 
   const columns: Column<UserListItem>[] = [
     {
-      key: 'name', header: 'Name', render: (u) => u.name || '—',
+      key: 'name', header: 'Name',
+      render: (u) => (
+        <span className="inline-flex items-center gap-1.5">
+          {u.name || '—'}
+          {u.is_community_host && (
+            <span className="rounded-full bg-accent/15 text-accent-foreground border border-accent/30 px-1.5 py-0.5 text-[10px] font-medium">
+              Host
+            </span>
+          )}
+        </span>
+      ),
       sortable: true, sortValue: (u) => (u.name ?? '').toLowerCase(),
     },
     { key: 'phone', header: 'Phone', render: (u) => <PhoneCell phone={u.phone} /> },
@@ -71,7 +81,11 @@ export default function UsersList() {
   ];
 
   const fields: CardField<UserListItem>[] = [
-    { key: 'name', render: (u) => u.name || u.phone, primary: true },
+    {
+      key: 'name',
+      render: (u) => (u.is_community_host ? `${u.name || u.phone} · host` : (u.name || u.phone)),
+      primary: true,
+    },
     { key: 'phone', render: (u) => <PhoneCell phone={u.phone} /> },
     { key: 'meta', render: (u) => `₹${u.credit_balance} credit · last ${new Date(u.last_registered_at).toLocaleDateString()}` },
   ];

@@ -74,8 +74,9 @@ describe('my_status', () => {
           ] }) }) }) };
         }
         if (table === 'guild_path_members') {
-          return { select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: () => ({ limit: () => ({
-            maybeSingle: async () => ({ data: { tier: 'adventurer', expires_at: '2099-12-31', plus_ones_used: 0 } }) }) }) }) }) }) }) };
+          return { select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({
+            order: async () => ({ data: [{ tier: 'adventurer', expires_at: '2099-12-31', plus_ones_used: 0 }], error: null }),
+          }) }) }) }) };
         }
         if (table === 'leads') {
           return { select: () => ({ eq: () => ({ not: () => ({ is: async () => ({ data: [

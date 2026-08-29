@@ -88,8 +88,18 @@ export async function handleGuestRequest(
   }
 
   if (p === '/api/admin/registrations/manual' && request.method === 'POST') {
-    const body = (await request.clone().json().catch(() => null)) as { event_id?: string } | null;
+    const body = (await request.clone().json().catch(() => null)) as
+      | { event_id?: string; is_community_host?: boolean }
+      | null;
     if (!body?.event_id || !allowed.has(body.event_id)) return jsonResponse({ error: 'Forbidden' }, 403);
+    // Free community host seats stay with full admins: a collaboration partner
+    // shouldn't be able to hand out seats that bypass payment entirely.
+    if (body.is_community_host) {
+      return jsonResponse({
+        error: 'Only a BGC admin can add a community host to an event.',
+        code: 'community_host_admin_only',
+      }, 403);
+    }
     return handleManualRegister(request, env, ctx, guest.email, true);
   }
 

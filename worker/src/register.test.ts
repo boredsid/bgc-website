@@ -49,7 +49,7 @@ function buildSupabaseMock(capture: { leadUpdate: any }) {
       }
       if (table === 'guild_path_members') {
         return {
-          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }) }),
+          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: async () => ({ data: [], error: null }) }) }) }) }),
         };
       }
       if (table === 'leads') {
@@ -182,7 +182,7 @@ describe('handleRegister lead conversion', () => {
           insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'U1' }, error: null }) }) }),
         };
         if (table === 'guild_path_members') return {
-          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }) }),
+          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: async () => ({ data: [], error: null }) }) }) }) }),
         };
         if (table === 'leads') return {
           update: () => { throw new Error('simulated DB failure'); },
@@ -239,7 +239,7 @@ describe('handleRegister guild-path exclusive gate', () => {
         }
         if (table === 'guild_path_members') {
           return {
-            select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: member, error: null }) }) }) }) }) }) }),
+            select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: async () => ({ data: member ? [member] : [], error: null }) }) }) }) }),
             update: () => ({ eq: async () => ({ error: null }) }),
           };
         }
@@ -330,7 +330,7 @@ describe('handleRegister differential pricing', () => {
           insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'U1' }, error: null }) }) }),
         };
         if (table === 'guild_path_members') return {
-          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: () => ({ limit: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }) }),
+          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: async () => ({ data: [], error: null }) }) }) }) }),
         };
         if (table === 'leads') return {
           update: () => ({ eq: () => ({ eq: () => ({ is: () => ({ is: async () => ({ error: null }) }) }) }) }),

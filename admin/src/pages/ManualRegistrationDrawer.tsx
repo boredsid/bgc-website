@@ -13,12 +13,12 @@ import { fetchAdmin, showApiError, ApiError } from '@/lib/api';
 import { validateManualRegistration, type ValidationErrors } from '@/lib/validation';
 import { formatEventDateLabel } from '@/lib/eventDate';
 import { toast } from 'sonner';
-import type { Event, CustomQuestion, FinanceAccount, FinanceCategory } from '@/lib/types';
+import type { Event, CustomQuestion, FinanceAccount, FinanceCategory, CommunityHost } from '@/lib/types';
 import { useWhoAmI } from '@/lib/whoami';
 import { useSearchParams } from 'react-router-dom';
 
 interface PhoneLookup {
-  user: { found: boolean; name: string | null; email: string | null };
+  user: { found: boolean; name: string | null; email: string | null; is_community_host?: boolean };
   membership?: { isMember: boolean; tier: string | null; discount: string | null; plus_ones_remaining: number };
   existing_seats_for_event: number;
   replay_pass?: { has_pass: boolean; edition_name: string | null } | null;
@@ -27,7 +27,18 @@ interface PhoneLookup {
 
 const LAST_EVENT_KEY = 'admin.manualReg.lastEventId';
 
-export default function ManualRegistrationDrawer() {
+/**
+ * Adding a community host is a manual registration with the money taken out, so
+ * both share this drawer: same event picker, same custom questions, same
+ * capacity warning. Host mode swaps the phone/name fields for a picker over the
+ * roster and drops the payment section entirely.
+ */
+interface Props {
+  mode?: 'manual' | 'host';
+}
+
+export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
+  const isHostMode = mode === 'host';
   const navigate = useNavigate();
   const [events, setEvents] = useState<Event[]>([]);
   const [eventId, setEventId] = useState('');
@@ -42,6 +53,8 @@ export default function ManualRegistrationDrawer() {
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [capacityWarning, setCapacityWarning] = useState<string | null>(null);
+  const [hosts, setHosts] = useState<CommunityHost[]>([]);
+  const [hostId, setHostId] = useState('');
   const [financeAccounts, setFinanceAccounts] = useState<FinanceAccount[]>([]);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetailsValue>({
     payment_account_id: '',
@@ -97,7 +110,20 @@ export default function ManualRegistrationDrawer() {
   }, [isGuest, guestEvents.length]);
 
   useEffect(() => {
-    if (isGuest) return;
+    if (!isHostMode || isGuest) return;
+    fetchAdmin<{ hosts: CommunityHost[] }>('/api/admin/community-hosts')
+      .then((r) => {
+        setHosts(r.hosts);
+        const fromUrl = searchParams.get('host');
+        const start = fromUrl && r.hosts.some((h) => h.id === fromUrl) ? fromUrl : '';
+        if (start) pickHost(start, r.hosts);
+      })
+      .catch(showApiError);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHostMode, isGuest]);
+
+  useEffect(() => {
+    if (isGuest || isHostMode) return;
     fetchAdmin<{ accounts: FinanceAccount[]; categories: FinanceCategory[] }>('/api/admin/finance/bootstrap')
       .then((data) => {
         setFinanceAccounts(data.accounts);
@@ -109,15 +135,30 @@ export default function ManualRegistrationDrawer() {
         }
       })
       .catch(showApiError);
-  }, [isGuest]);
+  }, [isGuest, isHostMode]);
 
   const event = events.find((e) => e.id === eventId);
   const customQuestions: CustomQuestion[] = (event?.custom_questions || []) as CustomQuestion[];
 
-  const errors: ValidationErrors = useMemo(
-    () => validateManualRegistration({ event_id: eventId, name, phone, email, seats: seats ?? 0 }),
-    [eventId, name, phone, email, seats],
-  );
+  const errors: ValidationErrors = useMemo(() => {
+    const base = validateManualRegistration({ event_id: eventId, name, phone, email, seats: seats ?? 0 });
+    if (!isHostMode) return base;
+
+    // In host mode the person is chosen from the roster, so surface a missing
+    // pick rather than the phone/name errors that come from an empty form.
+    const out: ValidationErrors = { event_id: base.event_id, seats: base.seats };
+    if (!hostId) out.host_id = 'Please pick a community host.';
+    // The worker rejects unanswered required questions; catch it here first so
+    // the admin sees which one, inline, instead of a server error.
+    for (const q of customQuestions) {
+      if (!q.required) continue;
+      const a = customAnswers[q.id];
+      const answered = typeof a === 'boolean' ? a : a !== undefined && String(a ?? '').trim() !== '';
+      if (!answered) out[`cq_${q.id}`] = `Please answer "${q.label}".`;
+    }
+    for (const k of Object.keys(out)) if (!out[k]) delete out[k];
+    return out;
+  }, [eventId, name, phone, email, seats, isHostMode, hostId, customQuestions, customAnswers]);
   const errorCount = Object.keys(errors).length;
 
   const dirty =
@@ -130,6 +171,16 @@ export default function ManualRegistrationDrawer() {
       initial.paymentStatus !== paymentStatus ||
       JSON.stringify(initial.customAnswers) !== JSON.stringify(customAnswers)
     );
+
+  // Picking a host fills the name/phone/email the API still expects, so host
+  // mode needs no typing at all beyond the event's own questions.
+  function pickHost(id: string, roster: CommunityHost[] = hosts) {
+    const host = roster.find((h) => h.id === id);
+    setHostId(id);
+    setName(host?.name || '');
+    setPhone(host?.phone || '');
+    setEmail(host?.email || '');
+  }
 
   function pickEvent(v: string) {
     setEventId(v);
@@ -182,14 +233,15 @@ export default function ManualRegistrationDrawer() {
           phone,
           email,
           seats: seats ?? 1,
-          payment_status: paymentStatus,
+          payment_status: isHostMode ? 'confirmed' : paymentStatus,
           custom_answers: customAnswers,
           allow_overbook: allowOverbook,
-          ...(paymentStatus === 'confirmed' && !isGuest ? paymentDetails : {}),
+          ...(isHostMode ? { is_community_host: true } : {}),
+          ...(!isHostMode && paymentStatus === 'confirmed' && !isGuest ? paymentDetails : {}),
         }),
       });
       setCapacityWarning(null);
-      toast.success('Registration created');
+      toast.success(isHostMode ? 'Community host added to the event' : 'Registration created');
       navigate('/registrations');
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && (err.data as { capacity_exceeded?: boolean } | null)?.capacity_exceeded) {
@@ -205,7 +257,7 @@ export default function ManualRegistrationDrawer() {
   function field(key: string, label: string, control: React.ReactNode) {
     const err = showErrors ? errors[key] : undefined;
     return (
-      <div id={`field-${key}`}>
+      <div id={`field-${key}`} key={`field-${key}`}>
         <Label className={err ? 'text-destructive' : undefined}>{label}</Label>
         {control}
         {err && <div className="text-xs text-destructive mt-1">{err}</div>}
@@ -216,7 +268,7 @@ export default function ManualRegistrationDrawer() {
   return (
     <FormDrawer
       open
-      title="New manual registration"
+      title={isHostMode ? 'Add community host to event' : 'New manual registration'}
       dirty={dirty}
       saving={saving}
       onCancel={close}
@@ -237,7 +289,34 @@ export default function ManualRegistrationDrawer() {
             </SelectContent>
           </Select>
         ))}
-        {field('phone', 'Phone', (
+        {isHostMode ? (
+          <>
+            {field('host_id', 'Community host', (
+              <Select value={hostId} onValueChange={(v) => pickHost(v)}>
+                <SelectTrigger><SelectValue placeholder="Pick a host" /></SelectTrigger>
+                <SelectContent>
+                  {hosts.map((h) => (
+                    <SelectItem key={h.id} value={h.id}>
+                      {h.name || h.phone}
+                      {h.sessions_hosted > 0 ? ` — ${h.sessions_hosted} hosted` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ))}
+            {hosts.length === 0 && (
+              <div className="text-xs rounded-md bg-yellow-50 text-yellow-900 border border-yellow-200 p-2">
+                No community hosts yet. Add one on the Community hosts page first.
+              </div>
+            )}
+            {hostId && (
+              <div className="text-xs rounded-md bg-emerald-50 text-emerald-900 p-2">
+                Free host seat — takes {seats ?? 1} spot{(seats ?? 1) === 1 ? '' : 's'} of capacity,
+                nothing to pay, and their Guild Path perks and credits stay untouched.
+              </div>
+            )}
+          </>
+        ) : field('phone', 'Phone', (
           <Input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -245,36 +324,36 @@ export default function ManualRegistrationDrawer() {
             placeholder="10-digit number"
           />
         ))}
-        {lookup && lookup.membership?.isMember && (
+        {!isHostMode && lookup && lookup.membership?.isMember && (
           <div className="text-xs rounded-md bg-emerald-50 text-emerald-900 p-2">
             Active {lookup.membership.tier} member · {lookup.membership.plus_ones_remaining} plus-ones remaining
           </div>
         )}
-        {lookup && (lookup.credit_balance ?? 0) > 0 && (
+        {!isHostMode && lookup && (lookup.credit_balance ?? 0) > 0 && (
           <div className="text-xs rounded-md bg-amber-50 text-amber-900 p-2">
             ₹{lookup.credit_balance} credit available — will auto-apply against this registration's total.
           </div>
         )}
-        {lookup?.replay_pass?.has_pass && (
+        {!isHostMode && lookup?.replay_pass?.has_pass && (
           <div className="text-xs rounded-md bg-emerald-50 text-emerald-900 p-2">
             Holds a {lookup.replay_pass.edition_name || 'REPLAY'} pass — their own seat is free on this event.
           </div>
         )}
-        {lookup && event?.replay_pass_free && lookup.replay_pass?.has_pass === false && (
+        {!isHostMode && lookup && event?.replay_pass_free && lookup.replay_pass?.has_pass === false && (
           <div className="text-xs rounded-md bg-muted text-muted-foreground p-2">
             No confirmed {lookup.replay_pass.edition_name || 'REPLAY'} pass for this number — full price applies.
           </div>
         )}
-        {lookup && !lookup.membership?.isMember && event?.guild_path_exclusive && (
+        {!isHostMode && lookup && !lookup.membership?.isMember && event?.guild_path_exclusive && (
           <div className="text-xs rounded-md bg-yellow-50 text-yellow-900 border border-yellow-200 p-2">
             ⚠️ This event is Guild Path Exclusive and this user isn't a current member.
             You can still register them, but consider adding them to Guild Path first.
           </div>
         )}
-        {field('name', 'Name', (
+        {!isHostMode && field('name', 'Name', (
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         ))}
-        {field('email', 'Email (optional)', (
+        {!isHostMode && field('email', 'Email (optional)', (
           <Input value={email} onChange={(e) => setEmail(e.target.value)} />
         ))}
         {field('seats', 'Seats', (
@@ -285,7 +364,7 @@ export default function ManualRegistrationDrawer() {
             aria-label="Seats"
           />
         ))}
-        {field('payment_status', 'Payment status', (
+        {!isHostMode && field('payment_status', 'Payment status', (
           <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as 'pending' | 'confirmed')}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -294,7 +373,7 @@ export default function ManualRegistrationDrawer() {
             </SelectContent>
           </Select>
         ))}
-        {paymentStatus === 'confirmed' && !isGuest && (
+        {!isHostMode && paymentStatus === 'confirmed' && !isGuest && (
           <div className="rounded-md border bg-muted/30 p-3">
             <div className="text-sm font-medium mb-2">Payment details</div>
             <PaymentDetailsFields
@@ -313,9 +392,8 @@ export default function ManualRegistrationDrawer() {
         {customQuestions.length > 0 && (
           <div className="space-y-2 pt-2 border-t">
             <div className="text-sm font-medium">Custom questions</div>
-            {customQuestions.map((q) => (
-              <div key={q.id}>
-                <Label>{q.label}{q.required && ' *'}</Label>
+            {customQuestions.map((q) => field(`cq_${q.id}`, `${q.label}${q.required ? ' *' : ''}`, (
+              <>
                 {q.type === 'text' && (
                   <Input
                     value={(customAnswers[q.id] as string) || ''}
@@ -344,8 +422,8 @@ export default function ManualRegistrationDrawer() {
                     </SelectContent>
                   </Select>
                 )}
-              </div>
-            ))}
+              </>
+            )))}
           </div>
         )}
       </div>

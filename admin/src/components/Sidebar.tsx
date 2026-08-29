@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Library, Users, ShieldCheck, UserCircle, Inbox, Gift, Briefcase, WalletCards } from 'lucide-react';
+import { LayoutDashboard, Calendar, Library, Users, ShieldCheck, UserCircle, Inbox, Gift, Briefcase, WalletCards, HandHeart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const items = [
@@ -9,6 +9,7 @@ const items = [
   { to: '/registrations', label: 'Registrations', icon: Users, end: false, countKey: 'pending_registration_count' },
   { to: '/leads', label: 'Leads', icon: Inbox, end: false, countKey: null },
   { to: '/guild', label: 'Guild', icon: ShieldCheck, end: false, countKey: 'pending_guild_count' },
+  { to: '/hosts', label: 'Community hosts', icon: HandHeart, end: false, countKey: null },
   { to: '/users', label: 'Users', icon: UserCircle, end: false, countKey: null },
   { to: '/giveaways', label: 'Giveaways', icon: Gift, end: false, countKey: null },
   { to: '/corporate', label: 'Corporate', icon: Briefcase, end: false, countKey: null },

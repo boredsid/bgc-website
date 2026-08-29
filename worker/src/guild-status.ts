@@ -1,6 +1,7 @@
 import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { sanitizePhone, jsonResponse } from './validation';
+import { getActiveMembership } from './guild';
 
 export async function handleGuildStatus(request: Request, env: Env): Promise<Response> {
   const expected = env.REPLAY_TO_BGC_SECRET;
@@ -34,18 +35,7 @@ export async function handleGuildStatus(request: Request, env: Env): Promise<Res
     return jsonResponse({ tier: null, active: false });
   }
 
-  const today = new Date().toISOString().split('T')[0];
-  const memberResult = await supabase
-    .from('guild_path_members')
-    .select('tier, expires_at')
-    .eq('user_id', user.id)
-    .eq('status', 'paid')
-    .gte('expires_at', today)
-    .order('expires_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const member = memberResult.data;
+  const member = await getActiveMembership(supabase, user.id);
   if (!member) {
     return jsonResponse({ tier: null, active: false });
   }

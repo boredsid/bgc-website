@@ -7,6 +7,7 @@ export interface RegRow {
   event_id: string; seats: number; total_amount: number;
   payment_status: 'pending' | 'confirmed' | 'cancelled';
   source: string | null; created_at: string;
+  is_community_host?: boolean | null;
   custom_answers: Record<string, string | boolean> | null;
 }
 
@@ -28,7 +29,7 @@ export function flattenRegistrations(regs: RegRow[], events: EventRow[]) {
       }
     }
   }
-  const baseHeaders = ['name', 'phone', 'email', 'event', 'seats', 'total_amount', 'payment_status', 'source', 'created_at'] as const;
+  const baseHeaders = ['name', 'phone', 'email', 'event', 'seats', 'total_amount', 'payment_status', 'community_host', 'source', 'created_at'] as const;
   const headers = [...baseHeaders, ...dynamicLabels];
 
   const rows = regs.map((r) => {
@@ -41,6 +42,7 @@ export function flattenRegistrations(regs: RegRow[], events: EventRow[]) {
       seats: r.seats,
       total_amount: r.total_amount,
       payment_status: r.payment_status,
+      community_host: r.is_community_host ? 'Yes' : 'No',
       source: r.source,
       created_at: r.created_at,
     };

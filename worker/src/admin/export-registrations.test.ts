@@ -12,7 +12,7 @@ describe('flattenRegistrations', () => {
   it('returns headers including dynamic custom question labels', () => {
     const { headers } = flattenRegistrations(regs, events);
     expect(headers).toEqual([
-      'name', 'phone', 'email', 'event', 'seats', 'total_amount', 'payment_status', 'source', 'created_at', 'Meal',
+      'name', 'phone', 'email', 'event', 'seats', 'total_amount', 'payment_status', 'community_host', 'source', 'created_at', 'Meal',
     ]);
   });
 
@@ -21,7 +21,7 @@ describe('flattenRegistrations', () => {
     expect(rows[0]).toEqual({
       name: 'A', phone: '9876500001', email: 'a@x.com',
       event: 'Game night', seats: 2, total_amount: 400,
-      payment_status: 'confirmed', source: null, created_at: '2026-04-30T10:00:00Z',
+      payment_status: 'confirmed', community_host: 'No', source: null, created_at: '2026-04-30T10:00:00Z',
       Meal: 'Veg',
     });
   });

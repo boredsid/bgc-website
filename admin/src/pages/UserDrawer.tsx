@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormDrawer } from '@/components/FormDrawer';
 import { fetchAdmin, showApiError } from '@/lib/api';
 import { validateUser, type ValidationErrors } from '@/lib/validation';
@@ -39,6 +41,10 @@ export default function UserDrawer() {
   const [adjustNote, setAdjustNote] = useState('');
   const [adjustSaving, setAdjustSaving] = useState(false);
 
+  const [hostNotes, setHostNotes] = useState('');
+  const [hostSaving, setHostSaving] = useState(false);
+  const [removeHostOpen, setRemoveHostOpen] = useState(false);
+
   function loadUser(userId: string) {
     fetchAdmin<{ user: User; credit_balance: number; credits: UserCreditEntry[] }>(`/api/admin/users/${userId}`)
       .then((r) => {
@@ -46,6 +52,7 @@ export default function UserDrawer() {
         setInitial(r.user);
         setCreditBalance(r.credit_balance);
         setCredits(r.credits);
+        setHostNotes(r.user.community_host_notes || '');
       })
       .catch(showApiError);
   }
@@ -127,6 +134,33 @@ export default function UserDrawer() {
     }
   }
 
+  async function setCommunityHost(next: boolean) {
+    if (!user) return;
+    setHostSaving(true);
+    try {
+      const r = await fetchAdmin<{ is_community_host: boolean; active_tier: string | null }>(
+        `/api/admin/users/${user.id}/community-host`,
+        { method: 'POST', body: JSON.stringify({ is_community_host: next, notes: hostNotes.trim() || null }) },
+      );
+      toast.success(
+        next
+          ? 'Added as a community host — free Initiate membership granted'
+          : 'Removed from community hosts',
+      );
+      setRemoveHostOpen(false);
+      // The tier the API reports back is the one actually in force, which may
+      // be a paid upgrade sitting above the free Initiate floor.
+      if (next && r.active_tier && r.active_tier !== 'initiate') {
+        toast.info(`They keep their paid ${r.active_tier} membership — free Initiate applies once it lapses.`);
+      }
+      loadUser(user.id);
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setHostSaving(false);
+    }
+  }
+
   function set<K extends keyof User>(k: K, v: User[K]) {
     setUser((x) => x ? { ...x, [k]: v } : x);
   }
@@ -165,6 +199,54 @@ export default function UserDrawer() {
             {field('email', 'Email', (
               <Input value={user.email || ''} onChange={(e) => set('email', e.target.value || null)} />
             ))}
+          </div>
+
+          <div className="border-t pt-4 space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-sm font-medium">Community host</div>
+                <div className="text-xs text-muted-foreground">
+                  Hosts run BGC sessions for the community. They get a free Initiate
+                  Guild Path membership that never expires, and can be added to events
+                  as a free host seat.
+                </div>
+              </div>
+              <Switch
+                checked={!!user.is_community_host}
+                disabled={hostSaving}
+                aria-label="Community host"
+                onCheckedChange={(checked) => {
+                  if (checked) setCommunityHost(true);
+                  else setRemoveHostOpen(true);
+                }}
+              />
+            </div>
+
+            {user.is_community_host && (
+              <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                <div className="text-xs text-muted-foreground">
+                  Host since {user.community_host_since
+                    ? new Date(user.community_host_since).toLocaleDateString()
+                    : 'today'}
+                </div>
+                <Label>Notes (optional)</Label>
+                <Textarea
+                  value={hostNotes}
+                  onChange={(e) => setHostNotes(e.target.value)}
+                  maxLength={500}
+                  placeholder="What do they usually host? e.g. Blood on the Clocktower nights"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={hostSaving || hostNotes === (user.community_host_notes || '')}
+                  onClick={() => setCommunityHost(true)}
+                >
+                  {hostSaving ? 'Saving…' : 'Save notes'}
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="border-t pt-4 space-y-3">
@@ -224,6 +306,26 @@ export default function UserDrawer() {
           </div>
         </div>
       )}
+
+      <Dialog open={removeHostOpen} onOpenChange={(o) => { if (!o) setRemoveHostOpen(false); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove {user?.name || 'this person'} from community hosts?</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>Their free Initiate membership will be cancelled, so they lose the 20% event discount unless they buy a membership.</p>
+            <p>Anything they paid for stays untouched, and past host registrations aren't changed.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRemoveHostOpen(false)} disabled={hostSaving}>
+              Keep as host
+            </Button>
+            <Button variant="destructive" onClick={() => setCommunityHost(false)} disabled={hostSaving}>
+              {hostSaving ? 'Removing…' : 'Remove host'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </FormDrawer>
   );
 }

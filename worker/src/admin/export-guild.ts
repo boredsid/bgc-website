@@ -11,6 +11,7 @@ export interface GuildRow {
   expires_at: string | null;
   plus_ones_used: number;
   source: string | null;
+  never_expires?: boolean | null;
   users: { name: string | null; phone: string | null; email: string | null } | null;
 }
 
@@ -23,7 +24,9 @@ export function flattenGuildMembers(rows: GuildRow[]) {
     tier: r.tier,
     status: r.status,
     starts_at: r.starts_at,
-    expires_at: r.expires_at,
+    // Never-expiring memberships carry a far-future sentinel date; a CSV reader
+    // should see the intent, not the year 2999.
+    expires_at: r.never_expires ? 'Never' : r.expires_at,
     plus_ones_used: r.plus_ones_used,
     source: r.source,
   }));

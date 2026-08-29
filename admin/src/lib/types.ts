@@ -87,6 +87,7 @@ export interface Registration {
   payment_status: 'pending' | 'confirmed' | 'cancelled';
   plus_ones_consumed: number;
   credits_applied: number;
+  is_community_host: boolean;
   source: string | null;
   payment_account_id: string | null;
   paid_at: string | null;
@@ -103,6 +104,8 @@ export interface GuildMember {
   status: 'pending' | 'paid' | 'cancelled';
   starts_at: string;
   expires_at: string;
+  /** Community host memberships never lapse; `expires_at` holds a sentinel date. */
+  never_expires: boolean;
   plus_ones_used: number;
   source: string | null;
   payment_account_id: string | null;
@@ -122,6 +125,22 @@ export interface User {
   first_registered_at: string;
   last_registered_at: string;
   source: string | null;
+  is_community_host: boolean;
+  community_host_since: string | null;
+  community_host_notes: string | null;
+}
+
+/** A member of the community host roster, with how much they've hosted. */
+export interface CommunityHost {
+  id: string;
+  name: string | null;
+  phone: string;
+  email: string | null;
+  community_host_since: string | null;
+  community_host_notes: string | null;
+  sessions_hosted: number;
+  membership_tier: string | null;
+  membership_never_expires: boolean;
 }
 
 export type QuestionSummary =

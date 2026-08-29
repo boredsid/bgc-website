@@ -3,6 +3,7 @@ import { COMMUNITY, CANCELLATION_NOTE } from './links';
 import { getSupabase } from '../supabase';
 import { sanitizePhone } from '../validation';
 import { getUserBalance } from '../credits';
+import { getActiveMembership } from '../guild';
 import { ToolError } from './types';
 
 // Tier facts mirror src/lib/guild-tiers.ts and the prices in
@@ -118,15 +119,7 @@ const myStatus: McpTool = {
         payment_status: r.payment_status,
       }));
 
-    const { data: member } = await supabase
-      .from('guild_path_members')
-      .select('tier, expires_at, plus_ones_used')
-      .eq('user_id', user.id)
-      .eq('status', 'paid')
-      .gte('expires_at', today)
-      .order('expires_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const member = await getActiveMembership(supabase, user.id);
 
     const { data: waitlistRows } = await supabase
       .from('leads')
@@ -152,7 +145,13 @@ const myStatus: McpTool = {
       name: user.name,
       upcoming_registrations: upcoming,
       guild_membership: member
-        ? { tier: member.tier, expires_at: member.expires_at }
+        ? {
+            tier: member.tier,
+            // A community host's membership carries a sentinel expiry; report
+            // it as open-ended rather than quoting a date in the year 2999.
+            expires_at: member.never_expires ? null : member.expires_at,
+            never_expires: !!member.never_expires,
+          }
         : null,
       waitlist,
       credit_balance_inr: creditBalance,

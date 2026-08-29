@@ -36,12 +36,10 @@ function noMember() {
     select: () => ({
       eq: () => ({
         eq: () => ({
+          // getActiveMembership ranks every active row, so the chain resolves
+          // at .order() rather than .limit().maybeSingle().
           gte: () => ({
-            order: () => ({
-              limit: () => ({
-                maybeSingle: async () => ({ data: null, error: null }),
-              }),
-            }),
+            order: async () => ({ data: [], error: null }),
           }),
         }),
       }),

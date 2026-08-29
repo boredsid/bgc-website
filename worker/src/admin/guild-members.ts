@@ -58,6 +58,7 @@ export async function handleListGuildMembers(url: URL, env: Env): Promise<Respon
     status: m.status,
     starts_at: m.starts_at,
     expires_at: m.expires_at,
+    never_expires: !!m.never_expires,
     plus_ones_used: m.plus_ones_used,
     source: m.source,
     payment_account_id: m.payment_account_id ?? null,
@@ -84,7 +85,8 @@ export async function handleGetGuildMember(id: string, env: Env): Promise<Respon
   return jsonResponse({
     member: {
       id: m.id, user_id: m.user_id, tier: m.tier, amount: m.amount, status: m.status,
-      starts_at: m.starts_at, expires_at: m.expires_at, plus_ones_used: m.plus_ones_used, source: m.source,
+      starts_at: m.starts_at, expires_at: m.expires_at, never_expires: !!m.never_expires,
+      plus_ones_used: m.plus_ones_used, source: m.source,
       payment_account_id: m.payment_account_id ?? null, paid_at: m.paid_at ?? null,
       payment_method: m.payment_method ?? null, payment_recorded_by: m.payment_recorded_by ?? null,
       user_name: m.users?.name ?? null, user_phone: m.users?.phone ?? '', user_email: m.users?.email ?? null,

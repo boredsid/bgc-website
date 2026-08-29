@@ -87,6 +87,17 @@ describe('handleGuestRequest', () => {
     expect(res.status).toBe(403);
   });
 
+  it('adding a community host is 403 even on the guest own event', async () => {
+    const url = new URL('http://localhost/api/admin/registrations/manual');
+    const res = await handleGuestRequest(
+      url,
+      r('POST', '/api/admin/registrations/manual', { event_id: 'e1', is_community_host: true }),
+      mockEnv(), ctx, guest,
+    );
+    expect(res.status).toBe(403);
+    expect((await res.json() as any).code).toBe('community_host_admin_only');
+  });
+
   it('cancel for a foreign registration is 403', async () => {
     mockRegLookup('other');
     const url = new URL('http://localhost/api/admin/cancel-registration');

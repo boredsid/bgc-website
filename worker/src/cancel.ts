@@ -61,14 +61,16 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
     reg.user_id &&
     (reg.discount_applied === 'adventurer' || reg.discount_applied === 'guildmaster')
   ) {
-    // Refund to the user's most recent paid membership. In practice users hold
-    // at most one active membership at a time, so this is the one that was
-    // debited at registration.
+    // Refund to the most recent paid membership of the tier that granted the
+    // discount. Matching on tier matters now that a user can hold more than one
+    // membership at once: a community host's free Initiate row sits alongside
+    // any upgrade they bought, and must not swallow the upgrade's plus-ones.
     const { data: member } = await supabase
       .from('guild_path_members')
       .select('id, plus_ones_used')
       .eq('user_id', reg.user_id)
       .eq('status', 'paid')
+      .eq('tier', reg.discount_applied)
       .order('starts_at', { ascending: false })
       .limit(1)
       .maybeSingle();
