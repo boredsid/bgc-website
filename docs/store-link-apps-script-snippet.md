@@ -62,6 +62,57 @@ const WHATSAPP_NUMBER_DISPLAY = '+91 96065 98024';
 Check the guild / payment email templates for the same two constants — they were
 built from the same plan and likely carry the stale number too.
 
+## Two bugs in `buildWaitlistEmailHtml`
+
+Found by running the whole of `Code.gs` against stubbed Apps Script globals
+after the store line went in. Both pre-date this change; neither affects the
+registration email.
+
+**1. Missing space in the greeting.** Renders `You're on the waitlist,Asha!`
+The registration and guild templates both have the space; waitlist does not.
+
+```javascript
+// before
+'...margin-bottom:16px;">You\'re on the waitlist,' + escapeHtml(name) + '!</div>' +
+// after
+'...margin-bottom:16px;">You\'re on the waitlist, ' + escapeHtml(name) + '!</div>' +
+```
+
+**2. Waitlist emails ignore all-day and multi-day events.** `formatEventWhen`
+(added for migration `020`) was only wired into `buildEventEmailHtml`.
+`buildWaitlistEmailHtml` still calls `Utilities.formatDate` on `event.date`
+directly, so for a 5–7 Sep all-day event the two emails disagree:
+
+| | renders |
+|---|---|
+| registration | `5 – 7 Sep 2026 · All day` |
+| waitlist | `Sat, 5 Sep 2026 · 7:00 PM` |
+
+Someone waitlisted for a three-day event is told it is a single evening, at a
+clock time the event does not have. Fix by using the same helper:
+
+```javascript
+// before
+  const eventDate = new Date(event.date);
+  const dateStr = Utilities.formatDate(eventDate, 'Asia/Kolkata', 'EEE, d MMM yyyy');
+  const timeStr = Utilities.formatDate(eventDate, 'Asia/Kolkata', 'h:mm a');
+// after
+  const when = formatEventWhen(event);
+  const dateStr = when.dateStr;
+  const timeStr = when.timeStr;
+```
+
+No worker change is needed: `WaitlistEmailPayload.event` in
+`worker/src/email.ts:44` already declares `end_date` and `is_all_day`, the same
+as `EventEmailPayload`. The data has been arriving all along — only the
+template ignores it.
+
+## Scope of the store line
+
+It is in `buildEventEmailHtml` only, which matches the request. The guild
+welcome and waitlist emails do not carry it. Add the same `<div>` to their
+footers if you want it everywhere.
+
 ## After editing
 
 Apps Script edits are live on save — there is no deploy step for the webhook
