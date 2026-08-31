@@ -3,6 +3,10 @@
 The registration confirmation email is a Google Apps Script template (`Code.gs`),
 **outside this repo** — see `AGENTS.md`. Adding the store link is a hand edit there.
 
+> **Status: all edits below were applied to `Code.gs` on 2026-08-31.** Kept as
+> the record of what changed, since `Code.gs` is not in version control and has
+> no history of its own.
+
 ## The edit
 
 In `buildEventEmailHtml`, find the footer block:
@@ -112,6 +116,43 @@ template ignores it.
 It is in `buildEventEmailHtml` only, which matches the request. The guild
 welcome and waitlist emails do not carry it. Add the same `<div>` to their
 footers if you want it everywhere.
+
+## Confirming the waitlist fix
+
+`testSendEmailToSelf` only covers the registration path, and its sample event is
+a single-slot one — so it exercises neither waitlist bug. Paste this alongside it
+to check both in one send:
+
+```javascript
+function testWaitlistEmailToSelf() {
+  const me = Session.getActiveUser().getEmail();
+  const payload = {
+    to: me,
+    name: 'Test User',
+    seats: 2,
+    event: {
+      name: 'Three Day Con',
+      date: '2026-09-05T10:00:00+05:30',
+      end_date: '2026-09-07T18:00:00+05:30',
+      is_all_day: true,
+      venue_name: 'The Den',
+      venue_area: 'Indiranagar',
+    },
+  };
+  MailApp.sendEmail({
+    to: payload.to,
+    subject: "[BGC] You're on the waitlist for " + payload.event.name,
+    htmlBody: buildWaitlistEmailHtml(payload),
+    name: 'Board Game Company',
+    from: FROM_ADDRESS,
+  });
+  Logger.log('Sent test waitlist email to ' + me);
+}
+```
+
+Expect `5 – 7 Sep 2026 · All day` and a space after the comma in
+`You're on the waitlist, Test User!`. If you instead see `Sat, 5 Sep 2026 ·
+10:00 AM`, `formatEventWhen` did not get wired in.
 
 ## After editing
 
