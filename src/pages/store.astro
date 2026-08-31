@@ -44,14 +44,24 @@ const comingSoon = [
   <section class="pb-14">
     <div class="max-w-[900px] mx-auto px-6">
       <article class="card-brutal card-brutal-lg reveal p-7 md:p-10">
-        <span class="pill pill-yellow">Partner</span>
-
-        <h2 class="font-heading font-bold mt-5" style="font-size: clamp(1.9rem, 4vw, 2.6rem);">
-          Board Games
-        </h2>
-        <p class="font-heading font-semibold text-lg mt-1" style="color: #F47B20;">
-          Owls on Board
-        </p>
+        <div class="flex flex-col-reverse sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-8">
+          <div class="min-w-0">
+            <h2 class="font-heading font-bold" style="font-size: clamp(1.9rem, 4vw, 2.6rem);">
+              Board Games
+            </h2>
+            <p class="font-heading font-semibold text-lg mt-1" style="color: #F47B20;">
+              Owls on Board
+            </p>
+          </div>
+          <img
+            src="/owls-on-board-logo.png"
+            alt=""
+            width="440"
+            height="74"
+            loading="lazy"
+            class="partner-logo shrink-0"
+          />
+        </div>
 
         <p class="text-[#1A1A1A]/75 mt-4 leading-relaxed max-w-[620px]">
           Our go-to online store for board games in India. Show them your BGC colours at
@@ -131,6 +141,16 @@ const comingSoon = [
     background: #FFF8E7;
     border: 3px dashed #1A1A1A;
     border-radius: var(--radius-md);
+  }
+
+  .partner-logo {
+    width: 170px;
+    height: auto;
+    margin-top: 2px;
+  }
+
+  @media (min-width: 640px) {
+    .partner-logo { width: 210px; }
   }
 
   .card-soon {
