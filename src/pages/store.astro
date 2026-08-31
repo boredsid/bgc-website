@@ -1,0 +1,170 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+const OWLS_URL = 'https://www.owlsonboard.com/';
+const DISCOUNT_CODE = 'BGC200';
+
+const owlsPerks = [
+  'Curated shelf — strategy, gateway, family and party games',
+  'Ships pan-India in 24–48 hours',
+  'Free shipping on orders above ₹5,000',
+];
+
+const comingSoon = [
+  {
+    title: 'Jigsaw Puzzles',
+    body: 'Big-table puzzles for the slow Sunday crowd.',
+  },
+  {
+    title: 'Murder Mysteries',
+    body: 'Boxed whodunnits you can run at home with friends.',
+  },
+];
+---
+
+<Layout
+  title="Store"
+  description="Buy board games with an exclusive Board Game Company discount. ₹200 off at Owls on Board with code BGC200 — plus more from the BGC store soon."
+>
+  <!-- Header -->
+  <section class="pt-14 pb-10" style="background: #FFF8E7;">
+    <div class="max-w-[900px] mx-auto px-6">
+      <span class="section-tag">Perks for the community</span>
+      <h1 class="font-heading font-bold" style="font-size: clamp(2.4rem, 5vw, 3.8rem); letter-spacing: -1px;">
+        Store
+      </h1>
+      <p class="text-lg text-[#1A1A1A]/70 mt-4 max-w-[620px]">
+        Play the games at our tables, then take them home. We partner with people we
+        actually buy from — and pass the discount straight to you.
+      </p>
+    </div>
+  </section>
+
+  <!-- Featured: Owls on Board -->
+  <section class="pb-14">
+    <div class="max-w-[900px] mx-auto px-6">
+      <article class="card-brutal card-brutal-lg reveal p-7 md:p-10">
+        <span class="pill pill-yellow">Partner</span>
+
+        <h2 class="font-heading font-bold mt-5" style="font-size: clamp(1.9rem, 4vw, 2.6rem);">
+          Board Games
+        </h2>
+        <p class="font-heading font-semibold text-lg mt-1" style="color: #F47B20;">
+          Owls on Board
+        </p>
+
+        <p class="text-[#1A1A1A]/75 mt-4 leading-relaxed max-w-[620px]">
+          Our go-to online store for board games in India. Show them your BGC colours at
+          checkout and they'll knock <strong>₹200 off</strong> your order — every order, no
+          minimum, no expiry.
+        </p>
+
+        <ul class="list-none m-0 p-0 mt-5 flex flex-col gap-2">
+          {owlsPerks.map((perk) => (
+            <li class="flex items-start gap-3 text-sm text-[#1A1A1A]/75">
+              <span class="font-heading font-bold" style="color: #F47B20;">▸</span>
+              <span>{perk}</span>
+            </li>
+          ))}
+        </ul>
+
+        <!-- Coupon -->
+        <div class="coupon mt-7" data-code={DISCOUNT_CODE}>
+          <div class="min-w-0">
+            <div class="font-heading font-semibold text-[0.7rem] uppercase tracking-[0.12em] text-[#1A1A1A]/55">
+              Discount code
+            </div>
+            <div class="font-heading font-bold text-2xl md:text-3xl tracking-wider mt-1 break-all">
+              {DISCOUNT_CODE}
+            </div>
+          </div>
+          <button type="button" class="copy-btn btn btn-secondary btn-sm shrink-0">
+            <span class="copy-label">Copy</span>
+          </button>
+        </div>
+
+        <div class="mt-6 flex flex-wrap items-center gap-4">
+          <a
+            href={OWLS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-primary no-underline"
+          >
+            Shop Now →
+          </a>
+          <p class="text-xs text-[#1A1A1A]/50 m-0 max-w-[300px]">
+            Orders, payment and delivery are handled by Owls on Board.
+          </p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Coming soon -->
+  <section class="pb-20">
+    <div class="max-w-[900px] mx-auto px-6">
+      <h3 class="font-heading font-bold text-xl mb-5">More on the way</h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {comingSoon.map((item) => (
+          <article class="card-soon p-6 reveal">
+            <span class="pill text-[#1A1A1A]/60">Coming soon</span>
+            <h4 class="font-heading font-bold text-xl mt-4">{item.title}</h4>
+            <p class="text-sm text-[#1A1A1A]/60 mt-2 m-0">{item.body}</p>
+          </article>
+        ))}
+      </div>
+      <p class="text-sm text-[#1A1A1A]/60 mt-6">
+        Something you'd like us to stock? Tell us on
+        <a href="https://wa.me/919606598024" target="_blank" rel="noopener noreferrer" style="color: #F47B20;">WhatsApp</a>.
+      </p>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .coupon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    background: #FFF8E7;
+    border: 3px dashed #1A1A1A;
+    border-radius: var(--radius-md);
+  }
+
+  .card-soon {
+    border: 3px dashed rgba(26, 26, 26, 0.3);
+    border-radius: var(--radius-lg);
+    background: #FAFAF5;
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('.coupon').forEach((coupon) => {
+    const btn = coupon.querySelector<HTMLButtonElement>('.copy-btn');
+    const label = coupon.querySelector<HTMLElement>('.copy-label');
+    const code = coupon.dataset.code;
+    if (!btn || !label || !code) return;
+
+    let timer: ReturnType<typeof setTimeout>;
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(code);
+        label.textContent = 'Copied!';
+      } catch {
+        label.textContent = 'Select & copy';
+        const range = document.createRange();
+        const target = coupon.querySelector('.break-all');
+        if (target) {
+          range.selectNodeContents(target);
+          const sel = window.getSelection();
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        }
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => { label.textContent = 'Copy'; }, 2000);
+    });
+  });
+</script>
