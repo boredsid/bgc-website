@@ -487,8 +487,16 @@ export default function RegistrationForm() {
               🎟️ Free with REPLAY Pass
             </span>
             <p className="mt-2 text-sm text-[#1A1A1A]/70 leading-relaxed">
-              Your own seat is free when you enter the phone number linked to a valid REPLAY pass.
-              Additional seats follow the per-person price shown above.
+              Registration for this event is free when you enter the phone number linked to a valid{' '}
+              <a
+                href="https://replaycon.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline font-semibold text-[#1A1A1A] hover:text-[#F47B20] transition-colors"
+              >
+                REPLAY pass
+              </a>
+              . Additional seats follow the per-person price shown above.
             </p>
           </div>
         )}
