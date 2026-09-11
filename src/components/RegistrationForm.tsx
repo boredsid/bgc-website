@@ -229,7 +229,8 @@ export default function RegistrationForm() {
               href={event.external_registration_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-primary no-underline inline-block"
+              className="btn btn-primary no-underline w-full sm:w-auto"
+              style={{ whiteSpace: 'normal' }}
             >
               Continue to registration ↗
             </a>
