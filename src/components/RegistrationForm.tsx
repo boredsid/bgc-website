@@ -2,7 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { getSource } from '../lib/source';
 import { formatEventDateLabel, formatEventWhen } from '../lib/event-date';
-import type { Event, PhoneLookupResponse, EventSpots, CustomQuestion as CustomQuestionType } from '../lib/types';
+import type {
+  Event,
+  PhoneLookupResponse,
+  EventSpots,
+  ReplayPassCheckResponse,
+  CustomQuestion as CustomQuestionType,
+} from '../lib/types';
 import CustomQuestion from './CustomQuestion';
 import PaymentSheet from './PaymentSheet';
 import { useLeadCapture } from '../lib/use-lead-capture';
@@ -31,19 +37,66 @@ function effectiveSeatPrice(
   return priced.reduce((sum, p) => sum + p, 0);
 }
 
-// Mirror of worker/src/pricing.ts applyReplayPassSeat. A REPLAY pass belongs to
-// one person, so it covers one seat — the holder's own. It does nothing if they
-// already hold seats for this event, or if a Guild Path seat is already free.
-function applyReplayPassSeat(
+// Mirror of worker/src/pricing.ts applyReplayPassSeats. A REPLAY pass belongs to
+// one person and is worth one free seat, so a booking gets as many free seats as
+// it has pass holders in it — the purchaser plus any companion whose number was
+// entered. Seats already free (a Guild Path self-seat, a plus-one) are left be.
+function applyReplayPassSeats(
   seatCosts: number[],
-  opts: { hasPass: boolean; existingSeatsForEvent: number },
-): { seatCosts: number[]; seatCovered: boolean } {
-  if (!opts.hasPass || opts.existingSeatsForEvent > 0) return { seatCosts, seatCovered: false };
-  if (seatCosts.length === 0 || seatCosts.some((c) => c <= 0)) return { seatCosts, seatCovered: false };
-  const priciest = seatCosts.reduce((best, c, i) => (c > seatCosts[best] ? i : best), 0);
+  passCount: number,
+): { seatCosts: number[]; seatsCovered: number } {
+  if (passCount <= 0) return { seatCosts, seatsCovered: 0 };
+  const paidIndexes = seatCosts
+    .map((cost, index) => ({ cost, index }))
+    .filter((s) => s.cost > 0)
+    .sort((a, b) => b.cost - a.cost)
+    .slice(0, passCount)
+    .map((s) => s.index);
+  if (paidIndexes.length === 0) return { seatCosts, seatsCovered: 0 };
   const next = [...seatCosts];
-  next[priciest] = 0;
-  return { seatCosts: next, seatCovered: true };
+  for (const i of paidIndexes) next[i] = 0;
+  return { seatCosts: next, seatsCovered: paidIndexes.length };
+}
+
+// Same 10-digit rule as sanitizePhone in the Worker, so what the form counts as
+// a pass holder is what the Worker will accept.
+function phoneDigits(value: string): string | null {
+  const match = value.replace(/[\s\-\(\)]/g, '').match(/^(?:\+?91)?(\d{10})$/);
+  return match ? match[1] : null;
+}
+
+type CompanionStatus = 'idle' | 'checking' | 'pass' | 'no_pass' | 'claimed';
+
+interface Companion {
+  phone: string;
+  status: CompanionStatus;
+  editionName: string | null;
+}
+
+const BLANK_COMPANION: Companion = { phone: '', status: 'idle', editionName: null };
+
+/**
+ * The line under a companion's box. `covered` comes from the pricing pass, so a
+ * number that holds a pass but was already counted (typed twice, or the
+ * purchaser's own) says so rather than promising a second free seat.
+ */
+function companionNote(
+  companion: Companion,
+  covered: boolean,
+  purchaserDigits: string | null,
+): string | null {
+  const digits = phoneDigits(companion.phone);
+  if (!digits) return companion.phone.trim() ? 'Enter a 10-digit mobile number' : null;
+  if (digits === purchaserDigits) return 'That’s your own number — your pass is already counted';
+  if (companion.status === 'checking') return 'Checking…';
+  if (companion.status === 'claimed') return 'This pass has already covered a seat for this event';
+  if (companion.status === 'no_pass') return 'No confirmed pass on this number — this seat pays full price';
+  if (companion.status === 'pass') {
+    return covered
+      ? `🎟️ ${companion.editionName || 'REPLAY'} pass — this seat is free`
+      : 'Already added above';
+  }
+  return null;
 }
 
 type Step = 'form' | 'payment' | 'success';
@@ -66,6 +119,8 @@ export default function RegistrationForm() {
   const [creditBalance, setCreditBalance] = useState(0);
   const [activePromo, setActivePromo] = useState<PhoneLookupResponse['active_promo']>(null);
   const [replayPass, setReplayPass] = useState<PhoneLookupResponse['replay_pass']>(null);
+  // One slot per seat beyond the purchaser's, on REPLAY-perk events only.
+  const [companions, setCompanions] = useState<Companion[]>([]);
   const [phoneLookedUp, setPhoneLookedUp] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +226,68 @@ export default function RegistrationForm() {
     return () => clearTimeout(t);
   }, [phone, eventId, lookupPhone]);
 
+  const replayPassFree = !!event?.replay_pass_free;
+
+  // One companion slot per seat beyond the purchaser's own. Trimming keeps the
+  // slots the person already filled in when they step the seat count down and
+  // back up again.
+  useEffect(() => {
+    const wanted = replayPassFree ? Math.max(0, seats - 1) : 0;
+    setCompanions((prev) => {
+      if (prev.length === wanted) return prev;
+      if (prev.length > wanted) return prev.slice(0, wanted);
+      return [...prev, ...Array.from({ length: wanted - prev.length }, () => BLANK_COMPANION)];
+    });
+  }, [seats, replayPassFree]);
+
+  const checkCompanionPass = useCallback(async (index: number, digits: string, currentEventId: string | null) => {
+    setCompanions((prev) =>
+      prev.map((c, i) => (i === index && phoneDigits(c.phone) === digits ? { ...c, status: 'checking' } : c)),
+    );
+    let next: Partial<Companion>;
+    try {
+      const res = await fetch(`${WORKER_URL}/api/replay-pass-check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: digits, event_id: currentEventId }),
+      });
+      const data: ReplayPassCheckResponse = await res.json();
+      next = {
+        status: data.has_pass ? (data.already_claimed ? 'claimed' : 'pass') : 'no_pass',
+        editionName: data.edition_name ?? null,
+      };
+    } catch {
+      // Same fail-closed rule as the Worker: an unreachable check costs the
+      // discount, never the registration.
+      next = { status: 'no_pass', editionName: null };
+    }
+    // Only land the answer if the box still holds the number we asked about.
+    setCompanions((prev) =>
+      prev.map((c, i) => (i === index && phoneDigits(c.phone) === digits ? { ...c, ...next } : c)),
+    );
+  }, []);
+
+  const companionSignature = companions.map((c) => `${c.phone}/${c.status}`).join('|');
+  useEffect(() => {
+    const pending = companions
+      .map((c, index) => ({ index, digits: phoneDigits(c.phone), status: c.status }))
+      .filter((c) => c.status === 'idle' && c.digits);
+    if (pending.length === 0) return;
+    const t = setTimeout(() => {
+      for (const c of pending) checkCompanionPass(c.index, c.digits!, eventId);
+    }, 400);
+    return () => clearTimeout(t);
+    // companionSignature stands in for `companions` so this fires on real edits
+    // rather than on every render that rebuilds the array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companionSignature, eventId, checkCompanionPass]);
+
+  const updateCompanionPhone = useCallback((index: number, value: string) => {
+    setCompanions((prev) =>
+      prev.map((c, i) => (i === index ? { phone: value, status: 'idle', editionName: null } : c)),
+    );
+  }, []);
+
   const updateCustomAnswer = useCallback((id: string, value: string | boolean) => {
     setCustomAnswers((prev) => ({ ...prev, [id]: value }));
     setDetailsTouched(true);
@@ -190,6 +307,8 @@ export default function RegistrationForm() {
     setExistingSeatsForEvent(0);
     setCreditBalance(0);
     setActivePromo(null);
+    setReplayPass(null);
+    setCompanions([]);
   }
 
   if (loading) {
@@ -253,6 +372,9 @@ export default function RegistrationForm() {
   let seatCosts: number[] = Array(seats).fill(seatPrice);
   let total = grossTotal;
   let discountLabel = '';
+  // The REPLAY pass is once per person, so it must not stack on a Guild Path
+  // seat that is already free.
+  let selfSeatFreeFromGuild = false;
   if (membership?.isMember) {
     if (membership.discount === '20') {
       const firstSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
@@ -272,6 +394,7 @@ export default function RegistrationForm() {
       discountLabel = `Initiate member — ${parts.join(', ')}`;
     } else if (membership.discount === 'free') {
       const selfSeats = existingSeatsForEvent === 0 ? Math.min(1, seats) : 0;
+      selfSeatFreeFromGuild = selfSeats > 0;
       const plusOneCandidates = seats - selfSeats;
       const plusOnesUsed = Math.min(plusOneCandidates, membership.plus_ones_remaining);
       const paidSeats = plusOneCandidates - plusOnesUsed;
@@ -291,17 +414,41 @@ export default function RegistrationForm() {
     }
   }
 
-  // 2. REPLAY pass covers the holder's own seat on events flagged for the perk.
+  // 2. REPLAY passes cover one seat each — the purchaser's own, plus any
+  // companion whose number checked out. A number that has already covered a
+  // seat on this event, in any booking, is spent.
+  const purchaserPassCounts =
+    !!replayPass?.has_pass &&
+    !replayPass.already_claimed &&
+    existingSeatsForEvent === 0 &&
+    !selfSeatFreeFromGuild;
+
+  // Duplicates are one pass however many boxes they are typed into, and the
+  // purchaser's own number is counted on its own terms above.
+  const companionDigits: string[] = [];
+  const seenDigits = new Set<string>([phoneDigits(phone) || '']);
+  const companionCovered = companions.map((c) => {
+    const digits = phoneDigits(c.phone);
+    if (!digits || c.status !== 'pass' || seenDigits.has(digits)) return false;
+    seenDigits.add(digits);
+    companionDigits.push(digits);
+    return true;
+  });
+
+  const passCount = (purchaserPassCounts ? 1 : 0) + companionDigits.length;
+  const passEditionName =
+    replayPass?.edition_name || companions.find((c) => c.editionName)?.editionName || 'REPLAY';
+
   let replayPassLabel = '';
-  if (total > 0) {
-    const applied = applyReplayPassSeat(seatCosts, {
-      hasPass: !!replayPass?.has_pass,
-      existingSeatsForEvent: existingSeatsForEvent,
-    });
-    if (applied.seatCovered) {
+  if (total > 0 && passCount > 0) {
+    const applied = applyReplayPassSeats(seatCosts, passCount);
+    if (applied.seatsCovered > 0) {
       seatCosts = applied.seatCosts;
       total = Math.round(seatCosts.reduce((s, c) => s + c, 0));
-      replayPassLabel = `🎟️ ${replayPass?.edition_name || 'REPLAY'} pass — your seat is free`;
+      replayPassLabel =
+        applied.seatsCovered === 1 && purchaserPassCounts
+          ? `🎟️ ${passEditionName} pass — your seat is free`
+          : `🎟️ ${passEditionName} passes — ${applied.seatsCovered} seat${applied.seatsCovered > 1 ? 's' : ''} free`;
     }
   }
 
@@ -355,6 +502,7 @@ export default function RegistrationForm() {
           seats,
           custom_answers: customAnswers,
           payment_status: paymentStatus,
+          companion_phones: companionDigits,
           source: getSource(),
         }),
       });
@@ -497,7 +645,8 @@ export default function RegistrationForm() {
               >
                 REPLAY pass
               </a>
-              . Additional seats follow the per-person price shown above.
+              . Anyone sitting with you who has their own pass is free too — add their number
+              below. Seats without a pass follow the per-person price shown above.
             </p>
           </div>
         )}
@@ -746,6 +895,34 @@ export default function RegistrationForm() {
                   </button>
                 </div>
               </div>
+
+              {event.replay_pass_free && companions.length > 0 && (
+                <div className="mb-5 card-brutal p-4" style={{ background: '#FFF4D6' }}>
+                  <label className="label-brutal">Anyone else with a REPLAY pass?</label>
+                  <p className="text-xs text-[#1A1A1A]/70 leading-relaxed mb-3">
+                    Add the number linked to their pass and their seat is free too. One pass covers one
+                    seat. Leave blank for anyone without a pass.
+                  </p>
+                  {companions.map((companion, i) => (
+                    <div key={i} className={i === companions.length - 1 ? '' : 'mb-3'}>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        value={companion.phone}
+                        onChange={(e) => updateCompanionPhone(i, e.target.value)}
+                        placeholder={`Seat ${i + 2} — 10-digit number (optional)`}
+                        className="input-brutal"
+                      />
+                      {companionNote(companion, companionCovered[i], phoneDigits(phone)) && (
+                        <p className="text-xs mt-1 font-heading font-semibold">
+                          {companionNote(companion, companionCovered[i], phoneDigits(phone))}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {event.custom_questions?.map((q) => (
                 <CustomQuestion

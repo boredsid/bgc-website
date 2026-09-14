@@ -4,8 +4,15 @@ import { sanitizePhone, sanitizeEmail, sanitizeName, jsonResponse, missingRequir
 import { sendEventRegistrationEmail } from '../email';
 import { applyCreditsToTotal, recordCreditEvent } from '../credits';
 import { consumePromoUses, getApplicablePromo } from '../promos';
-import { effectiveSeatPrice, applyReplayPassSeat, type PricingQuestion } from '../pricing';
-import { fetchReplayPassStatus } from '../replay-client';
+import { effectiveSeatPrice, applyReplayPassSeats, countPaidSeats, type PricingQuestion } from '../pricing';
+import {
+  attachClaims,
+  claimReplayPasses,
+  fetchPassStatuses,
+  normaliseCompanionPhones,
+  releaseClaims,
+  type ClaimedPass,
+} from '../replay-pass-claims';
 import { currentBangaloreDate } from '../finance-date';
 import { getActiveMembership } from '../guild';
 import { assertCommunityHost } from './community-hosts';
@@ -30,6 +37,7 @@ export async function handleManualRegister(
     paid_at?: string;
     payment_method?: 'upi' | 'cash' | 'bank_transfer' | 'card' | 'other';
     is_community_host?: boolean;
+    companion_phones?: string[];
   }>().catch(() => null);
 
   if (!body) return jsonResponse({ error: 'Invalid request body' }, 400);
@@ -151,6 +159,9 @@ export async function handleManualRegister(
   let promoIdUsed: string | null = null;
   let promoSeatsConsumed = 0;
   let seatCosts: number[] = Array(seats).fill(seatPrice);
+  // Whether the Guild Path already covered this person's own seat — their
+  // REPLAY pass is a once-per-person perk and must not stack on top of it.
+  let selfSeatFreeFromGuild = false;
 
   // Both the Guild Path discount and the REPLAY pass are once-per-person perks,
   // so both need to know what this user already holds for the event.
@@ -182,6 +193,7 @@ export async function handleManualRegister(
       const cap = member.tier === 'adventurer' ? 1 : 5;
       const remainingCap = Math.max(0, cap - member.plus_ones_used);
       const selfSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
+      selfSeatFreeFromGuild = selfSeats > 0;
       const plusOneCandidates = seats - selfSeats;
       plusOnesToConsume = Math.min(plusOneCandidates, remainingCap);
       const paidSeats = plusOneCandidates - plusOnesToConsume;
@@ -196,19 +208,44 @@ export async function handleManualRegister(
     }
   }
 
-  // REPLAY pass covers the holder's own seat, same rule as the public form.
+  // REPLAY passes cover one seat each, same rule as the public form: this
+  // person's own, plus any companion number the admin entered.
+  let replayClaimIds: string[] = [];
   if (event.replay_pass_free && totalAmount > 0) {
-    const pass = await fetchReplayPassStatus(env, phone);
-    const applied = applyReplayPassSeat(seatCosts, {
-      hasPass: pass.has_pass,
-      existingSeatsForEvent: existingSeats,
-    });
-    if (applied.seatCovered) {
-      seatCosts = applied.seatCosts;
-      totalAmount = Math.round(seatCosts.reduce((s, c) => s + c, 0));
-      if (!discountApplied) discountApplied = 'replay_pass';
+    const candidates: ClaimedPass[] = [];
+    if (existingSeats === 0 && !selfSeatFreeFromGuild) {
+      candidates.push({ phone, isPurchaser: true, editionName: null });
+    }
+    for (const companion of normaliseCompanionPhones(body.companion_phones, phone, seats, sanitizePhone)) {
+      candidates.push({ phone: companion, isPurchaser: false, editionName: null });
+    }
+
+    if (candidates.length > 0) {
+      const statuses = await fetchPassStatuses(env, candidates);
+      const holders = candidates
+        .filter((c) => statuses.get(c.phone)?.hasPass)
+        .map((c) => ({ ...c, editionName: statuses.get(c.phone)?.editionName ?? null }))
+        .slice(0, countPaidSeats(seatCosts));
+
+      const { won, claimIds } = await claimReplayPasses(supabase, body.event_id, holders);
+      replayClaimIds = claimIds;
+
+      const applied = applyReplayPassSeats(seatCosts, won.length);
+      if (applied.seatsCovered > 0) {
+        seatCosts = applied.seatCosts;
+        totalAmount = Math.round(seatCosts.reduce((s, c) => s + c, 0));
+        if (!discountApplied) discountApplied = 'replay_pass';
+      }
     }
   }
+
+  // Past this point the booking holds REPLAY claims, so every way out has to
+  // hand them back — otherwise a mistyped payment date locks those passes out
+  // of the event for good.
+  const abort = async (payload: Record<string, unknown>, status: number) => {
+    await releaseClaims(supabase, replayClaimIds);
+    return jsonResponse(payload, status);
+  };
 
   if (totalAmount > 0) {
     const applicablePromo = await getApplicablePromo(supabase, userId, seatPrice);
@@ -247,7 +284,7 @@ export async function handleManualRegister(
       }
     }
     if (!body.payment_account_id || !body.paid_at || !body.payment_method) {
-      return jsonResponse({
+      return abort({
         error: useDefaultPaymentAccount
           ? 'A full admin must set a default finance account before guest admins can confirm payments.'
           : 'Choose where and when payment was received before creating a confirmed registration.',
@@ -255,10 +292,10 @@ export async function handleManualRegister(
       }, 400);
     }
     if (Number.isNaN(Date.parse(body.paid_at))) {
-      return jsonResponse({ error: 'Payment date must be valid' }, 400);
+      return abort({ error: 'Payment date must be valid' }, 400);
     }
     if (!['upi', 'cash', 'bank_transfer', 'card', 'other'].includes(body.payment_method)) {
-      return jsonResponse({ error: 'Choose a valid payment method' }, 400);
+      return abort({ error: 'Choose a valid payment method' }, 400);
     }
   }
 
@@ -289,8 +326,10 @@ export async function handleManualRegister(
 
   if (regErr || !reg) {
     console.error('[register-manual] insert failed', regErr);
-    return jsonResponse({ error: 'Registration failed' }, 500);
+    return abort({ error: 'Registration failed' }, 500);
   }
+
+  await attachClaims(supabase, replayClaimIds, reg.id);
 
   // Convert any open lead matching this phone+event (e.g. a waitlist entry).
   // Best-effort — failures here must not fail the registration.

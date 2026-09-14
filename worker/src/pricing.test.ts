@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveSeatPrice, applyReplayPassSeat, type PricingQuestion } from './pricing';
+import { effectiveSeatPrice, applyReplayPassSeats, countPaidSeats, type PricingQuestion } from './pricing';
 
 const tableQ: PricingQuestion = {
   id: 'table', label: 'Table', type: 'radio', required: true,
@@ -42,49 +42,55 @@ describe('effectiveSeatPrice', () => {
   });
 });
 
-describe('applyReplayPassSeat', () => {
-  const held = { hasPass: true, existingSeatsForEvent: 0 };
+describe('countPaidSeats', () => {
+  it('counts only the seats still being paid for', () => {
+    expect(countPaidSeats([500, 0, 400])).toBe(2);
+    expect(countPaidSeats([0, 0])).toBe(0);
+    expect(countPaidSeats([])).toBe(0);
+  });
+});
 
-  it('covers the only seat for a pass holder', () => {
-    expect(applyReplayPassSeat([500], held)).toEqual({ seatCosts: [0], seatCovered: true });
+describe('applyReplayPassSeats', () => {
+  it('covers the only seat for a single pass holder', () => {
+    expect(applyReplayPassSeats([500], 1)).toEqual({ seatCosts: [0], seatsCovered: 1 });
   });
 
-  it('covers exactly one seat, leaving companions to pay', () => {
-    expect(applyReplayPassSeat([500, 500, 500], held)).toEqual({ seatCosts: [0, 500, 500], seatCovered: true });
+  it('covers one seat per pass, leaving the rest to pay', () => {
+    expect(applyReplayPassSeats([500, 500, 500], 1)).toEqual({ seatCosts: [0, 500, 500], seatsCovered: 1 });
   });
 
-  it('covers the most expensive seat', () => {
-    expect(applyReplayPassSeat([400, 900, 400], held)).toEqual({ seatCosts: [400, 0, 400], seatCovered: true });
+  it('covers a seat for every pass the booking claimed', () => {
+    expect(applyReplayPassSeats([500, 500, 500], 2)).toEqual({ seatCosts: [0, 0, 500], seatsCovered: 2 });
+  });
+
+  it('covers the most expensive seats first', () => {
+    expect(applyReplayPassSeats([400, 900, 700], 2)).toEqual({ seatCosts: [400, 0, 0], seatsCovered: 2 });
   });
 
   it('does nothing without a pass', () => {
     const costs = [500, 500];
-    expect(applyReplayPassSeat(costs, { hasPass: false, existingSeatsForEvent: 0 })).toEqual({
-      seatCosts: costs, seatCovered: false,
-    });
+    expect(applyReplayPassSeats(costs, 0)).toEqual({ seatCosts: costs, seatsCovered: 0 });
   });
 
-  it('does nothing once the holder already has a seat for this event', () => {
-    expect(applyReplayPassSeat([500], { hasPass: true, existingSeatsForEvent: 1 })).toEqual({
-      seatCosts: [500], seatCovered: false,
-    });
-  });
-
-  it('does not stack on a Guild Path seat that is already free', () => {
-    expect(applyReplayPassSeat([0, 500], held)).toEqual({ seatCosts: [0, 500], seatCovered: false });
+  it('skips seats the Guild Path already made free', () => {
+    expect(applyReplayPassSeats([0, 500], 1)).toEqual({ seatCosts: [0, 0], seatsCovered: 1 });
   });
 
   it('leaves an all-free booking alone', () => {
-    expect(applyReplayPassSeat([0, 0], held)).toEqual({ seatCosts: [0, 0], seatCovered: false });
+    expect(applyReplayPassSeats([0, 0], 1)).toEqual({ seatCosts: [0, 0], seatsCovered: 0 });
+  });
+
+  it('covers no more seats than are actually being paid for', () => {
+    expect(applyReplayPassSeats([500], 3)).toEqual({ seatCosts: [0], seatsCovered: 1 });
   });
 
   it('handles an empty seat list', () => {
-    expect(applyReplayPassSeat([], held)).toEqual({ seatCosts: [], seatCovered: false });
+    expect(applyReplayPassSeats([], 2)).toEqual({ seatCosts: [], seatsCovered: 0 });
   });
 
   it('does not mutate the input array', () => {
     const costs = [500, 500];
-    applyReplayPassSeat(costs, held);
+    applyReplayPassSeats(costs, 2);
     expect(costs).toEqual([500, 500]);
   });
 });

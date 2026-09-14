@@ -4,8 +4,15 @@ import { sanitizePhone, sanitizeEmail, sanitizeName, sanitizeSource, jsonRespons
 import { sendEventRegistrationEmail } from './email';
 import { applyCreditsToTotal, recordCreditEvent } from './credits';
 import { consumePromoUses, getApplicablePromo } from './promos';
-import { effectiveSeatPrice, applyReplayPassSeat } from './pricing';
-import { fetchReplayPassStatus } from './replay-client';
+import { effectiveSeatPrice, applyReplayPassSeats, countPaidSeats } from './pricing';
+import {
+  attachClaims,
+  claimReplayPasses,
+  fetchPassStatuses,
+  normaliseCompanionPhones,
+  releaseClaims,
+  type ClaimedPass,
+} from './replay-pass-claims';
 import { getActiveMembership } from './guild';
 
 export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -17,6 +24,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     seats: number;
     custom_answers: Record<string, string | boolean>;
     payment_status: 'pending' | 'confirmed';
+    companion_phones?: string[];
     source?: string;
   }>();
 
@@ -158,6 +166,9 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
   let membershipNewPlusOnesUsed = 0;
   let promoIdUsed: string | null = null;
   let promoSeatsConsumed = 0;
+  // Whether the Guild Path already covered the purchaser's own seat. Their
+  // REPLAY pass is a once-per-person perk, so it must not stack on top of it.
+  let selfSeatFreeFromGuild = false;
   // Per-seat cost array so the promo can cover the most-expensive seats first.
   let seatCosts: number[] = Array(seats).fill(seatPrice);
 
@@ -192,6 +203,7 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       const remainingCap = Math.max(0, cap - member.plus_ones_used);
 
       const selfSeats = existingSeats === 0 ? Math.min(1, seats) : 0;
+      selfSeatFreeFromGuild = selfSeats > 0;
       const plusOneCandidates = seats - selfSeats;
       plusOnesToConsume = Math.min(plusOneCandidates, remainingCap);
       const paidSeats = plusOneCandidates - plusOnesToConsume;
@@ -208,19 +220,46 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     }
   }
 
-  // REPLAY pass covers the holder's own seat on events flagged for the perk.
+  // REPLAY passes cover one seat each on events flagged for the perk — the
+  // purchaser's own, plus anyone sitting with them whose number was entered.
   // Pass ownership lives in the REPLAY project, so this is a cross-worker call;
   // it fails closed (no pass) rather than failing the registration.
+  //
+  // Claims are staked before the registration row exists: the unique index on
+  // (event_id, phone) is what settles two bookings racing for the same number,
+  // and the price can only be worked out once that race is decided.
+  let replayClaimIds: string[] = [];
   if (event.replay_pass_free && totalAmount > 0) {
-    const pass = await fetchReplayPassStatus(env, phone);
-    const applied = applyReplayPassSeat(seatCosts, {
-      hasPass: pass.has_pass,
-      existingSeatsForEvent: existingSeats,
-    });
-    if (applied.seatCovered) {
-      seatCosts = applied.seatCosts;
-      totalAmount = Math.round(seatCosts.reduce((s, c) => s + c, 0));
-      if (!discountApplied) discountApplied = 'replay_pass';
+    const candidates: ClaimedPass[] = [];
+
+    // The purchaser's own entitlement is spent if they already hold seats here,
+    // or if the Guild Path just made their seat free.
+    if (existingSeats === 0 && !selfSeatFreeFromGuild) {
+      candidates.push({ phone, isPurchaser: true, editionName: null });
+    }
+    for (const companion of normaliseCompanionPhones(body.companion_phones, phone, seats, sanitizePhone)) {
+      candidates.push({ phone: companion, isPurchaser: false, editionName: null });
+    }
+
+    if (candidates.length > 0) {
+      const statuses = await fetchPassStatuses(env, candidates);
+      // Never claim more passes than there are seats left to pay for: a claim
+      // spent on an already-free seat locks that pass out of the event for good
+      // and buys nothing.
+      const holders = candidates
+        .filter((c) => statuses.get(c.phone)?.hasPass)
+        .map((c) => ({ ...c, editionName: statuses.get(c.phone)?.editionName ?? null }))
+        .slice(0, countPaidSeats(seatCosts));
+
+      const { won, claimIds } = await claimReplayPasses(supabase, body.event_id, holders);
+      replayClaimIds = claimIds;
+
+      const applied = applyReplayPassSeats(seatCosts, won.length);
+      if (applied.seatsCovered > 0) {
+        seatCosts = applied.seatCosts;
+        totalAmount = Math.round(seatCosts.reduce((s, c) => s + c, 0));
+        if (!discountApplied) discountApplied = 'replay_pass';
+      }
     }
   }
 
@@ -276,8 +315,14 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
     .single();
 
   if (regError) {
+    // The claims were staked on a booking that never happened — hand those
+    // passes back so they can still be used for this event.
+    await releaseClaims(supabase, replayClaimIds);
     return jsonResponse({ error: 'Registration failed' }, 500);
   }
+
+  // Adopt the claims now that there is a registration to attach them to.
+  await attachClaims(supabase, replayClaimIds, registration.id);
 
   // Convert any open lead matching this phone+event. Best-effort — failures here
   // must not fail the registration.

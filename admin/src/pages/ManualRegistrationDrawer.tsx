@@ -21,11 +21,49 @@ interface PhoneLookup {
   user: { found: boolean; name: string | null; email: string | null; is_community_host?: boolean };
   membership?: { isMember: boolean; tier: string | null; discount: string | null; plus_ones_remaining: number };
   existing_seats_for_event: number;
-  replay_pass?: { has_pass: boolean; edition_name: string | null } | null;
+  replay_pass?: { has_pass: boolean; edition_name: string | null; already_claimed?: boolean } | null;
   credit_balance?: number;
 }
 
+interface ReplayPassCheck {
+  has_pass: boolean;
+  edition_name: string | null;
+  already_claimed: boolean;
+}
+
 const LAST_EVENT_KEY = 'admin.manualReg.lastEventId';
+
+/**
+ * A seat in this booking other than the person being registered. On events that
+ * are free for REPLAY pass holders, each of these numbers that holds a pass
+ * makes its own seat free — the same rule the public form follows.
+ */
+interface Companion {
+  phone: string;
+  status: 'idle' | 'checking' | 'pass' | 'no_pass' | 'claimed';
+  editionName: string | null;
+}
+
+/** Same 10-digit rule the Worker applies before it will look a number up. */
+function phoneDigits(value: string): string | null {
+  const match = value.replace(/[\s\-()]/g, '').match(/^(?:\+?91)?(\d{10})$/);
+  return match ? match[1] : null;
+}
+
+function companionNote(companion: Companion): string | null {
+  if (!phoneDigits(companion.phone)) {
+    return companion.phone.trim() ? 'Needs a 10-digit mobile number' : null;
+  }
+  if (companion.status === 'checking') return 'Checking…';
+  if (companion.status === 'pass') {
+    return `Holds a ${companion.editionName || 'REPLAY'} pass — this seat is free.`;
+  }
+  if (companion.status === 'claimed') {
+    return 'This pass has already covered a seat on this event — this seat pays full price.';
+  }
+  if (companion.status === 'no_pass') return 'No confirmed pass on this number — full price applies.';
+  return null;
+}
 
 /**
  * Adding a community host is a manual registration with the money taken out, so
@@ -49,6 +87,7 @@ export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'confirmed'>('confirmed');
   const [customAnswers, setCustomAnswers] = useState<Record<string, string | boolean>>({});
   const [lookup, setLookup] = useState<PhoneLookup | null>(null);
+  const [companions, setCompanions] = useState<Companion[]>([]);
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -139,6 +178,65 @@ export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
 
   const event = events.find((e) => e.id === eventId);
   const customQuestions: CustomQuestion[] = (event?.custom_questions || []) as CustomQuestion[];
+
+  const wantsCompanions = !isHostMode && !!event?.replay_pass_free;
+
+  useEffect(() => {
+    const wanted = wantsCompanions ? Math.max(0, (seats ?? 1) - 1) : 0;
+    setCompanions((prev) => {
+      if (prev.length === wanted) return prev;
+      if (prev.length > wanted) return prev.slice(0, wanted);
+      return [
+        ...prev,
+        ...Array.from({ length: wanted - prev.length }, () => ({
+          phone: '', status: 'idle' as const, editionName: null,
+        })),
+      ];
+    });
+  }, [seats, wantsCompanions]);
+
+  async function checkCompanion(index: number) {
+    const digits = phoneDigits(companions[index]?.phone || '');
+    if (!digits || !eventId) return;
+    setCompanions((prev) => prev.map((c, i) => (i === index ? { ...c, status: 'checking' } : c)));
+    try {
+      const r = await fetchAdmin<ReplayPassCheck>('/api/replay-pass-check', {
+        method: 'POST',
+        body: JSON.stringify({ phone: digits, event_id: eventId }),
+      });
+      setCompanions((prev) =>
+        prev.map((c, i) =>
+          i === index && phoneDigits(c.phone) === digits
+            ? {
+                ...c,
+                status: r.has_pass ? (r.already_claimed ? 'claimed' : 'pass') : 'no_pass',
+                editionName: r.edition_name,
+              }
+            : c,
+        ),
+      );
+    } catch {
+      // Same fail-closed rule as the Worker: an unreachable check costs the
+      // discount, never the registration.
+      setCompanions((prev) =>
+        prev.map((c, i) => (i === index ? { ...c, status: 'no_pass', editionName: null } : c)),
+      );
+    }
+  }
+
+  // One number is one pass however many boxes it is typed into, and the person
+  // being registered is counted on their own terms by the Worker.
+  const companionPhones: string[] = [];
+  const seenCompanionDigits = new Set<string>([phoneDigits(phone) || '']);
+  for (const c of companions) {
+    const digits = phoneDigits(c.phone);
+    if (!digits || seenCompanionDigits.has(digits)) continue;
+    seenCompanionDigits.add(digits);
+    companionPhones.push(digits);
+  }
+  const companionsCovered = companions.filter(
+    (c, i) => c.status === 'pass' && companionPhones.includes(phoneDigits(c.phone) || `x${i}`),
+  ).length;
 
   const errors: ValidationErrors = useMemo(() => {
     const base = validateManualRegistration({ event_id: eventId, name, phone, email, seats: seats ?? 0 });
@@ -236,6 +334,7 @@ export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
           payment_status: isHostMode ? 'confirmed' : paymentStatus,
           custom_answers: customAnswers,
           allow_overbook: allowOverbook,
+          ...(companionPhones.length > 0 ? { companion_phones: companionPhones } : {}),
           ...(isHostMode ? { is_community_host: true } : {}),
           ...(!isHostMode && paymentStatus === 'confirmed' && !isGuest ? paymentDetails : {}),
         }),
@@ -364,6 +463,39 @@ export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
             aria-label="Seats"
           />
         ))}
+        {companions.length > 0 && (
+          <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+            <div className="text-sm font-medium">Other REPLAY pass holders in this booking</div>
+            <div className="text-xs text-muted-foreground">
+              Add the number linked to each pass and that seat is free too. One pass covers one seat.
+              Leave blank for anyone without a pass.
+            </div>
+            {companions.map((companion, i) => (
+              <div key={i}>
+                <Input
+                  value={companion.phone}
+                  onChange={(e) =>
+                    setCompanions((prev) =>
+                      prev.map((c, idx) =>
+                        idx === i ? { phone: e.target.value, status: 'idle', editionName: null } : c,
+                      ),
+                    )
+                  }
+                  onBlur={() => checkCompanion(i)}
+                  placeholder={`Seat ${i + 2} — 10-digit number (optional)`}
+                />
+                {companionNote(companion) && (
+                  <div className="text-xs text-muted-foreground mt-1">{companionNote(companion)}</div>
+                )}
+              </div>
+            ))}
+            {companionsCovered > 0 && (
+              <div className="text-xs rounded-md bg-emerald-50 text-emerald-900 p-2">
+                {companionsCovered} companion seat{companionsCovered === 1 ? '' : 's'} covered by a REPLAY pass.
+              </div>
+            )}
+          </div>
+        )}
         {!isHostMode && field('payment_status', 'Payment status', (
           <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as 'pending' | 'confirmed')}>
             <SelectTrigger><SelectValue /></SelectTrigger>

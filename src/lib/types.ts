@@ -77,7 +77,7 @@ export interface PhoneLookupResponse {
     plus_ones_remaining: number;
   };
   existing_seats_for_event: number;
-  replay_pass: { has_pass: boolean; edition_name: string | null } | null;
+  replay_pass: { has_pass: boolean; edition_name: string | null; already_claimed: boolean } | null;
   credit_balance: number;
   active_promo: {
     remaining_uses: number;
@@ -94,10 +94,20 @@ export interface RegisterRequest {
   seats: number;
   custom_answers: Record<string, string | boolean>;
   payment_status: 'pending' | 'confirmed';
+  // Numbers of the people sitting with the purchaser, on events flagged
+  // `replay_pass_free`. Each one holding a pass covers its own seat.
+  companion_phones?: string[];
 }
 
 export interface RegisterResponse {
   success: boolean;
   registration_id?: string;
   error?: string;
+}
+
+/** One number checked against REPLAY for a seat other than the purchaser's. */
+export interface ReplayPassCheckResponse {
+  has_pass: boolean;
+  edition_name: string | null;
+  already_claimed: boolean;
 }

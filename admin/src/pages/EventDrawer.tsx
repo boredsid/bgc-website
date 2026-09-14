@@ -392,8 +392,9 @@ export default function EventDrawer({ mode }: Props) {
               <div>
                 <Label>Free for REPLAY pass holders</Label>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Anyone with a confirmed pass for the latest REPLAY gets their own seat free.
-                  Extra seats they book still cost full price.
+                  Anyone with a confirmed pass for the latest REPLAY gets their own seat free —
+                  including people they book seats for, if those numbers hold a pass too.
+                  One pass covers one seat. Seats without a pass cost full price.
                 </p>
               </div>
             </div>

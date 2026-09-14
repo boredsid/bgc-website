@@ -2,6 +2,7 @@ import { getSupabase } from './supabase';
 import { jsonResponse } from './validation';
 import { recordCreditEvent } from './credits';
 import { restorePromoUses } from './promos';
+import { releaseClaimsForRegistration } from './replay-pass-claims';
 import type { Env } from './index';
 
 export async function handleCancelRegistration(request: Request, env: Env): Promise<Response> {
@@ -48,6 +49,12 @@ export async function handleCancelRegistration(request: Request, env: Env): Prom
       }, { ignoreDuplicate: true });
     }
   }
+
+  // Hand back any REPLAY passes this booking spent — the purchaser's own and
+  // any companion's — so they can cover a seat on this event again. Unlike the
+  // promo and plus-one refunds this is not gated on `wasConfirmed`: a pending
+  // booking holds its claims too, and cancelling one must release them.
+  await releaseClaimsForRegistration(supabase, reg.id);
 
   // Restore promo uses if any were consumed by this registration. Guarded by
   // payment_status above so re-cancelling a cancelled reg is a no-op.

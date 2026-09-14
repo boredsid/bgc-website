@@ -23,7 +23,10 @@ interface RegFixture {
   credits_applied: number;
 }
 
-function buildSupabaseMock(reg: RegFixture, capture: { creditInsert: any }) {
+function buildSupabaseMock(
+  reg: RegFixture,
+  capture: { creditInsert: any; claimsReleasedFor?: string | null },
+) {
   return {
     from: (table: string) => {
       if (table === 'registrations') {
@@ -35,6 +38,16 @@ function buildSupabaseMock(reg: RegFixture, capture: { creditInsert: any }) {
       if (table === 'user_credits') {
         return {
           insert: async (row: any) => { capture.creditInsert = row; return { error: null }; },
+        };
+      }
+      if (table === 'replay_pass_claims') {
+        return {
+          delete: () => ({
+            eq: async (_col: string, id: string) => {
+              capture.claimsReleasedFor = id;
+              return { error: null };
+            },
+          }),
         };
       }
       if (table === 'guild_path_members') {
@@ -98,6 +111,23 @@ describe('handleCancelRegistration', () => {
     const body = await res.json() as { success: boolean; already_cancelled?: boolean };
     expect(body.already_cancelled).toBe(true);
     expect(capture.creditInsert).toBeNull();
+  });
+
+  it('releases the REPLAY passes the booking spent, pending or not', async () => {
+    for (const status of ['confirmed', 'pending'] as const) {
+      const capture = { creditInsert: null as any, claimsReleasedFor: null as string | null };
+      (getSupabase as any).mockReturnValue(buildSupabaseMock({
+        id: 'r5', user_id: 'u1', payment_status: status,
+        plus_ones_consumed: 0, discount_applied: 'replay_pass',
+        total_amount: 0, credits_applied: 0,
+      }, capture));
+
+      const req = new Request('http://localhost/api/admin/cancel-registration', {
+        method: 'POST', body: JSON.stringify({ registration_id: 'r5' }),
+      });
+      await handleCancelRegistration(req, mockEnv());
+      expect(capture.claimsReleasedFor).toBe('r5');
+    }
   });
 
   it('does not credit when user_id is null', async () => {

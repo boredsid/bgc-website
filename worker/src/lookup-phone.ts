@@ -4,6 +4,7 @@ import { sanitizePhone, jsonResponse } from './validation';
 import { getUserBalance } from './credits';
 import { getActivePromo } from './promos';
 import { fetchReplayPassStatus } from './replay-client';
+import { fetchClaimedPhones } from './replay-pass-claims';
 import { getActiveMembership } from './guild';
 
 export async function handleLookupPhone(request: Request, env: Env): Promise<Response> {
@@ -53,7 +54,11 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
 
   // Only ask REPLAY when the event actually offers the perk — the cross-worker
   // call shouldn't sit on the critical path of every other event's lookup.
-  let replayPass: { has_pass: boolean; edition_name: string | null } | null = null;
+  let replayPass: {
+    has_pass: boolean;
+    edition_name: string | null;
+    already_claimed: boolean;
+  } | null = null;
   if (body.event_id) {
     const { data: event } = await supabase
       .from('events')
@@ -61,8 +66,18 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
       .eq('id', body.event_id)
       .maybeSingle();
     if (event?.replay_pass_free) {
-      const status = await fetchReplayPassStatus(env, phone);
-      replayPass = { has_pass: status.has_pass, edition_name: status.edition_name };
+      // `already_claimed` covers the case where someone else's booking named
+      // this number as a companion — the pass is spent even though this person
+      // has no registration of their own.
+      const [status, claimed] = await Promise.all([
+        fetchReplayPassStatus(env, phone),
+        fetchClaimedPhones(supabase, body.event_id, [phone]),
+      ]);
+      replayPass = {
+        has_pass: status.has_pass,
+        edition_name: status.edition_name,
+        already_claimed: claimed.has(phone),
+      };
     }
   }
 

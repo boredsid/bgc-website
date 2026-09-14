@@ -1,4 +1,5 @@
 import { handleLookupPhone } from './lookup-phone';
+import { handleReplayPassCheck } from './replay-pass-check';
 import { handleRegister } from './register';
 import { handleEventSpots } from './event-spots';
 import { handleGuildPurchase } from './guild-purchase';
@@ -151,6 +152,8 @@ export default {
 
       if (url.pathname === '/api/lookup-phone' && request.method === 'POST') {
         response = await handleLookupPhone(request, env);
+      } else if (url.pathname === '/api/replay-pass-check' && request.method === 'POST') {
+        response = await handleReplayPassCheck(request, env);
       } else if (url.pathname === '/api/register' && request.method === 'POST') {
         response = await handleRegister(request, env, ctx);
       } else if (url.pathname.startsWith('/api/event-spots/') && request.method === 'GET') {
