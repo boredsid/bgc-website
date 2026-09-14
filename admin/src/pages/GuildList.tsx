@@ -26,8 +26,7 @@ import { useRevalidate } from '@/lib/revalidate';
 import { listViews, saveView, deleteView, getView } from '@/lib/savedViews';
 import { toast } from 'sonner';
 import type { GuildMember, FinanceAccount, FinanceCategory } from '@/lib/types';
-
-const TIER_DAYS: Record<string, number> = { initiate: 90, adventurer: 180, guildmaster: 365 };
+import { membershipExpiry, tierDurationMonths } from '@/lib/guildTerm';
 
 const PAGE_KEY = 'guild';
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '';
@@ -103,17 +102,18 @@ export default function GuildList() {
 
   async function confirmMarkPaid() {
     if (!confirmTarget) return;
-    const start = new Date(startDate);
-    const days = TIER_DAYS[confirmTarget.tier] ?? 90;
-    const expires = new Date(start);
-    expires.setDate(start.getDate() + days);
+    const expiresAt = membershipExpiry(startDate, confirmTarget.tier);
+    if (!expiresAt) {
+      toast.error('Please pick a start date first.');
+      return;
+    }
     try {
       await fetchAdmin(`/api/admin/guild-members/${confirmTarget.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           status: 'paid',
           starts_at: startDate,
-          expires_at: expires.toISOString().slice(0, 10),
+          expires_at: expiresAt,
           ...paymentDetails,
         }),
       });
@@ -135,18 +135,18 @@ export default function GuildList() {
   async function bulkMarkPaid() {
     const rows = [...selectedRows];
     if (rows.length === 0) return;
-    const start = new Date(bulkPaidStartDate);
+    if (!membershipExpiry(bulkPaidStartDate, 'initiate')) {
+      toast.error('Please pick a start date first.');
+      return;
+    }
     const results = await Promise.allSettled(
       rows.map((m) => {
-        const days = TIER_DAYS[m.tier] ?? 90;
-        const expires = new Date(start);
-        expires.setDate(start.getDate() + days);
         return fetchAdmin(`/api/admin/guild-members/${m.id}`, {
           method: 'PATCH',
           body: JSON.stringify({
             status: 'paid',
             starts_at: bulkPaidStartDate,
-            expires_at: expires.toISOString().slice(0, 10),
+            expires_at: membershipExpiry(bulkPaidStartDate, m.tier),
             ...paymentDetails,
           }),
         });
@@ -393,7 +393,8 @@ export default function GuildList() {
             <Label>Start date</Label>
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <div className="text-xs text-muted-foreground">
-              Expires {TIER_DAYS[confirmTarget?.tier || 'initiate']} days later (auto).
+              Expires {tierDurationMonths(confirmTarget?.tier)} months later
+              {membershipExpiry(startDate, confirmTarget?.tier) && ` — ${membershipExpiry(startDate, confirmTarget?.tier)}`} (auto).
             </div>
             <PaymentDetailsFields
               accounts={financeAccounts}
