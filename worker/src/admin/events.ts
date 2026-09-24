@@ -2,6 +2,7 @@ import type { Env } from '../index';
 import { getSupabase } from '../supabase';
 import { jsonResponse } from '../validation';
 import { syncCfAccessGroup } from '../guest/cf-access';
+import { normalizeGooglePhotosUrl } from '../google-photos';
 
 export async function handleListEvents(env: Env): Promise<Response> {
   const supabase = getSupabase(env);
@@ -84,6 +85,7 @@ const EVENT_FIELDS = [
   'name', 'description', 'date', 'end_date', 'is_all_day', 'venue_name', 'venue_area',
   'price', 'capacity', 'custom_questions', 'price_includes', 'llm_notes', 'is_published',
   'guild_path_exclusive', 'replay_pass_free', 'is_collaboration', 'externally_managed', 'external_registration_url',
+  'google_photos_url',
 ] as const;
 
 type EventField = (typeof EVENT_FIELDS)[number];
@@ -115,6 +117,14 @@ function normalizeExternalFields(payload: Partial<Record<EventField, unknown>>):
   } else if (payload.externally_managed === false) {
     payload.external_registration_url = null;
   }
+}
+
+// Blank clears the album. Anything else is stored in its canonical share-link
+// form; a link that isn't one stays as typed so validation can reject it.
+function normalizePhotosField(payload: Partial<Record<EventField, unknown>>): void {
+  if (typeof payload.google_photos_url !== 'string') return;
+  const trimmed = payload.google_photos_url.trim();
+  payload.google_photos_url = trimmed === '' ? null : normalizeGooglePhotosUrl(trimmed) ?? trimmed;
 }
 
 function isHttpUrl(value: string): boolean {
@@ -168,6 +178,11 @@ function validateEventPayload(
   if (payload.externally_managed === true && typeof payload.external_registration_url !== 'string') {
     return 'External registration URL is required';
   }
+  if ('google_photos_url' in payload && payload.google_photos_url !== null) {
+    if (typeof payload.google_photos_url !== 'string' || !normalizeGooglePhotosUrl(payload.google_photos_url)) {
+      return 'Google Photos album link must be the album\'s share link (Share → Create link in Google Photos), starting with https://photos.app.goo.gl/';
+    }
+  }
   return null;
 }
 
@@ -177,6 +192,7 @@ export async function handleCreateEvent(request: Request, env: Env): Promise<Res
   const payload = pickEventFields(body);
   normalizeTimingFields(payload);
   normalizeExternalFields(payload);
+  normalizePhotosField(payload);
   const err = validateEventPayload(payload, true);
   if (err) return jsonResponse({ error: err }, 400);
 
@@ -202,6 +218,7 @@ export async function handleUpdateEvent(
   const payload = pickEventFields(body);
   normalizeTimingFields(payload);
   normalizeExternalFields(payload);
+  normalizePhotosField(payload);
   const hasGuests = 'guest_admins' in body || payload.externally_managed === true;
   if (Object.keys(payload).length === 0 && !hasGuests) return jsonResponse({ error: 'No fields to update' }, 400);
 

@@ -26,6 +26,31 @@ interface EventInput {
   venue_name?: string | null;
   externally_managed?: boolean | null;
   external_registration_url?: string | null;
+  google_photos_url?: string | null;
+}
+
+// Mirrors normalizeGooglePhotosUrl in worker/src/google-photos.ts, which has the
+// final say; this only exists to name the likely mix-up before Save.
+function googlePhotosUrlError(raw: string): string | null {
+  const value = raw.trim();
+  if (/^https:\/\/photos\.app\.goo\.gl\/[A-Za-z0-9]+\/?$/.test(value)) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return 'Paste the whole link, starting with https://photos.app.goo.gl/';
+  }
+  if (url.hostname === 'drive.google.com') {
+    return 'That\'s a Google Drive link. Drive folders show on the Photos page by themselves — this box is only for Google Photos albums.';
+  }
+  if (url.hostname !== 'photos.google.com') {
+    return 'That isn\'t a Google Photos link. It should start with https://photos.app.goo.gl/';
+  }
+  if (/\/photo\//.test(url.pathname)) {
+    return 'That link opens one photo. Open the whole album, tap Share → Create link, and paste that instead.';
+  }
+  if (/^\/(u\/\d+\/)?share\/[A-Za-z0-9_-]+\/?$/.test(url.pathname) && url.searchParams.get('key')) return null;
+  return 'That\'s the album\'s private address, which only you can open. In Google Photos, open the album, tap Share → Create link, and paste that link here.';
 }
 
 export function validateEvent(e: EventInput): ValidationErrors {
@@ -56,6 +81,10 @@ export function validateEvent(e: EventInput): ValidationErrors {
   } else {
     if (e.capacity == null || e.capacity < 1) errs.capacity = 'Capacity must be at least 1.';
     if (e.price != null && e.price < 0) errs.price = 'Price cannot be negative.';
+  }
+  if (e.google_photos_url?.trim()) {
+    const photosError = googlePhotosUrlError(e.google_photos_url);
+    if (photosError) errs.google_photos_url = photosError;
   }
   return errs;
 }

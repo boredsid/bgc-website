@@ -191,6 +191,34 @@ describe('handleUpdateEvent timing', () => {
   });
 });
 
+describe('handleUpdateEvent Google Photos album', () => {
+  async function update(google_photos_url: unknown) {
+    const cap: Capture = { eventUpdate: null, deletedFor: null, upserted: [] };
+    (getSupabase as any).mockReturnValue(mockSupabase([], cap));
+    const res = await handleUpdateEvent('e1', patch({ google_photos_url }), mockEnv(), ctx, 'admin@bgc.in');
+    return { res, cap };
+  }
+
+  it('stores a share link in its canonical form', async () => {
+    const { res, cap } = await update('  https://photos.app.goo.gl/QKGRYqfdS15bj8Kr5/ ');
+    expect(res.status).toBe(200);
+    expect(cap.eventUpdate.google_photos_url).toBe('https://photos.app.goo.gl/QKGRYqfdS15bj8Kr5');
+  });
+
+  it('clears the album when the link is blanked', async () => {
+    const { res, cap } = await update('   ');
+    expect(res.status).toBe(200);
+    expect(cap.eventUpdate.google_photos_url).toBeNull();
+  });
+
+  it('rejects the owner-only album address with a fix', async () => {
+    const { res, cap } = await update('https://photos.google.com/album/AF1QipPk40ln8lzMiqql3QK9');
+    expect(res.status).toBe(400);
+    expect((await res.json() as { error: string }).error).toMatch(/Create link/);
+    expect(cap.eventUpdate).toBeNull();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Deleting a draft event
 // ---------------------------------------------------------------------------

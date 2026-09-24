@@ -1,4 +1,7 @@
 import type { Env } from './index';
+import { getSupabase } from './supabase';
+import { currentBangaloreDate } from './finance-date';
+import { fetchGoogleAlbum, isValidMediaToken, type GoogleAlbum } from './google-photos';
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
 
@@ -42,7 +45,7 @@ async function withCache(
   const hit = await cache.match(request);
   if (hit) return hit;
   const res = await build();
-  if (res.ok) ctx.waitUntil(cache.put(request, res.clone()));
+  if (res.ok && res.headers.get('Cache-Control') !== 'no-store') ctx.waitUntil(cache.put(request, res.clone()));
   return res;
 }
 
@@ -57,6 +60,19 @@ export interface EventFolder {
   title: string;
   date: string | null; // ISO YYYY-MM-DD, or null when the name has no parseable date
 }
+
+// An event whose admin set a Google Photos album link. Keyed by the event's id,
+// since the album has no folder; `folderId` stays Drive-only so pages built
+// against the Drive-only list keep working.
+export interface GooglePhotosAlbum {
+  source: 'google_photos';
+  eventId: string;
+  title: string;
+  date: string | null;
+  albumUrl: string;
+}
+
+export type EventAlbum = (EventFolder & { source: 'drive' }) | GooglePhotosAlbum;
 
 export interface EventPhoto {
   id: string;
@@ -87,16 +103,37 @@ export function parseEventFolder(file: DriveFile): EventFolder {
   return { folderId: file.id, title: title.trim(), date: `${yyyy}-${month}-${day}` };
 }
 
+// Newest first, undated last (alphabetical among themselves).
+function newestFirst(a: { title: string; date: string | null }, b: { title: string; date: string | null }): number {
+  if (a.date && b.date) return b.date.localeCompare(a.date);
+  if (a.date) return -1;
+  if (b.date) return 1;
+  return a.title.localeCompare(b.title);
+}
+
 export function buildEventList(files: DriveFile[]): EventFolder[] {
   return files
     .filter((f) => f.name.trim().toLowerCase() !== 'archive')
     .map(parseEventFolder)
-    .sort((a, b) => {
-      if (a.date && b.date) return b.date.localeCompare(a.date);
-      if (a.date) return -1;
-      if (b.date) return 1;
-      return a.title.localeCompare(b.title);
-    });
+    .sort(newestFirst);
+}
+
+export interface PhotoAlbumEvent {
+  id: string;
+  name: string;
+  date: string;
+  google_photos_url: string;
+}
+
+export function buildAlbumList(folders: EventFolder[], events: PhotoAlbumEvent[]): EventAlbum[] {
+  const google: GooglePhotosAlbum[] = events.map((e) => ({
+    source: 'google_photos',
+    eventId: e.id,
+    title: e.name,
+    date: Number.isNaN(Date.parse(e.date)) ? null : currentBangaloreDate(new Date(e.date)),
+    albumUrl: e.google_photos_url,
+  }));
+  return [...folders.map((f) => ({ source: 'drive' as const, ...f })), ...google].sort(newestFirst);
 }
 
 export function buildPhotoList(files: DriveFile[]): EventPhoto[] {
@@ -117,17 +154,90 @@ export function buildPhotoList(files: DriveFile[]): EventPhoto[] {
   });
 }
 
+export function buildGooglePhotoList(album: GoogleAlbum): EventPhoto[] {
+  return album.items.map((item, i) => ({
+    id: item.token,
+    name: `bgc-${item.isVideo ? 'video' : 'photo'}-${i + 1}.${item.isVideo ? 'mp4' : 'jpg'}`,
+    kind: item.isVideo ? 'video' : 'image',
+    thumbUrl: `${item.baseUrl}=w800`,
+    viewUrl: `https://photos.google.com/share/${album.albumKey}/photo/${item.mediaKey}?key=${album.authKey}`,
+    downloadUrl: `${item.baseUrl}=${item.isVideo ? 'dv' : 'd'}`,
+  }));
+}
+
+// Null when the lookup fails, so a database problem only hides the Google
+// Photos albums instead of taking the Drive ones down with them.
+async function listGooglePhotosEvents(env: Env): Promise<PhotoAlbumEvent[] | null> {
+  try {
+    const { data, error } = await getSupabase(env)
+      .from('events')
+      .select('id, name, date, google_photos_url')
+      .eq('is_published', true)
+      .not('google_photos_url', 'is', null);
+    return error ? null : ((data ?? []) as PhotoAlbumEvent[]);
+  } catch {
+    return null;
+  }
+}
+
 export async function handleEventPhotos(
   request: Request,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
   return withCache(request, ctx, async () => {
-    const files = await driveList(
-      `'${env.EVENT_PHOTOS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      env,
-    );
-    return jsonCached({ events: buildEventList(files) });
+    const [files, events] = await Promise.all([
+      driveList(
+        `'${env.EVENT_PHOTOS_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+        env,
+      ),
+      listGooglePhotosEvents(env),
+    ]);
+    const body = { events: buildAlbumList(buildEventList(files), events ?? []) };
+    if (events) return jsonCached(body);
+    // Serve the Drive albums now, but don't cache a list that's missing some.
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+    });
+  });
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// `complete` is false when only part of a large album could be read; the page
+// then shows what it has and links to the album for the rest. A 502 means the
+// album couldn't be read at all, and the page falls back to the link alone.
+export async function handleGooglePhotosAlbum(
+  eventId: string,
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  if (!UUID_RE.test(eventId)) return badRequest('Invalid event ID');
+  return withCache(request, ctx, async () => {
+    const { data: event, error } = await getSupabase(env)
+      .from('events')
+      .select('google_photos_url')
+      .eq('id', eventId)
+      .eq('is_published', true)
+      .maybeSingle();
+    if (error) throw new Error(`Supabase ${error.message}`);
+    const albumUrl = (event as { google_photos_url: string | null } | null)?.google_photos_url;
+    if (!albumUrl) {
+      return new Response(JSON.stringify({ error: 'Album not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const album = await fetchGoogleAlbum(albumUrl).catch(() => null);
+    if (!album) {
+      return new Response(JSON.stringify({ error: 'Could not read the album', albumUrl }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return jsonCached({ photos: buildGooglePhotoList(album), albumUrl, complete: album.complete });
   });
 }
 
@@ -154,20 +264,35 @@ export async function handleEventPhotoImage(
   ctx: ExecutionContext,
 ): Promise<Response> {
   if (!isValidDriveId(fileId)) return badRequest('Invalid file ID');
-  return withCache(request, ctx, async () => {
-    const upstream = await fetch(`https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`);
-    if (!upstream.ok) {
-      return new Response(JSON.stringify({ error: 'Image not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    return new Response(upstream.body, {
-      status: 200,
-      headers: {
-        'Content-Type': upstream.headers.get('Content-Type') ?? 'image/jpeg',
-        'Cache-Control': 'public, max-age=600',
-      },
+  return withCache(request, ctx, () => proxyImage(`https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`));
+}
+
+// Google Photos serves images without CORS headers, so sharing one as a file
+// goes through here just like a Drive image. Only lh3 shared-album paths are
+// fetched, so this can't be pointed at an arbitrary URL.
+export async function handleGooglePhotoImage(
+  token: string,
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  if (!isValidMediaToken(token)) return badRequest('Invalid image ID');
+  return withCache(request, ctx, () => proxyImage(`https://lh3.googleusercontent.com/pw/${token}=w1200`));
+}
+
+async function proxyImage(upstreamUrl: string): Promise<Response> {
+  const upstream = await fetch(upstreamUrl);
+  if (!upstream.ok) {
+    return new Response(JSON.stringify({ error: 'Image not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
     });
+  }
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      'Content-Type': upstream.headers.get('Content-Type') ?? 'image/jpeg',
+      'Cache-Control': 'public, max-age=600',
+    },
   });
 }

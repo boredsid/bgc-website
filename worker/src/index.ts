@@ -7,7 +7,13 @@ import { handleLead } from './lead';
 import { handleDdSubmit } from './dd-submit';
 import { handleWaitlist } from './waitlist';
 import { handleGuildStatus } from './guild-status';
-import { handleEventPhotos, handleEventPhotosFolder, handleEventPhotoImage } from './event-photos';
+import {
+  handleEventPhotos,
+  handleEventPhotosFolder,
+  handleEventPhotoImage,
+  handleGooglePhotosAlbum,
+  handleGooglePhotoImage,
+} from './event-photos';
 import { handleCancelRegistration, handleCancelGuildMembership } from './cancel';
 import { verifyAccessJwt } from './access-auth';
 import { handleMcp } from './mcp/protocol';
@@ -177,6 +183,12 @@ export default {
       } else if (url.pathname.startsWith('/api/event-photos/image/') && request.method === 'GET') {
         const fileId = decodeURIComponent(url.pathname.split('/api/event-photos/image/')[1] ?? '');
         response = await handleEventPhotoImage(fileId, request, env, ctx);
+      } else if (url.pathname.startsWith('/api/event-photos/google/') && request.method === 'GET') {
+        const eventId = decodeURIComponent(url.pathname.split('/api/event-photos/google/')[1] ?? '');
+        response = await handleGooglePhotosAlbum(eventId, request, env, ctx);
+      } else if (url.pathname.startsWith('/api/event-photos/google-image/') && request.method === 'GET') {
+        const token = decodeURIComponent(url.pathname.split('/api/event-photos/google-image/')[1] ?? '');
+        response = await handleGooglePhotoImage(token, request, env, ctx);
       } else if (url.pathname === '/mcp') {
         response = await handleMcp(request, env, ctx, ALL_TOOLS);
       } else if (url.pathname.startsWith('/api/admin/')) {

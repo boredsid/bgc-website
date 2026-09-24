@@ -33,6 +33,7 @@ export interface Event {
   is_collaboration: boolean;
   externally_managed: boolean;
   external_registration_url: string | null;
+  google_photos_url: string | null;
   created_at: string;
 }
 

@@ -29,7 +29,7 @@ const empty: Partial<Event> = {
   venue_name: '', venue_area: '',
   price: 0, capacity: 0, custom_questions: [], price_includes: '', llm_notes: '',
   is_published: false, guild_path_exclusive: false, replay_pass_free: false, is_collaboration: false,
-  externally_managed: false, external_registration_url: '',
+  externally_managed: false, external_registration_url: '', google_photos_url: '',
 };
 
 export default function EventDrawer({ mode }: Props) {
@@ -126,6 +126,7 @@ export default function EventDrawer({ mode }: Props) {
         date: form.date ? new Date(form.date).toISOString() : '',
         end_date: form.end_date ? new Date(form.end_date).toISOString() : null,
         is_all_day: !!form.is_all_day,
+        google_photos_url: form.google_photos_url?.trim() || null,
         ...(external
           ? {
               capacity: 0,
@@ -462,6 +463,21 @@ export default function EventDrawer({ mode }: Props) {
               />
             </div>
           )}
+          <div className="space-y-1">
+            {field('google_photos_url', 'Google Photos album (optional)', (
+              <Input
+                type="url"
+                inputMode="url"
+                placeholder="https://photos.app.goo.gl/…"
+                value={form.google_photos_url || ''}
+                onChange={(e) => set('google_photos_url', e.target.value)}
+              />
+            ))}
+            <p className="text-xs text-muted-foreground">
+              In Google Photos, open the album, tap Share → Create link, and paste it here. Once the
+              event is published, the album shows on the website's Photos page alongside the Drive folders.
+            </p>
+          </div>
           {deleteSection}
         </>
       )}

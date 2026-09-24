@@ -1,9 +1,5 @@
-const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
-
 export interface SharablePhoto {
-  id: string;
   name: string;
-  viewUrl: string;
 }
 
 export function canNativeShare(): boolean {
@@ -28,13 +24,13 @@ export async function shareUrlLink(url: string, text = 'Board Game Company'): Pr
 }
 
 // Attempt to share the actual image file via the OS share sheet (Instagram,
-// WhatsApp, etc. on mobile). Bytes are pulled through the worker proxy so the
-// cross-origin fetch().blob() is allowed. Returns true if the share was handled
-// (including user-cancel), false if the caller should fall back to copy-link.
-export async function sharePhotoFile(photo: SharablePhoto): Promise<boolean> {
+// WhatsApp, etc. on mobile). `imageUrl` is the worker's proxy for the image, so
+// the cross-origin fetch().blob() is allowed. Returns true if the share was
+// handled (including user-cancel), false if the caller should fall back to copy-link.
+export async function sharePhotoFile(photo: SharablePhoto, imageUrl: string): Promise<boolean> {
   if (!canNativeShare()) return false;
   try {
-    const res = await fetch(`${WORKER_URL}/api/event-photos/image/${photo.id}`);
+    const res = await fetch(imageUrl);
     if (!res.ok) return false;
     const blob = await res.blob();
     const file = new File([blob], `${photo.name || 'bgc-photo'}`, {

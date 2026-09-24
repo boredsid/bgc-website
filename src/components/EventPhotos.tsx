@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react';
 import PhotoAlbum from './PhotoAlbum';
+import { albumId, type EventAlbum } from '../lib/photo-albums';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
 const PARENT_FOLDER_URL =
   'https://drive.google.com/drive/folders/11e-Aibjt3IztaW-Qd1BU24T-V1ECPXn-';
-
-interface EventFolder {
-  folderId: string;
-  title: string;
-  date: string | null;
-}
 
 function formatDate(iso: string | null): string {
   if (!iso) return '';
@@ -18,10 +13,10 @@ function formatDate(iso: string | null): string {
 }
 
 export default function EventPhotos() {
-  const [events, setEvents] = useState<EventFolder[]>([]);
+  const [events, setEvents] = useState<EventAlbum[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [active, setActive] = useState<EventFolder | null>(null);
+  const [active, setActive] = useState<EventAlbum | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,7 +24,7 @@ export default function EventPhotos() {
       try {
         const res = await fetch(`${WORKER_URL}/api/event-photos`);
         if (!res.ok) throw new Error('fetch failed');
-        const data = (await res.json()) as { events: EventFolder[] };
+        const data = (await res.json()) as { events: EventAlbum[] };
         if (!cancelled) setEvents(data.events);
       } catch {
         if (!cancelled) setError(true);
@@ -46,16 +41,16 @@ export default function EventPhotos() {
   useEffect(() => {
     function syncFromUrl() {
       const id = new URLSearchParams(window.location.search).get('event');
-      setActive(id ? events.find((e) => e.folderId === id) ?? null : null);
+      setActive(id ? events.find((e) => albumId(e) === id) ?? null : null);
     }
     syncFromUrl();
     window.addEventListener('popstate', syncFromUrl);
     return () => window.removeEventListener('popstate', syncFromUrl);
   }, [events]);
 
-  function openEvent(ev: EventFolder) {
+  function openEvent(ev: EventAlbum) {
     const url = new URL(window.location.href);
-    url.searchParams.set('event', ev.folderId);
+    url.searchParams.set('event', albumId(ev));
     window.history.pushState({}, '', url);
     setActive(ev);
   }
@@ -70,7 +65,7 @@ export default function EventPhotos() {
   if (active) {
     return (
       <PhotoAlbum
-        folderId={active.folderId}
+        album={active}
         title={active.title}
         dateLabel={formatDate(active.date)}
         onBack={closeEvent}
@@ -107,7 +102,7 @@ export default function EventPhotos() {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {events.map((ev) => (
         <button
-          key={ev.folderId}
+          key={albumId(ev)}
           onClick={() => openEvent(ev)}
           className="text-left rounded-2xl p-6 transition-transform hover:-translate-y-1"
           style={{

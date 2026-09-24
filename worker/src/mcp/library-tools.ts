@@ -1,5 +1,5 @@
 import { getSupabase } from '../supabase';
-import { handleEventPhotos } from '../event-photos';
+import { handleEventPhotos, type EventAlbum } from '../event-photos';
 import { COMMUNITY } from './links';
 import { ToolError, type McpTool } from './types';
 
@@ -70,9 +70,7 @@ const getPhotos: McpTool = {
     if (!res.ok) {
       throw new ToolError(`Photos are unavailable right now — browse them at ${COMMUNITY.website}/photos`);
     }
-    const { events } = (await res.json()) as {
-      events: Array<{ folderId: string; title: string; date: string | null }>;
-    };
+    const { events } = (await res.json()) as { events: EventAlbum[] };
 
     const needle = typeof args.query === 'string' ? args.query.trim().toLowerCase() : '';
     const filtered = needle ? events.filter((e) => e.title.toLowerCase().includes(needle)) : events;
@@ -81,7 +79,7 @@ const getPhotos: McpTool = {
       albums: filtered.map((e) => ({
         title: e.title,
         date: e.date,
-        album_url: `${COMMUNITY.website}/photos?event=${e.folderId}`,
+        album_url: `${COMMUNITY.website}/photos?event=${e.source === 'google_photos' ? e.eventId : e.folderId}`,
       })),
       photos_url: `${COMMUNITY.website}/photos`,
     };

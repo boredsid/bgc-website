@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { sharePhotoFile, canNativeShare, canShareUrl, shareUrlLink, copyLink } from '../lib/share';
-
-const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
+import { albumPhotosUrl, shareableImageUrl, type EventAlbum } from '../lib/photo-albums';
 
 interface Photo {
   id: string;
@@ -10,22 +9,27 @@ interface Photo {
   thumbUrl: string;
   viewUrl: string;
   downloadUrl: string;
+  // Drive videos play in an embedded player. Google Photos can't be embedded,
+  // so its videos have no previewUrl and play on Google Photos instead.
   previewUrl?: string;
 }
 
 interface Props {
-  folderId: string;
+  album: EventAlbum;
   title: string;
   dateLabel: string;
   onBack: () => void;
 }
 
-export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props) {
+export default function PhotoAlbum({ album, title, dateLabel, onBack }: Props) {
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [complete, setComplete] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [lightbox, setLightbox] = useState<Photo | null>(null);
   const [copied, setCopied] = useState(false);
+  const photosUrl = albumPhotosUrl(album);
+  const googleAlbumUrl = album.source === 'google_photos' ? album.albumUrl : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -33,10 +37,13 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
     setError(false);
     (async () => {
       try {
-        const res = await fetch(`${WORKER_URL}/api/event-photos/folder/${folderId}`);
+        const res = await fetch(photosUrl);
         if (!res.ok) throw new Error('fetch failed');
-        const data = (await res.json()) as { photos: Photo[] };
-        if (!cancelled) setPhotos(data.photos);
+        const data = (await res.json()) as { photos: Photo[]; complete?: boolean };
+        if (!cancelled) {
+          setPhotos(data.photos);
+          setComplete(data.complete !== false);
+        }
       } catch {
         if (!cancelled) setError(true);
       } finally {
@@ -46,7 +53,7 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
     return () => {
       cancelled = true;
     };
-  }, [folderId]);
+  }, [photosUrl]);
 
   function flashCopied(ok: boolean) {
     setCopied(ok);
@@ -55,7 +62,9 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
 
   async function onShare(photo: Photo) {
     const shared =
-      photo.kind === 'video' ? await shareUrlLink(photo.viewUrl) : await sharePhotoFile(photo);
+      photo.kind === 'video'
+        ? await shareUrlLink(photo.viewUrl)
+        : await sharePhotoFile(photo, shareableImageUrl(album, photo.id));
     if (!shared) flashCopied(await copyLink(photo.viewUrl));
   }
 
@@ -64,8 +73,20 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
       <button onClick={onBack} className="mb-6 font-heading font-semibold text-[#F47B20]">
         ← All events
       </button>
-      <h2 className="font-heading font-bold text-3xl">{title}</h2>
-      {dateLabel && <p className="text-[#1A1A1A]/60 mb-6">{dateLabel}</p>}
+      <div className="mb-6">
+        <h2 className="font-heading font-bold text-3xl">{title}</h2>
+        {dateLabel && <p className="text-[#1A1A1A]/60">{dateLabel}</p>}
+        {googleAlbumUrl && (
+          <a
+            href={googleAlbumUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-1 font-semibold text-[#F47B20]"
+          >
+            Open in Google Photos ↗
+          </a>
+        )}
+      </div>
 
       {loading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -75,7 +96,17 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
         </div>
       )}
 
-      {error && <p className="py-10 text-[#1A1A1A]/70">Couldn't load these photos. Try again later.</p>}
+      {error &&
+        (googleAlbumUrl ? (
+          <div className="py-10">
+            <p className="text-[#1A1A1A]/70 mb-4">Couldn't show these photos here.</p>
+            <a href={googleAlbumUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+              View the album on Google Photos
+            </a>
+          </div>
+        ) : (
+          <p className="py-10 text-[#1A1A1A]/70">Couldn't load these photos. Try again later.</p>
+        ))}
 
       {!loading && !error && photos.length === 0 && (
         <p className="py-10 text-[#1A1A1A]/70">No photos in this album yet.</p>
@@ -102,12 +133,21 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
         </div>
       )}
 
+      {!loading && !error && !complete && googleAlbumUrl && (
+        <p className="mt-6 text-[#1A1A1A]/70">
+          Showing the first {photos.length}.{' '}
+          <a href={googleAlbumUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-[#F47B20]">
+            See the whole album on Google Photos ↗
+          </a>
+        </p>
+      )}
+
       {lightbox && (
         <div
           className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
-          {lightbox.kind === 'video' ? (
+          {lightbox.kind === 'video' && lightbox.previewUrl ? (
             <iframe
               src={lightbox.previewUrl}
               title={lightbox.name}
@@ -116,6 +156,21 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
               className="w-[90vw] max-w-[900px] max-h-[75vh] aspect-video rounded-lg bg-black"
               onClick={(e) => e.stopPropagation()}
             />
+          ) : lightbox.kind === 'video' ? (
+            <a
+              href={lightbox.viewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative block"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img src={lightbox.thumbUrl} alt={lightbox.name} className="max-h-[75vh] max-w-full rounded-lg" />
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="flex items-center justify-center w-16 h-16 rounded-full bg-black/55 text-white text-2xl">
+                  ▶
+                </span>
+              </span>
+            </a>
           ) : (
             <img
               src={lightbox.thumbUrl}
@@ -125,8 +180,16 @@ export default function PhotoAlbum({ folderId, title, dateLabel, onBack }: Props
             />
           )}
           <div className="flex flex-wrap gap-3 mt-4 justify-center" onClick={(e) => e.stopPropagation()}>
+            {lightbox.kind === 'video' && !lightbox.previewUrl && (
+              <a href={lightbox.viewUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                Play on Google Photos
+              </a>
+            )}
             {(lightbox.kind === 'video' ? canShareUrl() : canNativeShare()) && (
-              <button onClick={() => onShare(lightbox)} className="btn btn-primary">
+              <button
+                onClick={() => onShare(lightbox)}
+                className={lightbox.kind === 'video' && !lightbox.previewUrl ? 'btn btn-secondary' : 'btn btn-primary'}
+              >
                 Share
               </button>
             )}

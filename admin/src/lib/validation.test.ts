@@ -66,6 +66,20 @@ describe('validateEvent', () => {
       price: -1,
     })).toEqual({});
   });
+  it('leaves the Google Photos album optional', () => {
+    expect(validateEvent({ ...valid, google_photos_url: '  ' })).toEqual({});
+  });
+  it('accepts an album share link, short or long', () => {
+    expect(validateEvent({ ...valid, google_photos_url: 'https://photos.app.goo.gl/QKGRYqfdS15bj8Kr5' })).toEqual({});
+    expect(validateEvent({ ...valid, google_photos_url: 'https://photos.google.com/share/AF1Qip?key=dEVw' })).toEqual({});
+  });
+  it('names the likely mix-up when the album link is wrong', () => {
+    const err = (url: string) => validateEvent({ ...valid, google_photos_url: url }).google_photos_url;
+    expect(err('https://photos.google.com/album/AF1Qip')).toMatch(/private address/);
+    expect(err('https://photos.google.com/share/AF1Qip/photo/AF1Qx?key=dEVw')).toMatch(/one photo/);
+    expect(err('https://drive.google.com/drive/folders/11e')).toMatch(/Google Drive link/);
+    expect(err('photos.app.goo.gl/QKGR')).toMatch(/whole link/);
+  });
 });
 
 describe('validateGame', () => {

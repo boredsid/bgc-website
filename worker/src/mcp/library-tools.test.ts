@@ -76,6 +76,17 @@ describe('get_photos', () => {
     });
   });
 
+  it('links a Google Photos album by its event', async () => {
+    (handleEventPhotos as any).mockResolvedValue(new Response(JSON.stringify({
+      events: [
+        { source: 'google_photos', eventId: 'E1', title: 'Azul Evening', date: '2026-06-01', albumUrl: 'https://photos.app.goo.gl/abc' },
+      ],
+    }), { status: 200 }));
+
+    const out = await tool('get_photos').handler({}, env, ctx) as any;
+    expect(out.albums[0].album_url).toBe('https://boardgamecompany.in/photos?event=E1');
+  });
+
   it('raises a friendly error when the photos backend is down', async () => {
     (handleEventPhotos as any).mockResolvedValue(new Response('nope', { status: 502 }));
     await expect(tool('get_photos').handler({}, env, ctx)).rejects.toThrow(/photos/i);
