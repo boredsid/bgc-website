@@ -1,0 +1,37 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="A little something for you" description="You've stumbled upon a very special corner of Board Game Company." noindex>
+  <section class="prank-page">
+    <span class="section-tag">A critical miss for your search history</span>
+    <h1>You’ve been<br /><span>toe-tally Rickrolled.</span></h1>
+    <div class="video-frame">
+      <iframe
+        src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&playsinline=1&rel=0"
+        title="Rick Astley — Never Gonna Give You Up"
+        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen
+      ></iframe>
+    </div>
+    <p class="video-help">Rick playing hard to get? <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" target="_blank" rel="noopener noreferrer">Open your surprise on YouTube ↗</a></p>
+    <h2>No feet pics. Plenty of questionable moves.</h2>
+    <p class="prank-copy">Just people getting suspiciously competitive over cardboard.<br />Our event photos are the only pics we’re dealing.</p>
+    <a class="btn btn-primary" href="/photos">Show me the event photos <span aria-hidden="true">→</span></a>
+  </section>
+</Layout>
+
+<style>
+  .prank-page { max-width: 900px; margin: 0 auto; padding: 48px 24px 72px; text-align: center; }
+  .section-tag { max-width: 100%; font-size: .75rem; }
+  h1 { font-size: clamp(2.3rem, 6vw, 4.3rem); margin: 12px 0 28px; }
+  h1 span { color: #d65100; }
+  .video-frame { aspect-ratio: 16 / 9; overflow: hidden; border: 3px solid #1a1a1a; border-radius: 12px; background: #1a1a1a; box-shadow: 6px 6px 0 #1a1a1a; }
+  iframe { display: block; width: 100%; height: 100%; border: 0; }
+  .video-help { margin: 16px 0 32px; font-size: .8rem; color: #555; }
+  .video-help a { text-decoration: underline; text-underline-offset: 3px; }
+  h2 { font-size: clamp(1.4rem, 3vw, 2rem); }
+  .prank-copy { margin: 14px 0 24px; color: #555; line-height: 1.7; }
+  .btn { max-width: 100%; white-space: normal; }
+</style>

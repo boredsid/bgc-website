@@ -7,10 +7,11 @@ interface Props {
   title: string;
   description?: string;
   image?: string;
+  noindex?: boolean;
   schema?: Record<string, unknown> | Record<string, unknown>[];
 }
 
-const { title, description = "Bangalore's Favorite Board Gaming Community", image = '/og-home.jpg', schema } = Astro.props;
+const { title, description = "Bangalore's Favorite Board Gaming Community", image = '/og-home.jpg', schema, noindex = false } = Astro.props;
 const fullTitle = `${title} — Board Game Company`;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site).toString();
 const imageURL = new URL(image, Astro.site).toString();
@@ -23,6 +24,7 @@ const schemaBlocks = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
     <title>{fullTitle}</title>
     <link rel="canonical" href={canonicalURL} />
     <link rel="icon" type="image/png" href="/bgc-logo.png" />
