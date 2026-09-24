@@ -16,6 +16,7 @@ import {
 import { currentBangaloreDate } from '../finance-date';
 import { getActiveMembership } from '../guild';
 import { assertCommunityHost } from './community-hosts';
+import { clashMessage, findEventClash } from '../event-clash';
 
 export async function handleManualRegister(
   request: Request,
@@ -33,6 +34,7 @@ export async function handleManualRegister(
     custom_answers?: Record<string, string | boolean>;
     payment_status: 'pending' | 'confirmed';
     allow_overbook?: boolean;
+    allow_clash?: boolean;
     payment_account_id?: string;
     paid_at?: string;
     payment_method?: 'upi' | 'cash' | 'bank_transfer' | 'card' | 'other';
@@ -107,6 +109,29 @@ export async function handleManualRegister(
   const seatPrice = asCommunityHost
     ? 0
     : effectiveSeatPrice(customQuestions, body.custom_answers || {}, event.price);
+
+  // Same-start-time clash. Unlike the public form this is a warning, not a
+  // wall — an admin sometimes genuinely needs both rows (a host covering two
+  // tables, a booking being moved) — so it returns a structured 409 the UI
+  // prompts on, then resubmits with allow_clash.
+  if (!body.allow_clash) {
+    const clash = await findEventClash(supabase, body.event_id, event.date, phone);
+    if (clash) {
+      return jsonResponse(
+        {
+          error: `${clashMessage(clash)} Adding this one books them for two events at once.`,
+          clash_detected: true,
+          clashing_event: {
+            id: clash.event.id,
+            name: clash.event.name,
+            date: clash.event.date,
+            seats: clash.seats,
+          },
+        },
+        409,
+      );
+    }
+  }
 
   // Capacity check (excludes cancelled). Over-capacity is allowed but must be
   // explicitly confirmed by the admin: the first attempt returns a structured

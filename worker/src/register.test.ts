@@ -9,6 +9,11 @@ function mockEnv() {
 }
 
 vi.mock('./supabase', () => ({ getSupabase: vi.fn() }));
+vi.mock('./event-clash', () => ({
+  findEventClash: vi.fn(async () => null),
+  clashMessage: vi.fn(() => ''),
+}));
+
 vi.mock('./email', () => ({ sendEventRegistrationEmail: vi.fn(async () => undefined) }));
 vi.mock('./credits', () => ({
   applyCreditsToTotal: vi.fn(async (_s: any, _u: string, total: number) => ({ creditsApplied: 0, finalAmount: total })),
@@ -21,6 +26,7 @@ vi.mock('./promos', () => ({
 }));
 
 import { getSupabase } from './supabase';
+import { findEventClash } from './event-clash';
 import { handleRegister } from './register';
 
 function buildSupabaseMock(capture: { leadUpdate: any }) {
@@ -84,6 +90,55 @@ function buildSupabaseMock(capture: { leadUpdate: any }) {
     },
   };
 }
+
+describe('handleRegister same-time clash', () => {
+  it('refuses when the number is already booked for a concurrent event', async () => {
+    let registrationsRead = false;
+    (getSupabase as any).mockReturnValue({
+      from: (table: string) => {
+        if (table === 'events') {
+          return {
+            select: () => ({ eq: () => ({ eq: () => ({ single: async () => ({ data: {
+              id: 'E1', name: 'Catan Cup', date: '2026-06-01T13:30:00+00:00',
+              is_published: true, capacity: 10, price: 500, custom_questions: [],
+            }, error: null }) }) }) }),
+          };
+        }
+        if (table === 'registrations') registrationsRead = true;
+        return null;
+      },
+    });
+    (findEventClash as any).mockResolvedValueOnce({
+      event: {
+        id: 'E2', name: 'Werewolf Night', date: '2026-06-01T13:30:00+00:00',
+        end_date: null, is_all_day: false, venue_name: 'Indiranagar',
+      },
+      seats: 1,
+    });
+
+    const req = new Request('http://localhost/api/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'E1',
+        name: 'Asha',
+        phone: '9876543210',
+        email: 'a@b.com',
+        seats: 1,
+        custom_answers: {},
+        payment_status: 'pending',
+      }),
+    });
+    const res = await handleRegister(req, mockEnv(), { waitUntil: () => {} } as any);
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      code: 'time_clash',
+      clashing_event: { id: 'E2', name: 'Werewolf Night' },
+    });
+    // Refused before anything is read, let alone written.
+    expect(registrationsRead).toBe(false);
+  });
+});
 
 describe('handleRegister lead conversion', () => {
   it('rejects BGC registration for an externally managed event', async () => {

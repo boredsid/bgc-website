@@ -75,6 +75,18 @@ interface Props {
   mode?: 'manual' | 'host';
 }
 
+/**
+ * The guards an admin has explicitly waved through. They accumulate: confirming
+ * a time clash and then hitting the capacity warning must keep the first answer,
+ * or the second submit re-raises the first question.
+ */
+type Overrides = { allow_overbook?: boolean; allow_clash?: boolean };
+
+interface Warning {
+  message: string;
+  overrides: Overrides;
+}
+
 export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
   const isHostMode = mode === 'host';
   const navigate = useNavigate();
@@ -91,7 +103,8 @@ export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
   const [saving, setSaving] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [capacityWarning, setCapacityWarning] = useState<string | null>(null);
+  const [capacityWarning, setCapacityWarning] = useState<Warning | null>(null);
+  const [clashWarning, setClashWarning] = useState<Warning | null>(null);
   const [hosts, setHosts] = useState<CommunityHost[]>([]);
   const [hostId, setHostId] = useState('');
   const [financeAccounts, setFinanceAccounts] = useState<FinanceAccount[]>([]);
@@ -316,10 +329,10 @@ export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
       el?.focus();
       return;
     }
-    submit(false);
+    submit({});
   }
 
-  async function submit(allowOverbook: boolean) {
+  async function submit(overrides: Overrides) {
     setSaving(true);
     setServerError(null);
     try {
@@ -333,19 +346,27 @@ export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
           seats: seats ?? 1,
           payment_status: isHostMode ? 'confirmed' : paymentStatus,
           custom_answers: customAnswers,
-          allow_overbook: allowOverbook,
+          ...overrides,
           ...(companionPhones.length > 0 ? { companion_phones: companionPhones } : {}),
           ...(isHostMode ? { is_community_host: true } : {}),
           ...(!isHostMode && paymentStatus === 'confirmed' && !isGuest ? paymentDetails : {}),
         }),
       });
       setCapacityWarning(null);
+      setClashWarning(null);
       toast.success(isHostMode ? 'Community host added to the event' : 'Registration created');
       navigate('/registrations');
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409 && (err.data as { capacity_exceeded?: boolean } | null)?.capacity_exceeded) {
-        setCapacityWarning(err.message);
-        return;
+      if (err instanceof ApiError && err.status === 409) {
+        const data = err.data as { capacity_exceeded?: boolean; clash_detected?: boolean } | null;
+        if (data?.clash_detected) {
+          setClashWarning({ message: err.message, overrides });
+          return;
+        }
+        if (data?.capacity_exceeded) {
+          setCapacityWarning({ message: err.message, overrides });
+          return;
+        }
       }
       setServerError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -560,17 +581,41 @@ export default function ManualRegistrationDrawer({ mode = 'manual' }: Props) {
         )}
       </div>
 
+      <Dialog open={!!clashWarning} onOpenChange={(o) => { if (!o) setClashWarning(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clashes with another event</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            {clashWarning?.message} People registering themselves are stopped here — only
+            add this if they really are meant to hold both.
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setClashWarning(null)} disabled={saving}>Cancel</Button>
+            <Button
+              onClick={() => submit({ ...clashWarning!.overrides, allow_clash: true })}
+              disabled={saving}
+            >
+              {saving ? 'Registering…' : 'Register anyway'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!capacityWarning} onOpenChange={(o) => { if (!o) setCapacityWarning(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Event is full</DialogTitle>
           </DialogHeader>
           <div className="text-sm text-muted-foreground">
-            {capacityWarning} You can still register them over capacity.
+            {capacityWarning?.message} You can still register them over capacity.
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCapacityWarning(null)} disabled={saving}>Cancel</Button>
-            <Button onClick={() => submit(true)} disabled={saving}>
+            <Button
+              onClick={() => submit({ ...capacityWarning!.overrides, allow_overbook: true })}
+              disabled={saving}
+            >
               {saving ? 'Registering…' : 'Register anyway'}
             </Button>
           </DialogFooter>

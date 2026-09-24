@@ -6,6 +6,7 @@ import { getActivePromo } from './promos';
 import { fetchReplayPassStatus } from './replay-client';
 import { fetchClaimedPhones } from './replay-pass-claims';
 import { getActiveMembership } from './guild';
+import { findEventClash, type ClashingEvent } from './event-clash';
 
 export async function handleLookupPhone(request: Request, env: Env): Promise<Response> {
   const body = await request.json<{ phone: string; event_id?: string }>();
@@ -59,12 +60,22 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
     edition_name: string | null;
     already_claimed: boolean;
   } | null = null;
+  // The other event this number is already booked for at this one's start time.
+  // The form uses it to stop someone before they fill the whole thing in; the
+  // register endpoint enforces the same rule for real.
+  let clashingEvent: ClashingEvent | null = null;
   if (body.event_id) {
     const { data: event } = await supabase
       .from('events')
-      .select('replay_pass_free')
+      .select('date, replay_pass_free')
       .eq('id', body.event_id)
       .maybeSingle();
+
+    if (event?.date) {
+      const clash = await findEventClash(supabase, body.event_id, event.date, phone);
+      clashingEvent = clash?.event ?? null;
+    }
+
     if (event?.replay_pass_free) {
       // `already_claimed` covers the case where someone else's booking named
       // this number as a companion — the pass is spent even though this person
@@ -99,6 +110,7 @@ export async function handleLookupPhone(request: Request, env: Env): Promise<Res
       never_expires: !!member?.never_expires,
     },
     existing_seats_for_event: existingSeatsForEvent,
+    clashing_event: clashingEvent,
     replay_pass: replayPass,
     credit_balance: creditBalance,
     active_promo: activePromo

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 vi.mock('./supabase', () => ({ getSupabase: vi.fn() }));
+vi.mock('./event-clash', () => ({
+  findEventClash: vi.fn(async () => null),
+  clashMessage: vi.fn(() => ''),
+}));
+
 vi.mock('./email', () => ({ sendEventRegistrationEmail: vi.fn(async () => undefined) }));
 vi.mock('./credits', () => ({
   applyCreditsToTotal: vi.fn(async (_s: any, _u: string, total: number) => ({ creditsApplied: 0, finalAmount: total })),

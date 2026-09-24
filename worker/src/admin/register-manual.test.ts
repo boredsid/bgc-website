@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 function mockEnv() {
   return {
@@ -12,6 +12,10 @@ vi.mock('../supabase', () => ({
   getSupabase: vi.fn(),
 }));
 
+vi.mock('../event-clash', () => ({
+  findEventClash: vi.fn(async () => null),
+  clashMessage: vi.fn(() => ''),
+}));
 vi.mock('../email', () => ({
   sendEventRegistrationEmail: vi.fn(async () => undefined),
 }));
@@ -23,6 +27,7 @@ vi.mock('../promos', () => ({
 }));
 
 import { getSupabase } from '../supabase';
+import { findEventClash } from '../event-clash';
 import { handleManualRegister } from './register-manual';
 
 const paymentDetails = {
@@ -82,6 +87,13 @@ function buildSupabaseMock(eventRow: any, regs: any[]) {
 }
 
 describe('handleManualRegister', () => {
+  // The clash lookup is steered per-test; reset it so a queued answer never
+  // leaks into the next case.
+  beforeEach(() => {
+    (findEventClash as any).mockReset();
+    (findEventClash as any).mockResolvedValue(null);
+  });
+
   it('rejects manual registrations for externally managed events', async () => {
     (getSupabase as any).mockReturnValue(buildSupabaseMock(
       {
@@ -109,6 +121,41 @@ describe('handleManualRegister', () => {
       code: 'external_registration',
       external_registration_url: 'https://ttrpgcon.example/register',
     });
+  });
+
+  it('warns (409) when the person is already booked for a concurrent event', async () => {
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(
+      { id: 'e1', name: 'Test', date: '2026-06-01T13:30:00Z', price: 500, capacity: 10, custom_questions: null, is_published: true, venue_name: 'X', venue_area: null, price_includes: null },
+      [],
+    ));
+    (findEventClash as any).mockResolvedValueOnce({
+      event: { id: 'e2', name: 'Werewolf Night', date: '2026-06-01T13:30:00Z', end_date: null, is_all_day: false, venue_name: 'Y' },
+      seats: 2,
+    });
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({ event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com', seats: 1, payment_status: 'confirmed', custom_answers: {}, ...paymentDetails }),
+    });
+    const res = await handleManualRegister(req, mockEnv(), { waitUntil: () => {} } as any);
+    expect(res.status).toBe(409);
+    const body = await res.json<any>();
+    expect(body.clash_detected).toBe(true);
+    expect(body.clashing_event).toMatchObject({ id: 'e2', name: 'Werewolf Night', seats: 2 });
+  });
+
+  it('registers anyway when allow_clash is true', async () => {
+    (getSupabase as any).mockReturnValue(buildSupabaseMock(
+      { id: 'e1', name: 'Test', date: '2026-06-01T13:30:00Z', price: 500, capacity: 10, custom_questions: null, is_published: true, venue_name: 'X', venue_area: null, price_includes: null },
+      [],
+    ));
+    // Would clash, but the admin already said yes — so it is never consulted.
+    const req = new Request('http://localhost/api/admin/registrations/manual', {
+      method: 'POST',
+      body: JSON.stringify({ event_id: 'e1', name: 'A', phone: '9999999999', email: 'a@x.com', seats: 1, payment_status: 'confirmed', custom_answers: {}, allow_clash: true, ...paymentDetails }),
+    });
+    const res = await handleManualRegister(req, mockEnv(), { waitUntil: () => {} } as any);
+    expect(res.status).toBe(200);
+    expect(findEventClash).not.toHaveBeenCalled();
   });
 
   it('warns (409) when seats exceed remaining capacity and overbook not confirmed', async () => {

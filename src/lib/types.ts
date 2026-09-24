@@ -77,6 +77,15 @@ export interface PhoneLookupResponse {
     plus_ones_remaining: number;
   };
   existing_seats_for_event: number;
+  // The other event this number is already booked for at this one's start time.
+  clashing_event: {
+    id: string;
+    name: string;
+    date: string;
+    end_date: string | null;
+    is_all_day: boolean;
+    venue_name: string | null;
+  } | null;
   replay_pass: { has_pass: boolean; edition_name: string | null; already_claimed: boolean } | null;
   credit_balance: number;
   active_promo: {

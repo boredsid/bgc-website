@@ -9,6 +9,10 @@ function mockEnv() {
 }
 
 vi.mock('../supabase', () => ({ getSupabase: vi.fn() }));
+vi.mock('../event-clash', () => ({
+  findEventClash: vi.fn(async () => null),
+  clashMessage: vi.fn(() => ''),
+}));
 vi.mock('../email', () => ({ sendEventRegistrationEmail: vi.fn(async () => undefined) }));
 
 const getApplicablePromo = vi.fn(async () => null);

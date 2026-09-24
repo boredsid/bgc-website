@@ -116,6 +116,7 @@ export default function RegistrationForm() {
   const [detailsTouched, setDetailsTouched] = useState(false);
   const [membership, setMembership] = useState<PhoneLookupResponse['membership'] | null>(null);
   const [existingSeatsForEvent, setExistingSeatsForEvent] = useState(0);
+  const [clashingEvent, setClashingEvent] = useState<PhoneLookupResponse['clashing_event']>(null);
   const [creditBalance, setCreditBalance] = useState(0);
   const [activePromo, setActivePromo] = useState<PhoneLookupResponse['active_promo']>(null);
   const [replayPass, setReplayPass] = useState<PhoneLookupResponse['replay_pass']>(null);
@@ -183,6 +184,7 @@ export default function RegistrationForm() {
       setPhoneLookedUp(false);
       setMembership(null);
       setExistingSeatsForEvent(0);
+      setClashingEvent(null);
       return;
     }
 
@@ -200,6 +202,7 @@ export default function RegistrationForm() {
       }
       setMembership(data.membership);
       setExistingSeatsForEvent(data.existing_seats_for_event ?? 0);
+      setClashingEvent(data.clashing_event ?? null);
       setCreditBalance(data.credit_balance ?? 0);
       setActivePromo(data.active_promo ?? null);
       setReplayPass(data.replay_pass ?? null);
@@ -216,6 +219,7 @@ export default function RegistrationForm() {
         setPhoneLookedUp(false);
         setMembership(null);
         setExistingSeatsForEvent(0);
+        setClashingEvent(null);
         setCreditBalance(0);
         setActivePromo(null);
         setReplayPass(null);
@@ -305,6 +309,7 @@ export default function RegistrationForm() {
     setPhoneLookedUp(false);
     setMembership(null);
     setExistingSeatsForEvent(0);
+    setClashingEvent(null);
     setCreditBalance(0);
     setActivePromo(null);
     setReplayPass(null);
@@ -474,6 +479,11 @@ export default function RegistrationForm() {
 
   const guildGate =
     event.guild_path_exclusive && phoneLookedUp && membership?.isMember === false;
+
+  // Nobody can be at two events that start at the same moment. The Worker
+  // refuses this on /api/register too — this is just so the person finds out
+  // before filling the rest of the form in.
+  const clashGate = phoneLookedUp && !!clashingEvent;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -791,6 +801,40 @@ export default function RegistrationForm() {
                 className="btn btn-primary no-underline inline-block"
               >
                 Join Guild Path →
+              </a>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={resetLookup}
+                  className="text-sm underline text-[#1A1A1A]/70 bg-transparent border-0 cursor-pointer p-0"
+                >
+                  Try a different phone number
+                </button>
+              </div>
+            </div>
+          ) : clashGate ? (
+            <div className="card-brutal p-6 mt-2" style={{ background: '#FFD166' }}>
+              <div className="text-3xl mb-2">⏰</div>
+              <h2 className="font-heading text-xl font-bold mb-2">
+                You're already booked at that time
+              </h2>
+              <p className="text-sm text-[#1A1A1A]/85 leading-relaxed mb-2">
+                This number is registered for{' '}
+                <strong>{clashingEvent!.name}</strong> —{' '}
+                {formatEventWhen(clashingEvent!)} — which starts at the same time
+                as {event.name}. You can only be at one of them.
+              </p>
+              <p className="text-sm text-[#1A1A1A]/85 leading-relaxed mb-4">
+                Want to switch? Message us and we'll move you across.
+              </p>
+              <a
+                href="https://wa.me/919606598024"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary no-underline w-full sm:w-auto"
+                style={{ whiteSpace: 'normal' }}
+              >
+                Message us on WhatsApp →
               </a>
               <div className="mt-4">
                 <button

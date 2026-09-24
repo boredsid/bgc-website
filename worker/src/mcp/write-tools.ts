@@ -55,7 +55,7 @@ async function existingSeatsFor(
 const registerForEvent: McpTool = {
   name: 'register_for_event',
   description:
-    "Register someone for a BGC event. Before calling: use get_event to see the event's custom questions, then collect the user's name, 10-digit phone, email, and answers. Returns the amount due and UPI payment details — relay them verbatim; the user pays via UPI themselves. Registration stays pending until an admin confirms payment. If the phone already has a registration for this event, the tool returns requires_confirmation=true instead of booking — tell the user, and only call again with confirm_additional: true after their explicit yes.",
+    "Register someone for a BGC event. Before calling: use get_event to see the event's custom questions, then collect the user's name, 10-digit phone, email, and answers. Returns the amount due and UPI payment details — relay them verbatim; the user pays via UPI themselves. Registration stays pending until an admin confirms payment. Someone already registered for a different event that starts at the same date and time cannot book this one — the tool refuses and names the clashing event. If the phone already has a registration for this event, the tool returns requires_confirmation=true instead of booking — tell the user, and only call again with confirm_additional: true after their explicit yes.",
   inputSchema: {
     type: 'object',
     properties: {
@@ -117,6 +117,11 @@ const registerForEvent: McpTool = {
       if (body.code === 'external_registration') {
         throw new ToolError(
           `This event's registrations are managed by the event partner. Send the user to ${body.external_registration_url || 'the external registration link from get_event'}.`,
+        );
+      }
+      if (body.code === 'time_clash') {
+        throw new ToolError(
+          `${error} ${CANCELLATION_NOTE} Otherwise, offer to find them an event at a different time with list_events.`,
         );
       }
       if (error === 'guild_path_required') {

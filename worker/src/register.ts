@@ -14,6 +14,7 @@ import {
   type ClaimedPass,
 } from './replay-pass-claims';
 import { getActiveMembership } from './guild';
+import { clashMessage, findEventClash } from './event-clash';
 
 export async function handleRegister(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const body = await request.json<{
@@ -64,6 +65,18 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
       error: 'Registrations for this event are managed by the event partner.',
       code: 'external_registration',
       external_registration_url: event.external_registration_url,
+    }, 409);
+  }
+
+  // Nobody can sit at two tables that start at the same moment. Checked before
+  // anything is written, and against the phone rather than the account, so a
+  // second booking under a fresh name on the same number is caught too.
+  const clash = await findEventClash(supabase, body.event_id, event.date, phone);
+  if (clash) {
+    return jsonResponse({
+      error: `${clashMessage(clash)} You can only be at one of them — cancel that registration first if you'd rather come to this one.`,
+      code: 'time_clash',
+      clashing_event: { id: clash.event.id, name: clash.event.name, date: clash.event.date },
     }, 409);
   }
 
