@@ -190,6 +190,27 @@ export async function fetchGoogleAlbum(shareUrl: string): Promise<GoogleAlbum | 
   return { albumKey, authKey, items, complete };
 }
 
+/**
+ * The media token of the album's cover. The owner sets it in Google Photos
+ * (open a photo → ⋮ → Use as album cover), and the share page names it in its
+ * og:image link-preview tag. Falls back to the first photo on the page.
+ */
+export function parseAlbumCover(html: string): string | null {
+  const tag = html.match(/<meta[^>]*property="og:image"[^>]*>/)?.[0];
+  const content = tag?.match(/content="([^"]+)"/)?.[1];
+  // Drop the size options (e.g. "=w600-h315-p-k") the preview asks for.
+  const cover = content?.replace(/=[^/]*$/, '').match(MEDIA_BASE_RE);
+  if (cover) return cover[1];
+  return parseSharePage(html)?.items.find((i) => !i.isVideo)?.token ?? null;
+}
+
+/** Only reads the share page itself, so a cover costs one request, not a whole album. */
+export async function fetchGoogleAlbumCover(shareUrl: string): Promise<string | null> {
+  const res = await fetch(shareUrl, { headers: { 'Accept-Language': 'en' } });
+  if (!res.ok) return null;
+  return parseAlbumCover(await res.text());
+}
+
 export function isValidMediaToken(token: string): boolean {
   return token.length >= 20 && TOKEN_RE.test(token);
 }

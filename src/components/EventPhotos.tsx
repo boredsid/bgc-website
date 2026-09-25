@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import PhotoAlbum from './PhotoAlbum';
-import { albumId, type EventAlbum } from '../lib/photo-albums';
+import { albumCoverUrl, albumId, type EventAlbum } from '../lib/photo-albums';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
 const PARENT_FOLDER_URL =
@@ -10,6 +10,50 @@ function formatDate(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+const CARD_GRADIENT = 'linear-gradient(135deg, #F47B20 0%, #FFD166 100%)';
+
+function AlbumCard({ album, onOpen }: { album: EventAlbum; onOpen: () => void }) {
+  // Until the cover arrives the photo side shows the card's own gradient, and
+  // it stays that way if the album has no photo to show.
+  const [cover, setCover] = useState<'loading' | 'loaded' | 'missing'>('loading');
+
+  return (
+    <button
+      onClick={onOpen}
+      className="group flex text-left rounded-2xl overflow-hidden transition-transform hover:-translate-y-1"
+      style={{ border: 'var(--border)', minHeight: 180, background: '#FFFFFF' }}
+    >
+      <div
+        className="relative w-[42%] shrink-0 overflow-hidden"
+        style={{ background: CARD_GRADIENT, borderRight: 'var(--border)' }}
+      >
+        {cover !== 'missing' && (
+          <img
+            src={albumCoverUrl(album)}
+            alt=""
+            loading="lazy"
+            onLoad={() => setCover('loaded')}
+            onError={() => setCover('missing')}
+            className="absolute inset-0 w-full h-full object-cover transition duration-300 group-hover:scale-105"
+            style={{ opacity: cover === 'loaded' ? 1 : 0 }}
+          />
+        )}
+      </div>
+      <div className="flex-1 min-w-0 p-5 flex flex-col">
+        <span className="block font-heading font-bold text-xl sm:text-2xl leading-tight text-[#1A1A1A]">
+          {album.title}
+        </span>
+        {album.date && (
+          <span className="block mt-2 font-semibold text-[#1A1A1A]/70">{formatDate(album.date)}</span>
+        )}
+        <span className="mt-auto pt-4 font-heading font-semibold text-sm text-[#F47B20]">
+          View photos →
+        </span>
+      </div>
+    </button>
+  );
 }
 
 export default function EventPhotos() {
@@ -75,7 +119,7 @@ export default function EventPhotos() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="rounded-2xl bg-black/5 animate-pulse" style={{ height: 180 }} />
         ))}
@@ -99,23 +143,9 @@ export default function EventPhotos() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {events.map((ev) => (
-        <button
-          key={albumId(ev)}
-          onClick={() => openEvent(ev)}
-          className="text-left rounded-2xl p-6 transition-transform hover:-translate-y-1"
-          style={{
-            background: 'linear-gradient(135deg, #F47B20 0%, #FFD166 100%)',
-            border: 'var(--border)',
-            minHeight: 180,
-          }}
-        >
-          <span className="block font-heading font-bold text-2xl text-[#1A1A1A]">{ev.title}</span>
-          {ev.date && (
-            <span className="block mt-2 font-semibold text-[#1A1A1A]/70">{formatDate(ev.date)}</span>
-          )}
-        </button>
+        <AlbumCard key={albumId(ev)} album={ev} onOpen={() => openEvent(ev)} />
       ))}
     </div>
   );

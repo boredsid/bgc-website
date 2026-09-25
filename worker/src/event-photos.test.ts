@@ -15,6 +15,10 @@ import {
   handleEventPhotoImage,
   handleGooglePhotosAlbum,
   handleGooglePhotoImage,
+  pickDriveCover,
+  handleDriveCover,
+  handleGooglePhotosCover,
+  type DriveFile,
 } from './event-photos';
 
 const env = { DRIVE_API_KEY: 'test-key', EVENT_PHOTOS_FOLDER_ID: 'PARENT' } as any;
@@ -311,5 +315,117 @@ describe('handleEventPhotoImage', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('image/png');
     expect(await res.text()).toBe('binary-bytes');
+  });
+});
+
+function photo(id: string, meta?: DriveFile['imageMediaMetadata'], name = `${id}.jpg`): DriveFile {
+  return { id, name, mimeType: 'image/jpeg', imageMediaMetadata: meta };
+}
+const wide = (time?: string) => ({ width: 4000, height: 3000, time });
+const tall = (time?: string) => ({ width: 3000, height: 4000, time });
+
+describe('pickDriveCover', () => {
+  it('takes a photo named "cover" over everything else', () => {
+    const files = [photo('A', wide()), photo('B', tall(), 'Cover - group.jpg'), photo('C', wide())];
+    expect(pickDriveCover(files)?.id).toBe('B');
+    const notCovers = [
+      photo('B', wide('2026:09:20 15:00:00'), 'coverage.jpg'),
+      photo('A', wide('2026:09:20 17:00:00')),
+      photo('C', wide('2026:09:20 19:00:00')),
+    ];
+    expect(pickDriveCover(notCovers)?.id).toBe('A');
+  });
+
+  it('takes the middle landscape shot by capture time', () => {
+    const files = [
+      photo('late', wide('2026:09:20 19:00:00')),
+      photo('portrait', tall('2026:09:20 17:00:00')),
+      photo('early', wide('2026:09:20 15:00:00')),
+      photo('mid', wide('2026:09:20 17:30:00')),
+    ];
+    expect(pickDriveCover(files)?.id).toBe('mid');
+  });
+
+  it('reads a quarter-turned photo as the shape it displays at', () => {
+    const turnedWide = { width: 3000, height: 4000, rotation: 1 };
+    const turnedTall = { width: 4000, height: 3000, rotation: 3 };
+    expect(pickDriveCover([photo('A', turnedTall), photo('B', turnedWide)])?.id).toBe('B');
+  });
+
+  it('falls back to any photo when none are landscape, then to a video frame', () => {
+    const clip: DriveFile = { id: 'V', name: 'clip.mp4', mimeType: 'video/mp4' };
+    expect(pickDriveCover([clip, photo('A', tall())])?.id).toBe('A');
+    expect(pickDriveCover([clip])?.id).toBe('V');
+    expect(pickDriveCover([])).toBeNull();
+  });
+});
+
+describe('handleDriveCover', () => {
+  it('rejects an invalid folder id with 400', async () => {
+    const res = await handleDriveCover('bad!', new Request('https://api.test/'), env, ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('asks Drive for photo shapes and serves the chosen thumbnail', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ files: [photo('IMG1234567', wide())] }) })
+      .mockResolvedValueOnce(new Response('jpeg-bytes', { status: 200, headers: { 'Content-Type': 'image/jpeg' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await handleDriveCover('FOLDER1234567', new Request('https://api.test/'), env, ctx);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('jpeg-bytes');
+    const listUrl = decodeURIComponent(String(fetchMock.mock.calls[0][0]));
+    expect(listUrl).toContain("mimeType contains 'image/' or mimeType contains 'video/'");
+    expect(listUrl).toContain('imageMediaMetadata(width,height,rotation,time)');
+    expect(fetchMock.mock.calls[1][0]).toBe('https://drive.google.com/thumbnail?id=IMG1234567&sz=w800');
+  });
+
+  it('404s when the folder is empty', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ files: [] }) }));
+    const res = await handleDriveCover('FOLDER1234567', new Request('https://api.test/'), env, ctx);
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('handleGooglePhotosCover', () => {
+  const EVENT_ID = '5f0c3a52-8a8e-4d9b-9a53-1d2e3f4a5b6c';
+  const TOKEN = 'AP1GczOoi8SGudg1gPQuNajLa9kImwVpU8S29QuKfi42';
+
+  it('rejects a malformed event id with 400', async () => {
+    const res = await handleGooglePhotosCover('../x', new Request('https://api.test/'), env, ctx);
+    expect(res.status).toBe(400);
+  });
+
+  it('serves the album cover the share page names', async () => {
+    (getSupabase as any).mockReturnValue({
+      from: () => queryMock({ data: { google_photos_url: 'https://photos.app.goo.gl/abc' }, error: null }),
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () =>
+          `<meta property="og:image" content="https://lh3.googleusercontent.com/pw/${TOKEN}=w600-h315-p-k">`,
+      })
+      .mockResolvedValueOnce(new Response('jpeg-bytes', { status: 200, headers: { 'Content-Type': 'image/jpeg' } }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await handleGooglePhotosCover(EVENT_ID, new Request('https://api.test/'), env, ctx);
+    expect(res.status).toBe(200);
+    expect(fetchMock.mock.calls[1][0]).toBe(`https://lh3.googleusercontent.com/pw/${TOKEN}=w800`);
+  });
+
+  it('404s when the event has no album, or the album cannot be read', async () => {
+    (getSupabase as any).mockReturnValue({ from: () => queryMock({ data: null, error: null }) });
+    expect((await handleGooglePhotosCover(EVENT_ID, new Request('https://api.test/'), env, ctx)).status).toBe(404);
+
+    (getSupabase as any).mockReturnValue({
+      from: () => queryMock({ data: { google_photos_url: 'https://photos.app.goo.gl/abc' }, error: null }),
+    });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')));
+    expect((await handleGooglePhotosCover(EVENT_ID, new Request('https://api.test/'), env, ctx)).status).toBe(404);
   });
 });

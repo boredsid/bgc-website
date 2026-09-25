@@ -1,15 +1,15 @@
 import type { Env } from './index';
 import { getSupabase } from './supabase';
 import { currentBangaloreDate } from './finance-date';
-import { fetchGoogleAlbum, isValidMediaToken, type GoogleAlbum } from './google-photos';
+import { fetchGoogleAlbum, fetchGoogleAlbumCover, isValidMediaToken, type GoogleAlbum } from './google-photos';
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
 
-async function driveList(query: string, env: Env): Promise<DriveFile[]> {
+async function driveList(query: string, env: Env, fields = 'files(id,name,mimeType)'): Promise<DriveFile[]> {
   const url =
     `${DRIVE_API}` +
     `?q=${encodeURIComponent(query)}` +
-    `&fields=${encodeURIComponent('files(id,name,mimeType)')}` +
+    `&fields=${encodeURIComponent(fields)}` +
     `&orderBy=name` +
     `&pageSize=1000` +
     `&key=${encodeURIComponent(env.DRIVE_API_KEY)}`;
@@ -29,6 +29,13 @@ function jsonCached(data: unknown): Response {
 function badRequest(message: string): Response {
   return new Response(JSON.stringify({ error: message }), {
     status: 400,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function notFound(message: string): Response {
+  return new Response(JSON.stringify({ error: message }), {
+    status: 404,
     headers: { 'Content-Type': 'application/json' },
   });
 }
@@ -53,6 +60,8 @@ export interface DriveFile {
   id: string;
   name: string;
   mimeType?: string;
+  // Only asked for when picking a cover. `time` is EXIF-style "YYYY:MM:DD HH:MM:SS".
+  imageMediaMetadata?: { width?: number; height?: number; rotation?: number; time?: string };
 }
 
 export interface EventFolder {
@@ -154,6 +163,35 @@ export function buildPhotoList(files: DriveFile[]): EventPhoto[] {
   });
 }
 
+// Drive stores the camera's pixels and reports the EXIF turn separately.
+function isLandscape(file: DriveFile): boolean {
+  const m = file.imageMediaMetadata;
+  if (!m?.width || !m?.height) return false;
+  const quarterTurn = m.rotation === 1 || m.rotation === 3;
+  return quarterTurn ? m.height > m.width : m.width > m.height;
+}
+
+// Untimed photos go last, in the name order Drive listed them in.
+function byCaptureTime(a: DriveFile, b: DriveFile): number {
+  return (a.imageMediaMetadata?.time ?? '~').localeCompare(b.imageMediaMetadata?.time ?? '~');
+}
+
+/**
+ * The photo on a Drive album's card. A photo whose name starts with "cover" is
+ * the organiser's pick. Otherwise a landscape shot from the middle of the
+ * event: the first frames tend to be empty tables, and by halfway the room is
+ * full and the games are going. An album of only videos gets a video's frame.
+ */
+export function pickDriveCover(files: DriveFile[]): DriveFile | null {
+  const images = files.filter((f) => !f.mimeType || f.mimeType.startsWith('image/'));
+  if (images.length === 0) return files[0] ?? null;
+  const chosen = images.find((f) => /^cover(?![a-z])/i.test(f.name));
+  if (chosen) return chosen;
+  const landscape = images.filter(isLandscape);
+  const pool = [...(landscape.length > 0 ? landscape : images)].sort(byCaptureTime);
+  return pool[Math.floor(pool.length / 2)];
+}
+
 export function buildGooglePhotoList(album: GoogleAlbum): EventPhoto[] {
   return album.items.map((item, i) => ({
     id: item.token,
@@ -205,6 +243,17 @@ export async function handleEventPhotos(
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+async function publishedAlbumUrl(eventId: string, env: Env): Promise<string | null> {
+  const { data: event, error } = await getSupabase(env)
+    .from('events')
+    .select('google_photos_url')
+    .eq('id', eventId)
+    .eq('is_published', true)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase ${error.message}`);
+  return (event as { google_photos_url: string | null } | null)?.google_photos_url ?? null;
+}
+
 // `complete` is false when only part of a large album could be read; the page
 // then shows what it has and links to the album for the rest. A 502 means the
 // album couldn't be read at all, and the page falls back to the link alone.
@@ -216,20 +265,8 @@ export async function handleGooglePhotosAlbum(
 ): Promise<Response> {
   if (!UUID_RE.test(eventId)) return badRequest('Invalid event ID');
   return withCache(request, ctx, async () => {
-    const { data: event, error } = await getSupabase(env)
-      .from('events')
-      .select('google_photos_url')
-      .eq('id', eventId)
-      .eq('is_published', true)
-      .maybeSingle();
-    if (error) throw new Error(`Supabase ${error.message}`);
-    const albumUrl = (event as { google_photos_url: string | null } | null)?.google_photos_url;
-    if (!albumUrl) {
-      return new Response(JSON.stringify({ error: 'Album not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const albumUrl = await publishedAlbumUrl(eventId, env);
+    if (!albumUrl) return notFound('Album not found');
     const album = await fetchGoogleAlbum(albumUrl).catch(() => null);
     if (!album) {
       return new Response(JSON.stringify({ error: 'Could not read the album', albumUrl }), {
@@ -280,14 +317,45 @@ export async function handleGooglePhotoImage(
   return withCache(request, ctx, () => proxyImage(`https://lh3.googleusercontent.com/pw/${token}=w1200`));
 }
 
+// The picture on an album's card. Served as image bytes so the card can use it
+// as a plain <img src>; a 404 leaves the card on its plain colour.
+export async function handleDriveCover(
+  folderId: string,
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  if (!isValidDriveId(folderId)) return badRequest('Invalid folder ID');
+  return withCache(request, ctx, async () => {
+    const files = await driveList(
+      `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed=false`,
+      env,
+      'files(id,name,mimeType,imageMediaMetadata(width,height,rotation,time))',
+    );
+    const cover = pickDriveCover(files);
+    if (!cover) return notFound('No photos in this album');
+    return proxyImage(`https://drive.google.com/thumbnail?id=${cover.id}&sz=w800`);
+  });
+}
+
+export async function handleGooglePhotosCover(
+  eventId: string,
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  if (!UUID_RE.test(eventId)) return badRequest('Invalid event ID');
+  return withCache(request, ctx, async () => {
+    const albumUrl = await publishedAlbumUrl(eventId, env);
+    const token = albumUrl ? await fetchGoogleAlbumCover(albumUrl).catch(() => null) : null;
+    if (!token) return notFound('No cover for this album');
+    return proxyImage(`https://lh3.googleusercontent.com/pw/${token}=w800`);
+  });
+}
+
 async function proxyImage(upstreamUrl: string): Promise<Response> {
   const upstream = await fetch(upstreamUrl);
-  if (!upstream.ok) {
-    return new Response(JSON.stringify({ error: 'Image not found' }), {
-      status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  if (!upstream.ok) return notFound('Image not found');
   return new Response(upstream.body, {
     status: 200,
     headers: {

@@ -18,6 +18,13 @@ export function albumPhotosUrl(album: EventAlbum): string {
     : `${WORKER_URL}/api/event-photos/folder/${album.folderId}`;
 }
 
+/** The picture on the album's card: its Google Photos cover, or the worker's pick from the Drive folder. */
+export function albumCoverUrl(album: EventAlbum): string {
+  return album.source === 'google_photos'
+    ? `${WORKER_URL}/api/event-photos/cover/google/${album.eventId}`
+    : `${WORKER_URL}/api/event-photos/cover/folder/${album.folderId}`;
+}
+
 /** The worker's copy of one image, which the browser may read to share as a file. */
 export function shareableImageUrl(album: EventAlbum, photoId: string): string {
   return album.source === 'google_photos'

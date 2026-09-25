@@ -5,6 +5,7 @@ import {
   parseBatchResponse,
   fetchGoogleAlbum,
   isValidMediaToken,
+  parseAlbumCover,
 } from './google-photos';
 
 afterEach(() => {
@@ -177,5 +178,21 @@ describe('isValidMediaToken', () => {
     expect(isValidMediaToken('short')).toBe(false);
     expect(isValidMediaToken(`${TOKEN_A}/../x`)).toBe(false);
     expect(isValidMediaToken(`${TOKEN_A}=d`)).toBe(false);
+  });
+});
+
+describe('parseAlbumCover', () => {
+  it('reads the cover from the link-preview tag, without its size options', () => {
+    const html = `<meta property="og:title" content="Demo"><meta property="og:image" content="https://lh3.googleusercontent.com/pw/${TOKEN_B}=w600-h315-p-k">`;
+    expect(parseAlbumCover(html + sharePage([item('AF1QipA', TOKEN_A)]))).toBe(TOKEN_B);
+  });
+
+  it('falls back to the first photo, skipping videos', () => {
+    expect(parseAlbumCover(sharePage([item('AF1QipA', TOKEN_A, true), item('AF1QipB', TOKEN_B)]))).toBe(TOKEN_B);
+  });
+
+  it('ignores a preview image that is not a shared-album photo', () => {
+    const html = '<meta property="og:image" content="https://example.com/x.png">';
+    expect(parseAlbumCover(html)).toBeNull();
   });
 });
