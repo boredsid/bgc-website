@@ -297,6 +297,24 @@ describe('handleEventPhotosFolder', () => {
       "mimeType contains 'image/' or mimeType contains 'video/'",
     );
   });
+
+  it('includes photos filed in subfolders, keeping each subfolder together', async () => {
+    const folder = (id: string, name: string) => ({ id, name, mimeType: 'application/vnd.google-apps.folder' });
+    const tree: Record<string, DriveFile[]> = {
+      ALBUM123456: [photo('TOP'), folder('AMRIT12345', 'Amrit'), folder('YOGESH1234', 'Yogesh')],
+      AMRIT12345: [photo('A1'), photo('A2')],
+      YOGESH1234: [photo('Y1'), folder('DAY2123456', 'Day 2')],
+      DAY2123456: [photo('Y2')],
+    };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const parent = decodeURIComponent(url).match(/'([^']+)' in parents/)![1];
+      return { ok: true, status: 200, json: async () => ({ files: tree[parent] }) };
+    }));
+
+    const res = await handleEventPhotosFolder('ALBUM123456', new Request('https://api.test/'), env, ctx);
+    const body = (await res.json()) as { photos: Array<{ id: string }> };
+    expect(body.photos.map((p) => p.id)).toEqual(['TOP', 'A1', 'A2', 'Y1', 'Y2']);
+  });
 });
 
 describe('handleEventPhotoImage', () => {

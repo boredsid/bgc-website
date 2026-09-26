@@ -19,6 +19,34 @@ async function driveList(query: string, env: Env, fields = 'files(id,name,mimeTy
   return data.files ?? [];
 }
 
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+// A safety stop on how many folders one album may walk, well inside the
+// Worker's subrequest limit.
+const MAX_ALBUM_FOLDERS = 40;
+
+/**
+ * Every photo and video in an album, including ones filed in subfolders (one
+ * per photographer, say). A folder's own media comes first, then each
+ * subfolder's in name order, so a subfolder's photos stay together.
+ */
+async function listAlbumMedia(folderId: string, env: Env, fields?: string): Promise<DriveFile[]> {
+  let folders = 1;
+  async function walk(id: string): Promise<DriveFile[]> {
+    const children = await driveList(
+      `'${id}' in parents and (mimeType contains 'image/' or mimeType contains 'video/' or mimeType = '${FOLDER_MIME}') and trashed=false`,
+      env,
+      fields,
+    );
+    const subfolders = children
+      .filter((f) => f.mimeType === FOLDER_MIME)
+      .slice(0, Math.max(0, MAX_ALBUM_FOLDERS - folders));
+    folders += subfolders.length;
+    const nested = await Promise.all(subfolders.map((f) => walk(f.id)));
+    return [...children.filter((f) => f.mimeType !== FOLDER_MIME), ...nested.flat()];
+  }
+  return walk(folderId);
+}
+
 function jsonCached(data: unknown): Response {
   return new Response(JSON.stringify(data), {
     status: 200,
@@ -286,10 +314,7 @@ export async function handleEventPhotosFolder(
 ): Promise<Response> {
   if (!isValidDriveId(folderId)) return badRequest('Invalid folder ID');
   return withCache(request, ctx, async () => {
-    const files = await driveList(
-      `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed=false`,
-      env,
-    );
+    const files = await listAlbumMedia(folderId, env);
     return jsonCached({ photos: buildPhotoList(files) });
   });
 }
@@ -327,8 +352,8 @@ export async function handleDriveCover(
 ): Promise<Response> {
   if (!isValidDriveId(folderId)) return badRequest('Invalid folder ID');
   return withCache(request, ctx, async () => {
-    const files = await driveList(
-      `'${folderId}' in parents and (mimeType contains 'image/' or mimeType contains 'video/') and trashed=false`,
+    const files = await listAlbumMedia(
+      folderId,
       env,
       'files(id,name,mimeType,imageMediaMetadata(width,height,rotation,time))',
     );
