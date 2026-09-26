@@ -205,16 +205,17 @@ function byCaptureTime(a: DriveFile, b: DriveFile): number {
 }
 
 /**
- * The photo on a Drive album's card. A photo whose name starts with "cover" is
- * the organiser's pick. Otherwise a landscape shot from the middle of the
- * event: the first frames tend to be empty tables, and by halfway the room is
- * full and the games are going. An album of only videos gets a video's frame.
+ * The photo on a Drive album's card. A photo or video whose name starts with
+ * "cover" is the organiser's pick (a video shows its frame). Otherwise a
+ * landscape shot from the middle of the event: the first frames tend to be
+ * empty tables, and by halfway the room is full and the games are going. An
+ * album of only videos gets a video's frame.
  */
 export function pickDriveCover(files: DriveFile[]): DriveFile | null {
+  const chosen = files.find((f) => /^cover(?![a-z])/i.test(f.name));
+  if (chosen) return chosen;
   const images = files.filter((f) => !f.mimeType || f.mimeType.startsWith('image/'));
   if (images.length === 0) return files[0] ?? null;
-  const chosen = images.find((f) => /^cover(?![a-z])/i.test(f.name));
-  if (chosen) return chosen;
   const landscape = images.filter(isLandscape);
   const pool = [...(landscape.length > 0 ? landscape : images)].sort(byCaptureTime);
   return pool[Math.floor(pool.length / 2)];

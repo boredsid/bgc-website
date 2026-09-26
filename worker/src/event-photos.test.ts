@@ -354,6 +354,11 @@ describe('pickDriveCover', () => {
     expect(pickDriveCover(notCovers)?.id).toBe('A');
   });
 
+  it('takes a video named "cover" too, for its frame', () => {
+    const clip: DriveFile = { id: 'V', name: 'cover - IMG_1241.mov', mimeType: 'video/quicktime' };
+    expect(pickDriveCover([photo('A', wide()), clip])?.id).toBe('V');
+  });
+
   it('takes the middle landscape shot by capture time', () => {
     const files = [
       photo('late', wide('2026:09:20 19:00:00')),
