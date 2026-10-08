@@ -1,0 +1,7 @@
+# API discovery (RFC 9727). These paths are excluded in _routes.json so the
+# Pages Function never touches them and these headers apply.
+/.well-known/api-catalog
+  Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
+
+/openapi.json
+  Content-Type: application/vnd.oai.openapi+json;version=3.1

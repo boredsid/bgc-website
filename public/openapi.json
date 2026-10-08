@@ -1,0 +1,231 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Board Game Company API",
+    "version": "1.0.0",
+    "description": "Public, unauthenticated endpoints of Board Game Company (BGC), Bangalore's board gaming community. To find events and register people, use the MCP server at /mcp: it lists events, answers questions about the games library and the Guild Path membership, and handles bookings with the right pricing and duplicate-booking checks. The REST endpoints below are read-only. Event IDs come from the MCP `list_events` tool or from https://boardgamecompany.in/calendar (send `Accept: text/markdown` for a markdown copy).",
+    "contact": {
+      "name": "Board Game Company",
+      "email": "hello@boardgamecompany.in",
+      "url": "https://boardgamecompany.in"
+    }
+  },
+  "servers": [{ "url": "https://api.boardgamecompany.in" }],
+  "externalDocs": {
+    "description": "Connecting an AI assistant to the BGC MCP server",
+    "url": "https://boardgamecompany.in/mcp"
+  },
+  "paths": {
+    "/mcp": {
+      "post": {
+        "operationId": "mcp",
+        "summary": "MCP server (Streamable HTTP)",
+        "description": "A Model Context Protocol server speaking JSON-RPC 2.0 over Streamable HTTP. Connect any MCP client to this URL; it needs no authentication. Tools cover events, registration, waitlists, the games library, photos, Guild Path membership and community links. There are deliberately no cancellation tools.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/JsonRpcRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JSON-RPC response",
+            "content": {
+              "application/json": { "schema": { "type": "object" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/event-spots/{eventId}": {
+      "get": {
+        "operationId": "getEventSpots",
+        "summary": "Seats left for an event",
+        "description": "Capacity counts seats, not bookings: a booking for three people takes three seats. `option_counts` gives seats taken per answer for custom questions that have a per-option limit.",
+        "parameters": [
+          { "name": "eventId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Seat availability",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EventSpots" } } }
+          },
+          "404": { "description": "No such event", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": {
+            "description": "A partner runs registration for this event, so BGC does not track its seats. Register at `external_registration_url`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { "type": "string" },
+                    "code": { "const": "external_registration" },
+                    "external_registration_url": { "type": ["string", "null"], "format": "uri" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/event-photos": {
+      "get": {
+        "operationId": "listPhotoAlbums",
+        "summary": "Photo albums from past events, newest first",
+        "description": "Albums come from two places. Drive albums carry `folderId`; Google Photos albums carry `eventId` and `albumUrl`.",
+        "responses": {
+          "200": {
+            "description": "Album list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": { "type": "array", "items": { "$ref": "#/components/schemas/Album" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/event-photos/folder/{folderId}": {
+      "get": {
+        "operationId": "getDriveAlbum",
+        "summary": "Photos and videos in a Drive album",
+        "parameters": [
+          { "name": "folderId", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^[A-Za-z0-9_-]{10,}$" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Album contents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "photos": { "type": "array", "items": { "$ref": "#/components/schemas/Photo" } } }
+                }
+              }
+            }
+          },
+          "400": { "description": "Malformed folder ID", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/event-photos/google/{eventId}": {
+      "get": {
+        "operationId": "getGooglePhotosAlbum",
+        "summary": "Photos in an event's Google Photos album",
+        "description": "`complete` is false when only part of a large album could be read; the rest is at `albumUrl`.",
+        "parameters": [
+          { "name": "eventId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Album contents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "photos": { "type": "array", "items": { "$ref": "#/components/schemas/Photo" } },
+                    "albumUrl": { "type": "string", "format": "uri" },
+                    "complete": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Malformed event ID", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "description": "The event has no published album", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "502": {
+            "description": "The album could not be read right now. Open `albumUrl` instead.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "error": { "type": "string" }, "albumUrl": { "type": "string", "format": "uri" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } },
+        "required": ["error"]
+      },
+      "JsonRpcRequest": {
+        "type": "object",
+        "properties": {
+          "jsonrpc": { "const": "2.0" },
+          "id": { "type": ["string", "integer"] },
+          "method": { "type": "string", "examples": ["initialize", "tools/list", "tools/call"] },
+          "params": { "type": "object" }
+        },
+        "required": ["jsonrpc", "method"]
+      },
+      "EventSpots": {
+        "type": "object",
+        "properties": {
+          "capacity": { "type": "integer" },
+          "registered": { "type": "integer", "description": "Seats taken by bookings that are not cancelled" },
+          "remaining": { "type": "integer" },
+          "option_counts": {
+            "type": "object",
+            "description": "Question ID → option value → seats taken",
+            "additionalProperties": { "type": "object", "additionalProperties": { "type": "integer" } }
+          }
+        },
+        "required": ["capacity", "registered", "remaining", "option_counts"]
+      },
+      "Album": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "source": { "const": "drive" },
+              "folderId": { "type": "string" },
+              "title": { "type": "string" },
+              "date": { "type": ["string", "null"], "format": "date" }
+            },
+            "required": ["source", "folderId", "title", "date"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "source": { "const": "google_photos" },
+              "eventId": { "type": "string", "format": "uuid" },
+              "title": { "type": "string" },
+              "date": { "type": ["string", "null"], "format": "date" },
+              "albumUrl": { "type": "string", "format": "uri" }
+            },
+            "required": ["source", "eventId", "title", "date", "albumUrl"]
+          }
+        ]
+      },
+      "Photo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "kind": { "enum": ["image", "video"] },
+          "thumbUrl": { "type": "string", "format": "uri" },
+          "viewUrl": { "type": "string", "format": "uri" },
+          "downloadUrl": { "type": "string", "format": "uri" },
+          "previewUrl": { "type": "string", "format": "uri", "description": "Videos only" }
+        },
+        "required": ["id", "name", "kind", "thumbUrl", "viewUrl", "downloadUrl"]
+      }
+    }
+  }
+}
