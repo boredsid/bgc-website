@@ -3,6 +3,8 @@
   "entries": [
     {
       "identifier": "urn:air:boardgamecompany.in:mcp:bgc",
+      "displayName": "Board Game Company",
+      "description": "Find and book board game, TTRPG and party game sessions in Bangalore; browse BGC's games library.",
       "type": "application/mcp-server-card+json",
       "url": "https://boardgamecompany.in/.well-known/mcp/server-card.json"
     }
