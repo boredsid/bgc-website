@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+  "name": "in.boardgamecompany/mcp",
+  "version": "1.0.0",
+  "title": "Board Game Company",
+  "description": "Find and book board game, TTRPG and party game sessions in Bangalore; browse BGC's games library.",
+  "websiteUrl": "https://boardgamecompany.in/mcp",
+  "icons": [
+    { "src": "https://boardgamecompany.in/bgc-logo.png", "mimeType": "image/png" }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.boardgamecompany.in/mcp",
+      "supportedProtocolVersions": ["2025-06-18", "2025-03-26", "2024-11-05"]
+    }
+  ],
+  "serverInfo": { "name": "bgc-mcp", "version": "1.0.0" },
+  "transport": { "type": "streamable-http", "endpoint": "https://api.boardgamecompany.in/mcp" },
+  "capabilities": { "tools": {} }
+}

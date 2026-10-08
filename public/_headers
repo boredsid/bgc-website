@@ -1,7 +1,21 @@
-# API discovery (RFC 9727). These paths are excluded in _routes.json so the
-# Pages Function never touches them and these headers apply.
+# Agent discovery files. /.well-known/* and /openapi.json are excluded in
+# _routes.json so the Pages Function never touches them and these headers apply.
+
+# API catalog (RFC 9727)
 /.well-known/api-catalog
   Content-Type: application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"
 
 /openapi.json
   Content-Type: application/vnd.oai.openapi+json;version=3.1
+
+# MCP Server Card and the AI Catalog that points to it
+/.well-known/mcp/server-card.json
+  Content-Type: application/mcp-server-card+json
+  Cache-Control: public, max-age=3600
+  Access-Control-Allow-Methods: GET
+  Access-Control-Allow-Headers: Content-Type, If-None-Match
+  Access-Control-Expose-Headers: ETag
+
+/.well-known/ai-catalog.json
+  Content-Type: application/ai-catalog+json
+  Cache-Control: public, max-age=3600
