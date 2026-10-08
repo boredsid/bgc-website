@@ -2,6 +2,7 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
+import markdownPages from './src/integrations/markdown-pages.ts';
 
 export default defineConfig({
   site: 'https://boardgamecompany.in',
@@ -10,6 +11,7 @@ export default defineConfig({
     sitemap({
       filter: (page) => !page.includes('/pay') && !page.includes('/discord') && !page.includes('/feetpics'),
     }),
+    markdownPages(),
   ],
   vite: {
     plugins: [tailwindcss()],

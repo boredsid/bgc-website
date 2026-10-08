@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/_astro/*",
+    "/payment-app-icons/*",
+    "/bgc-logo.png",
+    "/og-home.jpg",
+    "/owls-on-board-logo.png",
+    "/robots.txt",
+    "/sitemap-index.xml",
+    "/sitemap-0.xml",
+    "/whatsapp",
+    "/about-us",
+    "/about"
+  ]
+}
