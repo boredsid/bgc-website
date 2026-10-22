@@ -12,6 +12,7 @@ import type {
 import CustomQuestion from './CustomQuestion';
 import PaymentSheet from './PaymentSheet';
 import { useLeadCapture } from '../lib/use-lead-capture';
+import { capacityProblem, optionSeatLimit, unansweredRequired } from '../lib/option-capacity';
 
 const WORKER_URL = import.meta.env.PUBLIC_WORKER_URL;
 
@@ -367,7 +368,11 @@ export default function RegistrationForm() {
   }
 
   const soldOut = spots && spots.remaining <= 0;
-  const maxSeats = spots ? Math.min(spots.remaining, 10) : 10;
+  // A chosen option with a few spots left caps the seat count too, so the
+  // form never offers a booking the Worker would refuse.
+  const optionLimit = optionSeatLimit(event.custom_questions || [], customAnswers, spots);
+  const maxSeats = spots ? Math.min(spots.remaining, 10, optionLimit.max) : 10;
+  const optionLimitsSeats = !!spots && optionLimit.max < Math.min(spots.remaining, 10);
 
   const seatPrice = effectiveSeatPrice(event.custom_questions || [], customAnswers, event.price);
   const grossTotal = seatPrice * seats;
@@ -485,9 +490,41 @@ export default function RegistrationForm() {
   // before filling the rest of the form in.
   const clashGate = phoneLookedUp && !!clashingEvent;
 
+  // The page's counts are from when it loaded, and someone else may have taken
+  // the last seats since. Returns null if the Worker can't be reached.
+  async function refreshSpots(): Promise<EventSpots | null> {
+    try {
+      const res = await fetch(`${WORKER_URL}/api/event-spots/${eventId}`);
+      if (!res.ok) return null;
+      const fresh: EventSpots = await res.json();
+      setSpots(fresh);
+      return fresh;
+    } catch {
+      return null;
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const questions = event?.custom_questions || [];
+    const unanswered = unansweredRequired(questions, customAnswers);
+    if (unanswered) {
+      setError(unanswered);
+      return;
+    }
+
+    // Re-check on fresh counts before anyone is sent off to pay. If the
+    // Worker can't be reached, carry on — /api/register checks again.
+    setSubmitting(true);
+    const fresh = await refreshSpots();
+    setSubmitting(false);
+    const problem = fresh && capacityProblem(questions, customAnswers, fresh, seats);
+    if (problem) {
+      setError(problem);
+      return;
+    }
 
     if (total === 0) {
       await submitRegistration('confirmed');
@@ -519,7 +556,15 @@ export default function RegistrationForm() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Registration failed');
+        // Show the counts as they are now, not as they were at page load.
+        refreshSpots();
+        const message = data.error || 'Registration failed';
+        // 'pending' only comes from the payment sheet, after they've paid.
+        setError(
+          paymentStatus === 'pending'
+            ? `${message} If you've already paid, message us on WhatsApp at +91 96065 98024 and we'll sort it out.`
+            : message,
+        );
         setStep('form');
         setSubmitting(false);
         return;
@@ -931,13 +976,18 @@ export default function RegistrationForm() {
                   <span className="font-heading font-bold text-xl w-8 text-center">{seats}</span>
                   <button
                     type="button"
-                    onClick={() => setSeats(Math.min(maxSeats, seats + 1))}
+                    // Fresh counts can leave seats above the limit; never let
+                    // "+" pull the count down.
+                    onClick={() => seats < maxSeats && setSeats(seats + 1)}
                     className="w-10 h-10 rounded-lg font-heading font-bold text-lg cursor-pointer"
                     style={{ background: '#FFFFFF', border: '2px solid #1A1A1A', boxShadow: '3px 3px 0 #1A1A1A' }}
                   >
                     +
                   </button>
                 </div>
+                {optionLimitsSeats && seats >= maxSeats && optionLimit.reason && (
+                  <p className="text-xs mt-2 text-[#1A1A1A]/70">{optionLimit.reason}</p>
+                )}
               </div>
 
               {event.replay_pass_free && companions.length > 0 && (
@@ -975,6 +1025,8 @@ export default function RegistrationForm() {
                   value={customAnswers[q.id] ?? (q.type === 'checkbox' ? false : '')}
                   onChange={(val) => updateCustomAnswer(q.id, val)}
                   optionCounts={spots?.option_counts?.[q.id]}
+                  eventRemaining={spots?.remaining}
+                  seats={seats}
                 />
               ))}
 

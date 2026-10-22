@@ -129,7 +129,14 @@ export async function handleRegister(request: Request, env: Env, ctx: ExecutionC
         }, 0);
 
         if (optionCount + seats > option.capacity) {
-          return jsonResponse({ error: `"${option.value}" is full` }, 400);
+          // Never say "spots remaining" here: the MCP register tool reads that
+          // phrase as "event full" and steers the agent to the waitlist.
+          // Mirrored in src/lib/option-capacity.ts.
+          const left = Math.max(0, option.capacity - optionCount);
+          const error = left === 0
+            ? `"${option.value}" is full — please pick another option.`
+            : `Only ${left} spot${left === 1 ? '' : 's'} left for "${option.value}" — book ${left} seat${left === 1 ? '' : 's'} or pick another option.`;
+          return jsonResponse({ error }, 400);
         }
       }
     }

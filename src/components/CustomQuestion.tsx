@@ -1,18 +1,27 @@
-import type { CustomQuestion as CQ } from '../lib/types';
+import type { CustomQuestion as CQ, CustomQuestionOption } from '../lib/types';
+import { optionSpotsLeft, spotsText } from '../lib/option-capacity';
 
 interface Props {
   question: CQ;
   value: string | boolean;
   onChange: (value: string | boolean) => void;
   optionCounts?: Record<string, number>;
+  eventRemaining?: number;
+  seats: number;
 }
 
-export default function CustomQuestion({ question, value, onChange, optionCounts }: Props) {
+export default function CustomQuestion({ question, value, onChange, optionCounts, eventRemaining, seats }: Props) {
   const { id, label, type, required, options } = question;
 
-  function isOptionFull(optValue: string, capacity?: number): boolean {
-    if (capacity === undefined || !optionCounts) return false;
-    return (optionCounts[optValue] || 0) >= capacity;
+  // An option with fewer spots than the seats being booked can't be chosen.
+  // One already chosen stays chosen (fresh counts can shrink it after the
+  // fact) — the form explains and refuses it at submit instead.
+  function availability(opt: CustomQuestionOption) {
+    const left = optionSpotsLeft(opt, optionCounts, eventRemaining);
+    const tooFew = left !== null && left < seats;
+    const note =
+      left === null ? '' : left === 0 ? 'Full' : tooFew ? `${left} left — not enough for ${seats}` : `${spotsText(left)} left`;
+    return { unavailable: tooFew && value !== opt.value, note };
   }
 
   return (
@@ -42,11 +51,11 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
         >
           <option value="">Select...</option>
           {options.map((opt) => {
-            const full = isOptionFull(opt.value, opt.capacity);
+            const { unavailable, note } = availability(opt);
             return (
-              <option key={opt.value} value={opt.value} disabled={full}>
+              <option key={opt.value} value={opt.value} disabled={unavailable}>
                 {opt.value}
-                {full ? ' (Full)' : ''}
+                {note ? ` (${note})` : ''}
               </option>
             );
           })}
@@ -56,15 +65,23 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
       {type === 'radio' && options && (
         <div className="flex flex-col gap-2">
           {options.map((opt) => {
-            const full = isOptionFull(opt.value, opt.capacity);
+            const { unavailable, note } = availability(opt);
             const selected = value === opt.value;
             return (
               <button
                 key={opt.value}
                 type="button"
-                disabled={full}
-                onClick={() => !full && onChange(opt.value)}
-                className={`text-left font-heading font-semibold rounded-lg px-4 py-3 cursor-pointer transition-colors ${full ? 'opacity-50 cursor-not-allowed' : ''}`}
+                // aria-disabled, not disabled: keyboard and screen-reader users
+                // can still reach the option and hear why it can't be picked.
+                aria-disabled={unavailable}
+                aria-pressed={selected}
+                onClick={() => {
+                  if (unavailable) return;
+                  // A second tap clears an optional question, so a capped choice
+                  // isn't stuck limiting the seat count.
+                  onChange(selected && !required ? '' : opt.value);
+                }}
+                className={`text-left font-heading font-semibold rounded-lg px-4 py-3 transition-colors ${unavailable ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{
                   border: '2px solid #1A1A1A',
                   background: selected ? '#1A1A1A' : '#FFFFFF',
@@ -72,13 +89,7 @@ export default function CustomQuestion({ question, value, onChange, optionCounts
                 }}
               >
                 <span>{opt.value}</span>
-                {opt.capacity !== undefined && (
-                  <span className="ml-2 text-xs font-normal opacity-70">
-                    {full
-                      ? '(Full)'
-                      : `(${opt.capacity - (optionCounts?.[opt.value] || 0)} spots)`}
-                  </span>
-                )}
+                {note && <span className="ml-2 text-xs font-normal opacity-70">({note})</span>}
               </button>
             );
           })}

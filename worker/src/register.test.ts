@@ -444,3 +444,81 @@ describe('handleRegister differential pricing', () => {
     expect(capture.insert.payment_status).toBe('pending');
   });
 });
+
+describe('handleRegister option capacity', () => {
+  // Game option capped at 4 seats; `taken` of them are booked already.
+  function buildMock(taken: number, capture: { insert: any }) {
+    const rows = Array.from({ length: taken }, () => ({ seats: 1, custom_answers: { game: 'Pergola' } }));
+    return {
+      from: (table: string) => {
+        if (table === 'events') return {
+          select: () => ({ eq: () => ({ eq: () => ({ single: async () => ({ data: {
+            id: 'E1', name: 'Mind Games', date: '2026-06-01', venue_name: 'V', venue_area: null,
+            price: 450, capacity: 10, price_includes: null, is_published: true,
+            guild_path_exclusive: false,
+            custom_questions: [
+              { id: 'game', label: 'Which game?', type: 'radio', required: true,
+                options: [{ value: 'Pergola', capacity: 4 }, { value: 'Scythe', capacity: 6 }] },
+            ],
+          }, error: null }) }) }) }),
+        };
+        if (table === 'registrations') return {
+          select: () => ({ eq: () => ({ neq: async () => ({ data: rows, error: null }) }) }),
+          insert: (row: any) => { capture.insert = row; return { select: () => ({ single: async () => ({ data: { id: 'R1' }, error: null }) }) }; },
+        };
+        if (table === 'users') return {
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
+          insert: () => ({ select: () => ({ single: async () => ({ data: { id: 'U1' }, error: null }) }) }),
+        };
+        if (table === 'guild_path_members') return {
+          select: () => ({ eq: () => ({ eq: () => ({ gte: () => ({ order: async () => ({ data: [], error: null }) }) }) }) }),
+        };
+        if (table === 'leads') return {
+          update: () => ({ eq: () => ({ eq: () => ({ is: () => ({ is: async () => ({ error: null }) }) }) }) }),
+        };
+        return null;
+      },
+    };
+  }
+
+  async function register(taken: number, seats: number, capture = { insert: null as any }) {
+    (getSupabase as any).mockReturnValue(buildMock(taken, capture));
+    const req = new Request('http://localhost/api/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: 'E1', name: 'Asha', phone: '9876543210', email: 'a@b.com',
+        seats, custom_answers: { game: 'Pergola' }, payment_status: 'pending',
+      }),
+    });
+    return handleRegister(req, mockEnv(), { waitUntil: (p: Promise<unknown>) => p } as any);
+  }
+
+  it('refuses more seats than the option has left, and says how many it has', async () => {
+    const capture = { insert: null as any };
+    const res = await register(3, 2, capture);
+    expect(res.status).toBe(400);
+    const { error } = await res.json() as { error: string };
+    expect(error).toBe('Only 1 spot left for "Pergola" — book 1 seat or pick another option.');
+    // The MCP register tool reads "spots remaining" as "event full".
+    expect(error).not.toMatch(/spots remaining/i);
+    expect(capture.insert).toBeNull();
+  });
+
+  it('takes a booking that exactly fills the option', async () => {
+    const capture = { insert: null as any };
+    const res = await register(3, 1, capture);
+    expect(res.status).toBe(200);
+    expect(capture.insert.seats).toBe(1);
+  });
+
+  it('calls a full option full', async () => {
+    const res = await register(4, 1);
+    expect(res.status).toBe(400);
+    expect((await res.json() as { error: string }).error).toBe('"Pergola" is full — please pick another option.');
+  });
+
+  it('calls an admin-overbooked option full rather than counting below zero', async () => {
+    const res = await register(5, 1);
+    expect((await res.json() as { error: string }).error).toBe('"Pergola" is full — please pick another option.');
+  });
+});
