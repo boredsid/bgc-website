@@ -156,7 +156,13 @@ Expect `5 – 7 Sep 2026 · All day` and a space after the comma in
 
 ## After editing
 
-Apps Script edits are live on save — there is no deploy step for the webhook
-target, but re-deploy the Web App if the deployment is pinned to a version
-rather than "Head". Send yourself a test registration to confirm the footer
-renders and the link works.
+Saving the script does **not** change what the webhook runs: a web app
+deployment serves a fixed version. Redeploy with Deploy → Manage deployments →
+edit the active deployment → New version → Deploy (never "New deployment",
+which changes the URL). Send yourself a test registration to confirm the
+footer renders and the link works.
+
+> **Legacy.** The email templates now also live in the worker
+> (`worker/src/email-templates.ts`) and are sent through Resend when
+> `EMAIL_PROVIDER=resend` — see `docs/superpowers/plans/2026-10-23-resend-email.md`.
+> Until the Apps Script is retired, keep the two in step.

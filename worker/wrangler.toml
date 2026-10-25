@@ -13,6 +13,17 @@ custom_domain = true
 [triggers]
 crons = ["30 21 * * *"]
 
+# Keep worker logs (Cloudflare dashboard → Workers → bgc-api → Logs). Email is
+# sent in the background after the response, so these logs are the only place
+# a failed send shows up.
+[observability]
+enabled = true
+
+# Keep console output only. Per-request invocation logs would also store
+# request metadata (which may include auth headers) that nothing here needs.
+[observability.logs]
+invocation_logs = false
+
 [vars]
 SUPABASE_URL = "https://yhgtwqdsnrslcgdvmunz.supabase.co"
 UPI_ID = "suranjanadatta24-1@okaxis"
@@ -26,7 +37,9 @@ DD_SUBMISSION_EMAILS = "boardgamecompany2024@gmail.com,saxenasrijan130@gmail.com
 
 # Set secrets via: wrangler secret put SUPABASE_SERVICE_KEY
 # Google Drive API key (event photos): wrangler secret put DRIVE_API_KEY
-# Email secrets: wrangler secret put APPS_SCRIPT_URL / APPS_SCRIPT_SECRET
+# Email: wrangler secret put RESEND_API_KEY, and EMAIL_PROVIDER = "resend" to send
+#   through Resend. Unset EMAIL_PROVIDER falls back to the Apps Script webhook:
+#   wrangler secret put APPS_SCRIPT_URL / APPS_SCRIPT_SECRET
 # Admin allowlist: wrangler secret put ADMIN_EMAILS  (comma-separated)
 # Pages rebuild webhook: wrangler secret put PAGES_DEPLOY_HOOK
 #   (Cloudflare Pages → site → Settings → Builds & deployments → Deploy hooks)
