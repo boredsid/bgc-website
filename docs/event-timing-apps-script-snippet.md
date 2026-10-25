@@ -1,5 +1,7 @@
 # Event timing — Apps Script email update
 
+> **Legacy.** `formatEventWhen` now also lives in the worker (`worker/src/email-templates.ts`, byte-for-byte the same output) and is what customers get when `EMAIL_PROVIDER=resend` — see `docs/superpowers/plans/2026-10-23-resend-email.md`. Until the Apps Script is retired, keep the two in step.
+
 Events can now be **all day** and can **span several days** (migration `020`). The worker
 already sends the two new fields on every `event_registration` and `event_waitlist` payload:
 

@@ -81,6 +81,9 @@ export interface Env {
   UPI_ID: string;
   APPS_SCRIPT_URL: string;
   APPS_SCRIPT_SECRET: string;
+  // "resend" sends email through Resend (see email.ts); unset keeps the Apps Script.
+  EMAIL_PROVIDER?: string;
+  RESEND_API_KEY?: string;
   BGC_SITE_URL: string;
   CF_ACCESS_TEAM_DOMAIN: string;
   CF_ACCESS_AUD: string;

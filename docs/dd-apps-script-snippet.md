@@ -1,5 +1,7 @@
 # Demon's Draft — Apps Script email branch
 
+> **Legacy.** This email is now also rendered in the worker (`renderDdSubmissionEmail` in `worker/src/email-templates.ts`) and sent through Resend when `EMAIL_PROVIDER=resend` — see `docs/superpowers/plans/2026-10-23-resend-email.md`. Until the Apps Script is retired, keep the two in step.
+
 The worker posts `{ type: 'dd_submission', to: [..emails..], name, phone, email, script_json, submission_id, secret }`
 to `APPS_SCRIPT_URL`. Add a branch to the Apps Script's `doPost` dispatcher that handles `type === 'dd_submission'`:
 
