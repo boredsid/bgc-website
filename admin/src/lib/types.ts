@@ -201,7 +201,7 @@ export type FinancePaymentMethod = 'upi' | 'cash' | 'bank_transfer' | 'card' | '
 export interface FinanceAccount {
   id: string;
   name: string;
-  account_type: 'person' | 'bank' | 'upi' | 'cash' | 'other';
+  account_type: 'person' | 'organisation' | 'other';
   is_active: boolean;
   is_default: boolean;
   created_at: string;

@@ -28,7 +28,7 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 - `src/lib/` — `supabase.ts`, `types.ts`, `guild-tiers.ts`, `source.ts` (UTM/source attribution via sessionStorage)
 - `worker/src/` — root handlers + `worker/src/admin/` (admin endpoints) + `*.test.ts` (Vitest)
 - `admin/src/` — admin SPA, separate package, shadcn-based
-- `supabase/migrations/` — `001`–`024` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits, leads, llm_notes, user_promos, guild_path_exclusive, guest admins, waitlist fields, Demon's Draft submissions, corporate events, externally managed registrations, finance ledger, all-day/multi-day events, REPLAY pass perk, community hosts, REPLAY pass claims, Google Photos albums)
+- `supabase/migrations/` — `001`–`025` (initial schema, guild_path rename, source attribution, price_includes, plus_ones, cancelled status, user_credits, leads, llm_notes, user_promos, guild_path_exclusive, guest admins, waitlist fields, Demon's Draft submissions, corporate events, externally managed registrations, finance ledger, all-day/multi-day events, REPLAY pass perk, community hosts, REPLAY pass claims, Google Photos albums, finance account types)
   - **New-table grants (from migration `014`+):** Supabase stops auto-exposing `public` tables to the Data API for this project on **2026-10-30**. After that, any new `public` table is invisible to PostgREST until granted — this hits the **worker (`service_role`) too**, not just public `anon` reads. So every new-table migration must include: `grant all on public.<table> to authenticated, service_role;` plus `grant select on public.<table> to anon;` only if the browser reads it directly (pair with RLS). Existing tables keep their grants; no backfill needed.
 - `docs/superpowers/specs/` — design specs + implementation plans
 
@@ -47,7 +47,7 @@ Browser reads public `games` / `events` directly from Supabase via anon key + RL
 | `event_guest_admins` | no | Event-scoped, time-bound access for collaboration partners |
 | `corporate_events` | yes (published only via RLS) | Display-only B2B showcase records; no registration/capacity logic |
 | `dd_submissions` | no | Demon's Draft contest submissions |
-| `finance_accounts` | no | Private cash-holding locations; one active account can be the guest-confirmation default |
+| `finance_accounts` | no | Private cash-holding locations, typed `person`, `organisation` (e.g. BGC's own account), or `other`; one active account can be the guest-confirmation default |
 | `finance_categories` | no | Private income/expense categories; transfers deliberately have no category |
 | `finance_transactions` | no | Private cash-basis ledger with linked source keys, soft voids, and account movement |
 | `finance_import_batches` | no | Private CSV import audit and duplicate-file protection |

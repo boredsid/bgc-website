@@ -8,6 +8,12 @@ import { fetchAdmin, showApiError } from '@/lib/api';
 import { toast } from 'sonner';
 import type { FinanceAccount, FinanceCategory, FinanceTransactionType } from '@/lib/types';
 
+const ACCOUNT_TYPE_LABELS: Record<FinanceAccount['account_type'], string> = {
+  person: 'Person',
+  organisation: 'Organisation',
+  other: 'Other',
+};
+
 interface Props {
   open: boolean;
   accounts: FinanceAccount[];
@@ -86,7 +92,7 @@ export function FinanceSettingsDialog({ open, accounts, categories, onClose, onC
                 <div className="min-w-0 flex-1">
                   <div className="font-medium truncate">{account.name}</div>
                   <div className="text-xs text-muted-foreground">
-                    {account.account_type}{account.is_default ? ' · default for guest confirmations' : ''}
+                    {ACCOUNT_TYPE_LABELS[account.account_type] ?? account.account_type}{account.is_default ? ' · default for guest confirmations' : ''}
                   </div>
                 </div>
                 {!account.is_default && account.is_active && (
@@ -111,11 +117,9 @@ export function FinanceSettingsDialog({ open, accounts, categories, onClose, onC
               <Select value={accountType} onValueChange={(value) => setAccountType(value as FinanceAccount['account_type'])}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="person">Person</SelectItem>
-                  <SelectItem value="bank">Bank</SelectItem>
-                  <SelectItem value="upi">UPI</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {(Object.keys(ACCOUNT_TYPE_LABELS) as FinanceAccount['account_type'][]).map((type) => (
+                    <SelectItem key={type} value={type}>{ACCOUNT_TYPE_LABELS[type]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

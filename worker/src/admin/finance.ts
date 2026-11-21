@@ -35,7 +35,7 @@ interface FinanceImportRow extends FinanceTransactionInput {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const PAYMENT_METHODS = ['upi', 'cash', 'bank_transfer', 'card', 'other'];
 const TRANSACTION_TYPES = ['income', 'expense', 'transfer'];
-const ACCOUNT_TYPES = ['person', 'bank', 'upi', 'cash', 'other'];
+const ACCOUNT_TYPES = ['person', 'organisation', 'other'];
 
 const TRANSACTION_FIELDS = [
   'transaction_type',

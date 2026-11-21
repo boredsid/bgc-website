@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type { Env } from '../index';
 import {
   type FinanceTransactionInput,
+  handleCreateFinanceAccount,
+  handleUpdateFinanceAccount,
   validateFinanceTransaction,
 } from './finance';
 
@@ -67,5 +70,23 @@ describe('validateFinanceTransaction', () => {
   it('validates only fields present in a partial update', () => {
     expect(validateFinanceTransaction({ title: 'Updated title' }, false)).toBeNull();
     expect(validateFinanceTransaction({ amount: -1 }, false)).toContain('greater than zero');
+  });
+});
+
+describe('finance account types', () => {
+  const env = {} as Env;
+
+  function accountRequest(body: Record<string, unknown>): Request {
+    return new Request('https://api.test/api/admin/finance/accounts', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  it.each(['bank', 'upi', 'cash'])('rejects the retired %s type on create and update', async (type) => {
+    const created = await handleCreateFinanceAccount(accountRequest({ name: 'BGC', account_type: type }), env);
+    expect(created.status).toBe(400);
+    const updated = await handleUpdateFinanceAccount('account-1', accountRequest({ account_type: type }), env);
+    expect(updated.status).toBe(400);
   });
 });
